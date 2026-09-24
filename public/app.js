@@ -40,10 +40,10 @@ function scriptCard(script) {
 function coverAsset(script) {
   if (script?.coverImage) return script.coverImage;
   const assets = {
-    violet: "assets/covers/moon-trial.png",
-    amber: "assets/covers/old-port-letter.png",
-    blue: "assets/covers/orbit-7.png",
-    rose: "assets/covers/velvet-room.png"
+    violet: "assets/covers/moon-trial.jpg",
+    amber: "assets/covers/old-port-letter.jpg",
+    blue: "assets/covers/orbit-7.jpg",
+    rose: "assets/covers/velvet-room.jpg"
   };
   return assets[script?.cover] || assets.violet;
 }
@@ -125,23 +125,23 @@ async function importFile(file) {
 const demoCase = {
   title: "月影审判",
   player: "林澈 · 馆长",
-  caseLabel: "CASE 014 / MOONLIGHT", openingStamp: "21:00", closeStamp: "21:29", playerAvatar: "assets/characters/lin-che.png", sceneKicker: "THE WHITE HALL / PRIVATE VIEWING", sceneImage: "assets/game/white-hall.png", solution: "he", solutionName: "贺云川", badge: "月影观察者",
+  caseLabel: "CASE 014 / MOONLIGHT", openingStamp: "21:00", closeStamp: "21:29", playerAvatar: "assets/characters/lin-che.jpg", sceneKicker: "THE WHITE HALL / PRIVATE VIEWING", sceneImage: "assets/game/white-hall.jpg", solution: "he", solutionName: "贺云川", badge: "月影观察者",
   evidenceLead: "展厅仍保持着晚宴结束前的样子。", evidenceCopy: "每一件物证都可能改变你对某个人的判断。你可以逐一查看，已发现的线索会保留在你的案件笔记中。", questionCopy: "选择一位在场者，向他提出一个问题。注意：有些回答不会直接撒谎，但会刻意避开最重要的部分。", voteLead: "你已经听过所有人的说法。现在，指出那个把自己藏进细节里的人。", voteCopy: "不要只看谁最可疑。真正的答案应该同时解释：权限日志、窗台雨痕，以及展柜里的半枚指纹。", resultTitle: "真相浮出水面", resultText: "正确。贺云川用旧权限解除警报，又利用修复室的蓝色工具线制造了“窗外潜入”的假象。真正暴露他的，是他以为没人会注意到的半枚指纹。",
   intro: "今晚 21:00，私人博物馆「白昼厅」举行一场只对六人开放的月光宝石展。七分钟后，展柜仍然完好，宝石却消失了。",
   suspects: [
-    { id: "shen", name: "沈鸢", role: "画廊主理人", avatar: "assets/characters/shen-yuan.png", line: "我负责今晚的宾客名单。停电前，我一直在东侧酒廊。", answers: { time: "东侧酒廊的监控能证明我在那里。至少，大部分时间可以。", motive: "如果宝石丢失，画廊会失去下一轮融资。我比任何人都希望它还在。", key: "展柜钥匙只有馆长和修复师碰过，我没有理由接近它。" } },
-    { id: "gu", name: "顾砚", role: "收藏家律师", avatar: "assets/characters/gu-yan.png", line: "我来这里只是为了确认一份遗嘱。宝石和我没有关系。", answers: { time: "我在电话里处理一桩继承案。时间很长，长到足够让我错过很多事情。", motive: "真正的动机不在宝石，而在它附带的保险金。你应该去问沈鸢。", key: "那把银色小钥匙？我在二楼书房见过，但没有拿过。" } },
-    { id: "he", name: "贺云川", role: "文物修复师", avatar: "assets/characters/he-yunchuan.png", line: "展柜的锁没有被破坏。有人用了正确的密码，但这不代表是我。", answers: { time: "我在工作室清理一幅画。雨水从窗边进来，我擦了很久。", motive: "修复师只能靠作品活着。毁掉一件藏品，对我没有好处。", key: "密码每月更换一次。今晚的密码只有馆长知道——除非有人看过她的记录。" } },
-    { id: "su", name: "苏弥", role: "调查记者", avatar: "assets/characters/su-mi.png", line: "我正在写一篇关于这间画廊的报道。今晚发生的事，正好给了我一个标题。", answers: { time: "我在洗手间外录音。有人经过，但灯光太暗，我只听到鞋跟声。", motive: "我只需要一个真相，不需要一颗宝石。除非真相本身能卖个好价钱。", key: "我拍到过密码本的一角。上面有一个被划掉的日期：21/17。" } },
-    { id: "luo", name: "罗序", role: "私人安保", avatar: "assets/characters/luo-xu.png", line: "我守的是门，不是展柜。没有人从正门带着宝石离开。", answers: { time: "21:12 到 21:19，主厅摄像头短暂断线。有人让我去检查配电箱。", motive: "我只收安保费。别把失职和盗窃混在一起。", key: "展柜的警报在 21:17 被正常解除，权限记录显示是内部账号。" } }
+    { id: "shen", name: "沈鸢", role: "画廊主理人", avatar: "assets/characters/shen-yuan.jpg", line: "我负责今晚的宾客名单。停电前，我一直在东侧酒廊。", answers: { time: "东侧酒廊的监控能证明我在那里。至少，大部分时间可以。", motive: "如果宝石丢失，画廊会失去下一轮融资。我比任何人都希望它还在。", key: "展柜钥匙只有馆长和修复师碰过，我没有理由接近它。" } },
+    { id: "gu", name: "顾砚", role: "收藏家律师", avatar: "assets/characters/gu-yan.jpg", line: "我来这里只是为了确认一份遗嘱。宝石和我没有关系。", answers: { time: "我在电话里处理一桩继承案。时间很长，长到足够让我错过很多事情。", motive: "真正的动机不在宝石，而在它附带的保险金。你应该去问沈鸢。", key: "那把银色小钥匙？我在二楼书房见过，但没有拿过。" } },
+    { id: "he", name: "贺云川", role: "文物修复师", avatar: "assets/characters/he-yunchuan.jpg", line: "展柜的锁没有被破坏。有人用了正确的密码，但这不代表是我。", answers: { time: "我在工作室清理一幅画。雨水从窗边进来，我擦了很久。", motive: "修复师只能靠作品活着。毁掉一件藏品，对我没有好处。", key: "密码每月更换一次。今晚的密码只有馆长知道——除非有人看过她的记录。" } },
+    { id: "su", name: "苏弥", role: "调查记者", avatar: "assets/characters/su-mi.jpg", line: "我正在写一篇关于这间画廊的报道。今晚发生的事，正好给了我一个标题。", answers: { time: "我在洗手间外录音。有人经过，但灯光太暗，我只听到鞋跟声。", motive: "我只需要一个真相，不需要一颗宝石。除非真相本身能卖个好价钱。", key: "我拍到过密码本的一角。上面有一个被划掉的日期：21/17。" } },
+    { id: "luo", name: "罗序", role: "私人安保", avatar: "assets/characters/luo-xu.jpg", line: "我守的是门，不是展柜。没有人从正门带着宝石离开。", answers: { time: "21:12 到 21:19，主厅摄像头短暂断线。有人让我去检查配电箱。", motive: "我只收安保费。别把失职和盗窃混在一起。", key: "展柜的警报在 21:17 被正常解除，权限记录显示是内部账号。" } }
   ],
   evidence: [
-    { id: "rain", symbol: "◒", name: "窗台雨痕", type: "物证 · 东侧窗", image: "assets/covers/moon-trial.png", detail: "雨痕从窗台向内延伸，但窗锁没有被打开。鞋底纹路只到修复室门口。" },
-    { id: "log", symbol: "⌁", name: "权限日志", type: "电子记录 · 21:17", image: "assets/game/security-console.png", detail: "展柜警报在 21:17:04 被解除，使用的是馆长林澈的旧权限。旧权限本应在三天前失效。" },
-    { id: "note", symbol: "✎", name: "被划掉的日期", type: "照片 · 苏弥相机", image: "assets/evidence/moon-crossed-date.png", detail: "密码本边缘写着 21/17。最后一笔很新，墨水与修复室桌上的钢笔一致。" },
-    { id: "glass", symbol: "◇", name: "玻璃内侧指纹", type: "痕迹 · 展柜", image: "assets/game/fingerprint-thread.png", detail: "指纹只有半枚，来自触碰玻璃内侧的人。比对结果指向贺云川。" },
-    { id: "thread", symbol: "—", name: "蓝色修复线", type: "纤维 · 展厅", image: "assets/evidence/moon-blue-thread.png", detail: "展柜底座卡着一截蓝色修复线，与贺云川工作室的工具包完全一致。" },
-    { id: "letter", symbol: "▱", name: "未寄出的信", type: "私人物证 · 顾砚", image: "assets/game/wet-note.png", detail: "信中提到保险金将在 21:30 后生效，收信人是一个匿名账户。" }
+    { id: "rain", symbol: "◒", name: "窗台雨痕", type: "物证 · 东侧窗", image: "assets/covers/moon-trial.jpg", detail: "雨痕从窗台向内延伸，但窗锁没有被打开。鞋底纹路只到修复室门口。" },
+    { id: "log", symbol: "⌁", name: "权限日志", type: "电子记录 · 21:17", image: "assets/game/security-console.jpg", detail: "展柜警报在 21:17:04 被解除，使用的是馆长林澈的旧权限。旧权限本应在三天前失效。" },
+    { id: "note", symbol: "✎", name: "被划掉的日期", type: "照片 · 苏弥相机", image: "assets/evidence/moon-crossed-date.jpg", detail: "密码本边缘写着 21/17。最后一笔很新，墨水与修复室桌上的钢笔一致。" },
+    { id: "glass", symbol: "◇", name: "玻璃内侧指纹", type: "痕迹 · 展柜", image: "assets/game/fingerprint-thread.jpg", detail: "指纹只有半枚，来自触碰玻璃内侧的人。比对结果指向贺云川。" },
+    { id: "thread", symbol: "—", name: "蓝色修复线", type: "纤维 · 展厅", image: "assets/evidence/moon-blue-thread.jpg", detail: "展柜底座卡着一截蓝色修复线，与贺云川工作室的工具包完全一致。" },
+    { id: "letter", symbol: "▱", name: "未寄出的信", type: "私人物证 · 顾砚", image: "assets/game/wet-note.jpg", detail: "信中提到保险金将在 21:30 后生效，收信人是一个匿名账户。" }
   ],
   timeline: [
     ["21:05", "贺云川借口检查湿度，进入东侧修复室。"],
@@ -153,71 +153,71 @@ const demoCase = {
 const caseLibrary = {
   "moon-trial": demoCase,
   "last-letter": {
-    title: "旧港来信", player: "周遥 · 旧港档案员", caseLabel: "CASE 027 / OLD PORT", openingStamp: "22:10", closeStamp: "22:27", playerAvatar: "assets/characters/su-mi.png", sceneKicker: "THE OLD PORT / LAST TIDE", sceneImage: "assets/covers/old-port-letter.png", solution: "jiang", solutionName: "江屿", badge: "旧港拾信人",
+    title: "旧港来信", player: "周遥 · 旧港档案员", caseLabel: "CASE 027 / OLD PORT", openingStamp: "22:10", closeStamp: "22:27", playerAvatar: "assets/characters/su-mi.jpg", sceneKicker: "THE OLD PORT / LAST TIDE", sceneImage: "assets/covers/old-port-letter.jpg", solution: "jiang", solutionName: "江屿", badge: "旧港拾信人",
     intro: "旧港的潮水将在一小时后漫过仓库地窖。今晚，一封二十年前未寄出的信从灯塔档案室里出现，而真正的收信人刚刚死在港口。",
     evidenceLead: "潮水上涨前，码头仓库仍保持着封存状态。", evidenceCopy: "每件物证都记录着一段被海水冲淡的关系。先确认信从哪里来，再判断谁最怕它被读完。", questionCopy: "旧港的每个人都熟悉如何隐藏一封信。选择一位在场者，追问他与灯塔、潮汐和那只铜钥匙的关系。",
     voteLead: "你已经拼起了这封信的去向。现在，指出那个最害怕潮水退去的人。", voteCopy: "真正的答案应该同时解释：灯塔钥匙、潮汐记录，以及信封上没有寄出的邮戳。",
     resultTitle: "潮水退去，信终于抵达", resultText: "正确。江屿伪造了灯塔的封存记录，想在潮水淹没地窖前取走旧信。真正暴露他的，是信封内侧留下的盐渍和铜钥匙上的新刮痕。",
     suspects: [
-      { id: "ye", name: "叶岚", role: "旧港画廊主理人", avatar: "assets/characters/shen-yuan.png", line: "我只是替港口保管几幅画，没兴趣碰那些旧档案。", answers: { time: "涨潮前我一直在二号码头清点木箱，工人都看见了。", motive: "那封信会让很多人失去现在的身份，但我已经不在乎过去。", key: "灯塔钥匙挂在档案室墙上，江屿比我更熟悉那面墙。" } },
-      { id: "tang", name: "唐砚", role: "航运公司律师", avatar: "assets/characters/gu-yan.png", line: "旧港每年都有失踪的货物，不代表和一封信有关。", answers: { time: "我在海关办公室打电话，处理一份遗失货单。", motive: "信里的名字如果公开，航运公司的旧账会全部被翻出来。", key: "铜钥匙原本属于灯塔管理员，后来由江屿代为保管。" } },
-      { id: "jiang", name: "江屿", role: "灯塔维修师", avatar: "assets/characters/he-yunchuan.png", line: "灯塔已经停用很多年了，那里没有值得看的东西。", answers: { time: "我在北堤检查发电机，雨太大，没人愿意过去。", motive: "那封信只是一个误会，真正的秘密早就被海水带走了。", key: "钥匙一直在档案室，我只在上个月借过一次。" } },
-      { id: "wan", name: "林晚", role: "港口电台主播", avatar: "assets/characters/su-mi.png", line: "我播报的是天气，不是二十年前的家族故事。", answers: { time: "我在电台录潮汐预报，录音带可以证明时间。", motive: "旧信里的人名很适合做一期节目，但我还没拿到它。", key: "邮戳日期被擦过，和今晚潮汐表上的数字很像。" } },
-      { id: "qiao", name: "乔峤", role: "港务安检员", avatar: "assets/characters/luo-xu.png", line: "仓库的门锁完好，没有人从正门带走任何东西。", answers: { time: "我在南门值班，只有江屿拿着维修通行证进过内港。", motive: "我只想保住这份工作，不想卷入旧案。", key: "封条上的蜡不是港务处的颜色，是维修组常用的蓝蜡。" } }
+      { id: "ye", name: "叶岚", role: "旧港画廊主理人", avatar: "assets/characters/shen-yuan.jpg", line: "我只是替港口保管几幅画，没兴趣碰那些旧档案。", answers: { time: "涨潮前我一直在二号码头清点木箱，工人都看见了。", motive: "那封信会让很多人失去现在的身份，但我已经不在乎过去。", key: "灯塔钥匙挂在档案室墙上，江屿比我更熟悉那面墙。" } },
+      { id: "tang", name: "唐砚", role: "航运公司律师", avatar: "assets/characters/gu-yan.jpg", line: "旧港每年都有失踪的货物，不代表和一封信有关。", answers: { time: "我在海关办公室打电话，处理一份遗失货单。", motive: "信里的名字如果公开，航运公司的旧账会全部被翻出来。", key: "铜钥匙原本属于灯塔管理员，后来由江屿代为保管。" } },
+      { id: "jiang", name: "江屿", role: "灯塔维修师", avatar: "assets/characters/he-yunchuan.jpg", line: "灯塔已经停用很多年了，那里没有值得看的东西。", answers: { time: "我在北堤检查发电机，雨太大，没人愿意过去。", motive: "那封信只是一个误会，真正的秘密早就被海水带走了。", key: "钥匙一直在档案室，我只在上个月借过一次。" } },
+      { id: "wan", name: "林晚", role: "港口电台主播", avatar: "assets/characters/su-mi.jpg", line: "我播报的是天气，不是二十年前的家族故事。", answers: { time: "我在电台录潮汐预报，录音带可以证明时间。", motive: "旧信里的人名很适合做一期节目，但我还没拿到它。", key: "邮戳日期被擦过，和今晚潮汐表上的数字很像。" } },
+      { id: "qiao", name: "乔峤", role: "港务安检员", avatar: "assets/characters/luo-xu.jpg", line: "仓库的门锁完好，没有人从正门带走任何东西。", answers: { time: "我在南门值班，只有江屿拿着维修通行证进过内港。", motive: "我只想保住这份工作，不想卷入旧案。", key: "封条上的蜡不是港务处的颜色，是维修组常用的蓝蜡。" } }
     ],
     evidence: [
-      { id: "tide", symbol: "◒", name: "潮汐记录", type: "航海日志 · 22:10", image: "assets/covers/old-port-letter.png", detail: "潮水比官方记录提前了十二分钟，只有熟悉旧港闸门的人才会知道这件事。" },
-      { id: "seal", symbol: "⌁", name: "蓝色封蜡", type: "封存物 · 档案室", image: "assets/evidence/old-wax.png", detail: "封蜡来自维修组，不是港务处。蜡面上有刚刚压过的旧徽章纹路。" },
-      { id: "letter", symbol: "✎", name: "未寄出的信", type: "纸质物证 · 灯塔", image: "assets/game/wet-note.png", detail: "信中提到二十年前的一次换班，收信人正是今晚第一个离开港口的人。" },
-      { id: "key", symbol: "◇", name: "铜制灯塔钥匙", type: "金属物证 · 北堤", image: "assets/game/security-console.png", detail: "钥匙齿口有新鲜刮痕，说明它刚刚打开过一把长期未使用的锁。" },
-      { id: "salt", symbol: "—", name: "信封盐渍", type: "痕迹 · 信封内侧", image: "assets/evidence/old-salt.png", detail: "盐渍只出现在信封内侧，说明信曾被带进潮湿的地窖，而不是在桌上被打开。" },
-      { id: "stamp", symbol: "▱", name: "被擦掉的邮戳", type: "纸面痕迹 · 旧邮局", image: "assets/evidence/old-erased-stamp.png", detail: "邮戳年份被刻意擦掉，但残留的蓝黑墨水与维修组登记簿上的印泥一致。" }
+      { id: "tide", symbol: "◒", name: "潮汐记录", type: "航海日志 · 22:10", image: "assets/covers/old-port-letter.jpg", detail: "潮水比官方记录提前了十二分钟，只有熟悉旧港闸门的人才会知道这件事。" },
+      { id: "seal", symbol: "⌁", name: "蓝色封蜡", type: "封存物 · 档案室", image: "assets/evidence/old-wax.jpg", detail: "封蜡来自维修组，不是港务处。蜡面上有刚刚压过的旧徽章纹路。" },
+      { id: "letter", symbol: "✎", name: "未寄出的信", type: "纸质物证 · 灯塔", image: "assets/game/wet-note.jpg", detail: "信中提到二十年前的一次换班，收信人正是今晚第一个离开港口的人。" },
+      { id: "key", symbol: "◇", name: "铜制灯塔钥匙", type: "金属物证 · 北堤", image: "assets/game/security-console.jpg", detail: "钥匙齿口有新鲜刮痕，说明它刚刚打开过一把长期未使用的锁。" },
+      { id: "salt", symbol: "—", name: "信封盐渍", type: "痕迹 · 信封内侧", image: "assets/evidence/old-salt.jpg", detail: "盐渍只出现在信封内侧，说明信曾被带进潮湿的地窖，而不是在桌上被打开。" },
+      { id: "stamp", symbol: "▱", name: "被擦掉的邮戳", type: "纸面痕迹 · 旧邮局", image: "assets/evidence/old-erased-stamp.jpg", detail: "邮戳年份被刻意擦掉，但残留的蓝黑墨水与维修组登记簿上的印泥一致。" }
     ],
     timeline: [["21:42", "江屿借维修名义拿到灯塔钥匙。"], ["21:55", "他修改潮汐记录，让所有人低估地窖进水时间。"], ["22:03", "江屿进入档案室取走信件，留下蓝色封蜡。"], ["22:10", "涨潮冲开地窖门，盐渍暴露了信件真正被藏过的位置。"]]
   },
   "orbit-7": {
-    title: "轨道之外", player: "沈逐 · 轨道维护官", caseLabel: "CASE 071 / ORBIT-7", openingStamp: "07:07", closeStamp: "07:21", playerAvatar: "assets/characters/gu-yan.png", sceneKicker: "ORBITAL STATION / BLACKOUT", sceneImage: "assets/covers/orbit-7.png", solution: "mu", solutionName: "穆岑", badge: "轨道观测者",
+    title: "轨道之外", player: "沈逐 · 轨道维护官", caseLabel: "CASE 071 / ORBIT-7", openingStamp: "07:07", closeStamp: "07:21", playerAvatar: "assets/characters/gu-yan.jpg", sceneKicker: "ORBITAL STATION / BLACKOUT", sceneImage: "assets/covers/orbit-7.jpg", solution: "mu", solutionName: "穆岑", badge: "轨道观测者",
     intro: "轨道七号站失去通讯的第七分钟，所有人都收到了一条来自未来的讯息。氧气没有减少，记忆却出现了七分钟的空白。",
     evidenceLead: "空间站的系统还在运转，只有人的记录被人为改写。", evidenceCopy: "点击查看每一件物证，确认这条来自未来的讯息究竟从哪里发出。", questionCopy: "在失重环境里，每个人的动作都会留下轨迹。选择一名船员，追问他在黑屏七分钟里的真实位置。",
     voteLead: "通讯即将恢复。现在，指认那个把事故伪装成时间回声的人。", voteCopy: "真正的答案应该同时解释：舱门权限、冷却液痕迹，以及那条不可能提前抵达的讯息。",
     resultTitle: "讯息来自七分钟前", resultText: "正确。穆岑利用维护舱的备用时钟制造了延迟，把自己的越权操作伪装成未来讯息。真正暴露他的，是冷却液在失重状态下留下的方向性颗粒。",
     suspects: [
-      { id: "mu", name: "穆岑", role: "系统工程师", avatar: "assets/characters/gu-yan.png", line: "我只负责维持系统稳定，不负责解释你们的幻觉。", answers: { time: "黑屏时我在核心舱重启冷却回路，日志会证明我没离开。", motive: "如果通讯恢复，所有人都会知道是谁把这座站拖进故障。", key: "主舱权限在舰长和我之间共享，但我没有改过记录。" } },
-      { id: "qiao", name: "乔安", role: "深空测绘员", avatar: "assets/characters/shen-yuan.png", line: "我看见的是星图，不是你们说的未来。", answers: { time: "我在观景舱校准望远镜，黑屏时看见外侧有一道反光。", motive: "有人想让我们错过一次航线发现，但这和我无关。", key: "七号舱的门在讯息抵达前就被打开过。" } },
-      { id: "rui", name: "瑞恩", role: "医疗官", avatar: "assets/characters/su-mi.png", line: "记忆缺口不等于有人撒谎，也可能是缺氧造成的。", answers: { time: "我在医疗舱给自己做心率记录，黑屏期间没有离开。", motive: "我想尽快返航，但没有必要破坏通讯。", key: "穆岑的手套上有冷却液，不是医疗舱的消毒液。" } },
-      { id: "yan", name: "颜川", role: "货运领航员", avatar: "assets/characters/luo-xu.png", line: "货舱的每一件东西都有编号，别把我和系统故障混在一起。", answers: { time: "我在货舱核对样本，听到七号舱门开合了一次。", motive: "我只想让货物完整抵达地面。", key: "备用时钟的电池被换过，只有系统工程师能调取。" } },
-      { id: "lin", name: "林澜", role: "通讯指挥", avatar: "assets/characters/he-yunchuan.png", line: "那条讯息的时间戳不可能是真的，但它确实从站内发出。", answers: { time: "我在通讯台重连地面频道，黑屏后收到一段无来源数据。", motive: "如果事故被定性为人为，我会失去指挥资格。", key: "讯息的压缩格式来自维护舱旧系统。" } }
+      { id: "mu", name: "穆岑", role: "系统工程师", avatar: "assets/characters/gu-yan.jpg", line: "我只负责维持系统稳定，不负责解释你们的幻觉。", answers: { time: "黑屏时我在核心舱重启冷却回路，日志会证明我没离开。", motive: "如果通讯恢复，所有人都会知道是谁把这座站拖进故障。", key: "主舱权限在舰长和我之间共享，但我没有改过记录。" } },
+      { id: "qiao", name: "乔安", role: "深空测绘员", avatar: "assets/characters/shen-yuan.jpg", line: "我看见的是星图，不是你们说的未来。", answers: { time: "我在观景舱校准望远镜，黑屏时看见外侧有一道反光。", motive: "有人想让我们错过一次航线发现，但这和我无关。", key: "七号舱的门在讯息抵达前就被打开过。" } },
+      { id: "rui", name: "瑞恩", role: "医疗官", avatar: "assets/characters/su-mi.jpg", line: "记忆缺口不等于有人撒谎，也可能是缺氧造成的。", answers: { time: "我在医疗舱给自己做心率记录，黑屏期间没有离开。", motive: "我想尽快返航，但没有必要破坏通讯。", key: "穆岑的手套上有冷却液，不是医疗舱的消毒液。" } },
+      { id: "yan", name: "颜川", role: "货运领航员", avatar: "assets/characters/luo-xu.jpg", line: "货舱的每一件东西都有编号，别把我和系统故障混在一起。", answers: { time: "我在货舱核对样本，听到七号舱门开合了一次。", motive: "我只想让货物完整抵达地面。", key: "备用时钟的电池被换过，只有系统工程师能调取。" } },
+      { id: "lin", name: "林澜", role: "通讯指挥", avatar: "assets/characters/he-yunchuan.jpg", line: "那条讯息的时间戳不可能是真的，但它确实从站内发出。", answers: { time: "我在通讯台重连地面频道，黑屏后收到一段无来源数据。", motive: "如果事故被定性为人为，我会失去指挥资格。", key: "讯息的压缩格式来自维护舱旧系统。" } }
     ],
     evidence: [
-      { id: "signal", symbol: "◒", name: "未来讯息", type: "通讯记录 · 07:14", image: "assets/covers/orbit-7.png", detail: "讯息的时间戳比发出时间早七分钟，但压缩格式属于已经停用的维护舱系统。" },
-      { id: "coolant", symbol: "⌁", name: "冷却液颗粒", type: "物理痕迹 · 核心舱", image: "assets/evidence/orbit-coolant.png", detail: "颗粒在失重状态下形成单向漂移，来源指向从维护舱离开的人。" },
-      { id: "clock", symbol: "✎", name: "备用时钟电池", type: "机械物证 · 七号舱", image: "assets/evidence/orbit-clock.png", detail: "电池刚被更换，旧电池的温度还没有降下来。" },
-      { id: "door", symbol: "◇", name: "舱门权限", type: "电子记录 · 07:09", image: "assets/evidence/orbit-hatch.png", detail: "七号舱门在讯息发出前已被打开，授权码属于系统维护组。" },
-      { id: "glove", symbol: "—", name: "维护手套", type: "纤维痕迹 · 医疗舱", image: "assets/evidence/orbit-glove.png", detail: "手套内侧残留冷却液，外侧却没有核心舱的金属粉尘，说明它被事后转移过。" },
-      { id: "route", symbol: "▱", name: "被删航线", type: "星图 · 观景舱", image: "assets/evidence/orbit-chart.png", detail: "被删掉的航线正好经过通讯盲区，是制造延迟讯息的唯一窗口。" }
+      { id: "signal", symbol: "◒", name: "未来讯息", type: "通讯记录 · 07:14", image: "assets/covers/orbit-7.jpg", detail: "讯息的时间戳比发出时间早七分钟，但压缩格式属于已经停用的维护舱系统。" },
+      { id: "coolant", symbol: "⌁", name: "冷却液颗粒", type: "物理痕迹 · 核心舱", image: "assets/evidence/orbit-coolant.jpg", detail: "颗粒在失重状态下形成单向漂移，来源指向从维护舱离开的人。" },
+      { id: "clock", symbol: "✎", name: "备用时钟电池", type: "机械物证 · 七号舱", image: "assets/evidence/orbit-clock.jpg", detail: "电池刚被更换，旧电池的温度还没有降下来。" },
+      { id: "door", symbol: "◇", name: "舱门权限", type: "电子记录 · 07:09", image: "assets/evidence/orbit-hatch.jpg", detail: "七号舱门在讯息发出前已被打开，授权码属于系统维护组。" },
+      { id: "glove", symbol: "—", name: "维护手套", type: "纤维痕迹 · 医疗舱", image: "assets/evidence/orbit-glove.jpg", detail: "手套内侧残留冷却液，外侧却没有核心舱的金属粉尘，说明它被事后转移过。" },
+      { id: "route", symbol: "▱", name: "被删航线", type: "星图 · 观景舱", image: "assets/evidence/orbit-chart.jpg", detail: "被删掉的航线正好经过通讯盲区，是制造延迟讯息的唯一窗口。" }
     ],
     timeline: [["07:07", "穆岑进入维护舱，替换备用时钟电池。"], ["07:09", "七号舱门被旧权限打开，冷却液颗粒漂入通道。"], ["07:14", "延迟讯息被伪装成未来数据发送。"], ["07:21", "通讯恢复，时间戳矛盾暴露。"]]
   },
   "velvet-room": {
-    title: "绒幕之后", player: "顾眠 · 舞台监督", caseLabel: "CASE 044 / VELVET", openingStamp: "22:14", closeStamp: "22:27", playerAvatar: "assets/characters/shen-yuan.png", sceneKicker: "THE VELVET STAGE / AFTER CURTAIN", sceneImage: "assets/covers/velvet-room.png", solution: "yin", solutionName: "尹棠", badge: "谢幕后观察者",
+    title: "绒幕之后", player: "顾眠 · 舞台监督", caseLabel: "CASE 044 / VELVET", openingStamp: "22:14", closeStamp: "22:27", playerAvatar: "assets/characters/shen-yuan.jpg", sceneKicker: "THE VELVET STAGE / AFTER CURTAIN", sceneImage: "assets/covers/velvet-room.jpg", solution: "yin", solutionName: "尹棠", badge: "谢幕后观察者",
     intro: "剧院谢幕后的第十三分钟，女主角的备用剧本从化妆间消失。没有人离开后台，但所有人都在争夺最后一个角色。",
     evidenceLead: "舞台灯还亮着，后台却没有一条走廊能证明谁说了真话。", evidenceCopy: "每件物证都来自不同的后台角落。先找出谁能接触备用剧本，再拆穿那段排练过的哭声。", questionCopy: "每个人都知道如何在舞台上隐藏情绪。选择一位剧团成员，追问他在谢幕后的十三分钟去了哪里。",
     voteLead: "最后一幕即将重演。现在，指认那个把整场事故写进剧本的人。", voteCopy: "真正的答案应该同时解释：化妆镜粉尘、后台钥匙，以及录音里提前出现的脚步声。",
     resultTitle: "最后一个角色属于真相", resultText: "正确。尹棠提前录下脚步声，又用后台备用钥匙进入化妆间取走剧本。真正暴露她的，是镜前粉尘里倒置的鞋印方向。",
     suspects: [
-      { id: "yin", name: "尹棠", role: "替补女主角", avatar: "assets/characters/shen-yuan.png", line: "我只是想演好今晚的最后一幕，不想抢任何人的秘密。", answers: { time: "谢幕后我一直在侧台等通知，红色幕布后没有人看见我。", motive: "备用剧本决定谁能出演下一季，但我没有必要偷走它。", key: "化妆间钥匙挂在舞台监督台，只有顾眠和导演能取。" } },
-      { id: "bo", name: "柏舟", role: "剧院导演", avatar: "assets/characters/gu-yan.png", line: "演出需要悬念，但不需要真的丢东西。", answers: { time: "我在观众席和投资人谈下一季，后台的事交给了助理。", motive: "剧本消失会让投资人撤资，但我不会毁掉自己的作品。", key: "备用钥匙昨晚被借走过，归还时上面有舞台蜡油。" } },
-      { id: "xue", name: "薛宁", role: "首席舞美", avatar: "assets/characters/he-yunchuan.png", line: "灯光和机关都按时工作，出问题的是人。", answers: { time: "我在吊景区检查绳索，听到化妆间有人关门。", motive: "只要演出继续，我的舞美合同就不会受影响。", key: "录音里的脚步声比实际谢幕早了四分钟。" } },
-      { id: "qi", name: "祁雾", role: "首席化妆师", avatar: "assets/characters/su-mi.png", line: "镜子照出的是脸，不会照出谁在撒谎。", answers: { time: "我在清理化妆台，尹棠来过一次，但没有停留。", motive: "剧本里的角色和我无关，我只负责让演员上台。", key: "粉尘里有一枚倒置鞋印，鞋跟纹路像尹棠的演出鞋。" } },
-      { id: "meng", name: "孟川", role: "后台领班", avatar: "assets/characters/luo-xu.png", line: "后台钥匙都在我这里，但我没有离开过对讲机旁。", answers: { time: "我在道具间盘点银杯，十三分钟里没有人经过正门。", motive: "我只想保证剧院顺利收场。", key: "备用钥匙的铜牌朝向被换过，只有熟悉钥匙柜的人会这么放。" } }
+      { id: "yin", name: "尹棠", role: "替补女主角", avatar: "assets/characters/shen-yuan.jpg", line: "我只是想演好今晚的最后一幕，不想抢任何人的秘密。", answers: { time: "谢幕后我一直在侧台等通知，红色幕布后没有人看见我。", motive: "备用剧本决定谁能出演下一季，但我没有必要偷走它。", key: "化妆间钥匙挂在舞台监督台，只有顾眠和导演能取。" } },
+      { id: "bo", name: "柏舟", role: "剧院导演", avatar: "assets/characters/gu-yan.jpg", line: "演出需要悬念，但不需要真的丢东西。", answers: { time: "我在观众席和投资人谈下一季，后台的事交给了助理。", motive: "剧本消失会让投资人撤资，但我不会毁掉自己的作品。", key: "备用钥匙昨晚被借走过，归还时上面有舞台蜡油。" } },
+      { id: "xue", name: "薛宁", role: "首席舞美", avatar: "assets/characters/he-yunchuan.jpg", line: "灯光和机关都按时工作，出问题的是人。", answers: { time: "我在吊景区检查绳索，听到化妆间有人关门。", motive: "只要演出继续，我的舞美合同就不会受影响。", key: "录音里的脚步声比实际谢幕早了四分钟。" } },
+      { id: "qi", name: "祁雾", role: "首席化妆师", avatar: "assets/characters/su-mi.jpg", line: "镜子照出的是脸，不会照出谁在撒谎。", answers: { time: "我在清理化妆台，尹棠来过一次，但没有停留。", motive: "剧本里的角色和我无关，我只负责让演员上台。", key: "粉尘里有一枚倒置鞋印，鞋跟纹路像尹棠的演出鞋。" } },
+      { id: "meng", name: "孟川", role: "后台领班", avatar: "assets/characters/luo-xu.jpg", line: "后台钥匙都在我这里，但我没有离开过对讲机旁。", answers: { time: "我在道具间盘点银杯，十三分钟里没有人经过正门。", motive: "我只想保证剧院顺利收场。", key: "备用钥匙的铜牌朝向被换过，只有熟悉钥匙柜的人会这么放。" } }
     ],
     evidence: [
-      { id: "powder", symbol: "◒", name: "镜前粉尘", type: "痕迹 · 化妆间", image: "assets/evidence/velvet-powder.png", detail: "粉尘里的鞋印方向朝向镜子，而不是门口，说明有人倒着走进过化妆间。" },
-      { id: "key", symbol: "⌁", name: "后台备用钥匙", type: "金属物证 · 钥匙柜", image: "assets/game/security-console.png", detail: "钥匙上的蜡油来自舞台机关区，尹棠的替补鞋底也沾有同样的蜡。" },
-      { id: "recording", symbol: "✎", name: "提前录好的脚步声", type: "音频 · 对讲机", image: "assets/evidence/velvet-recorder.png", detail: "录音里的脚步声比真正的谢幕早四分钟，只有能接触控制台的人能提前录制。" },
-      { id: "script", symbol: "◇", name: "撕下的剧本页", type: "纸面物证 · 道具间", image: "assets/evidence/velvet-script.png", detail: "撕口边缘残留红色绒线，来自后台幕布内侧，而不是化妆间。" },
-      { id: "shoe", symbol: "—", name: "倒置鞋印", type: "鞋底痕迹 · 镜前", image: "assets/evidence/velvet-shoe.png", detail: "鞋印方向与普通离开动作相反，留下者在镜前完成了一个刻意的回身。" },
-      { id: "curtain", symbol: "▱", name: "绒幕纤维", type: "纤维 · 剧本夹", image: "assets/covers/velvet-room.png", detail: "剧本夹的缝隙里卡着后台幕布纤维，说明它曾被藏在绒幕后。" }
+      { id: "powder", symbol: "◒", name: "镜前粉尘", type: "痕迹 · 化妆间", image: "assets/evidence/velvet-powder.jpg", detail: "粉尘里的鞋印方向朝向镜子，而不是门口，说明有人倒着走进过化妆间。" },
+      { id: "key", symbol: "⌁", name: "后台备用钥匙", type: "金属物证 · 钥匙柜", image: "assets/game/security-console.jpg", detail: "钥匙上的蜡油来自舞台机关区，尹棠的替补鞋底也沾有同样的蜡。" },
+      { id: "recording", symbol: "✎", name: "提前录好的脚步声", type: "音频 · 对讲机", image: "assets/evidence/velvet-recorder.jpg", detail: "录音里的脚步声比真正的谢幕早四分钟，只有能接触控制台的人能提前录制。" },
+      { id: "script", symbol: "◇", name: "撕下的剧本页", type: "纸面物证 · 道具间", image: "assets/evidence/velvet-script.jpg", detail: "撕口边缘残留红色绒线，来自后台幕布内侧，而不是化妆间。" },
+      { id: "shoe", symbol: "—", name: "倒置鞋印", type: "鞋底痕迹 · 镜前", image: "assets/evidence/velvet-shoe.jpg", detail: "鞋印方向与普通离开动作相反，留下者在镜前完成了一个刻意的回身。" },
+      { id: "curtain", symbol: "▱", name: "绒幕纤维", type: "纤维 · 剧本夹", image: "assets/covers/velvet-room.jpg", detail: "剧本夹的缝隙里卡着后台幕布纤维，说明它曾被藏在绒幕后。" }
     ],
     timeline: [["22:14", "尹棠提前录下脚步声，制造有人离开后台的假象。"], ["22:18", "她借备用钥匙进入化妆间取走剧本。"], ["22:21", "尹棠把剧本藏到绒幕后，再回到侧台。"], ["22:27", "镜前倒置鞋印和绒幕纤维让她的路线无法伪装。"]]
   }
@@ -332,7 +332,7 @@ function startGame() {
   gameState.selectedSuspect = activeCase.suspects[0].id;
   $("#gameCaseLabel").textContent = activeCase.caseLabel || "CASE 014 / MOONLIGHT";
   $("#playerRole").textContent = activeCase.player;
-  $("#playerAvatarImage").src = activeCase.playerAvatar || "assets/characters/lin-che.png";
+  $("#playerAvatarImage").src = activeCase.playerAvatar || "assets/characters/lin-che.jpg";
   $("#caseNoteText").textContent = activeCase.intro;
   gameState.startedAt = Date.now();
   setView("game");
