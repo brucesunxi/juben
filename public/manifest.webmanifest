@@ -1,0 +1,13 @@
+{
+  "name": "Nocturne · 剧本推理社交",
+  "short_name": "Nocturne",
+  "lang": "zh-CN",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#090b10",
+  "theme_color": "#090b10",
+  "icons": [
+    {"src":"icons/icon.png","sizes":"1024x1024","type":"image/png","purpose":"any maskable"},
+    {"src":"icons/icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any"}
+  ]
+}

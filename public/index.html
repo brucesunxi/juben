@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0b0d12" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icons/icon.png" type="image/png" />
+    <title>Nocturne · 剧本推理社交</title>
+    <link rel="stylesheet" href="styles.css?v=20260924-3" />
+    <link rel="stylesheet" href="game.css?v=20260924-3" />
+    <link rel="stylesheet" href="game-fixes.css?v=20260924-8" />
+<link rel="stylesheet" href="ui-fixes.css?v=20260924-2" />
+    <script src="runtime-config.js?v=20260924-1"></script>
+    <script src="app.js?v=20260924-14" defer></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand-mark"><span class="brand-orbit"></span><span class="brand-word">NOCTURNE</span></div>
+        <p class="brand-caption">SCRIPT MYSTERY / SOCIAL PLAY</p>
+        <nav class="nav-list" aria-label="主导航">
+          <button class="nav-item active" data-view="discover"><span class="nav-icon">✦</span>发现剧本</button>
+          <button class="nav-item" data-view="rooms"><span class="nav-icon">◌</span>房间预览</button>
+          <button class="nav-item" data-view="library"><span class="nav-icon">▤</span>我的收藏</button>
+          <button class="nav-item" data-view="studio"><span class="nav-icon">⌘</span>创作后台</button>
+        </nav>
+        <div class="sidebar-bottom">
+          <div class="online-signal"><span></span><div><strong>LOCAL PLAY</strong><small>4 个案件可离线试玩</small></div></div>
+          <div class="profile-chip"><div class="avatar">凌</div><div><strong>凌 · 夜航员</strong><small>探索者 Lv.12</small></div><span class="dots">•••</span></div>
+          <div class="legal-links"><a href="privacy.html">隐私政策</a><span>·</span><a href="terms.html">用户协议</a></div>
+        </div>
+      </aside>
+
+      <main class="main-area">
+        <header class="topbar">
+          <div class="breadcrumb"><span>NOCTURNE</span><i>/</i><strong id="viewLabel">发现剧本</strong></div>
+          <div class="top-actions"><button class="icon-button" title="通知">♢<b class="notification-dot"></b></button><button class="top-avatar">凌</button></div>
+        </header>
+
+        <section id="discoverView" class="view active-view">
+          <div class="hero-block">
+            <div class="hero-copy"><p class="eyebrow">今晚，进入另一个人生</p><h1>真相藏在<br /><em>每个人的沉默里。</em></h1><p class="hero-description">选择一段命运，和陌生人共同完成一场只发生一次的推理。</p><div class="hero-actions"><button class="primary-button" id="quickStart">开始一局试玩 <span>↗</span></button><button class="ghost-button" data-view-target="rooms">浏览房间预览</button></div></div>
+            <div class="hero-art"><div class="art-halo"></div><div class="art-ring ring-one"></div><div class="art-ring ring-two"></div><div class="art-card"><span class="card-kicker">CASE 014 / UNSEALED</span><strong>月影审判</strong><small>THE TRIAL OF MOONLIGHT</small><div class="art-line"></div><span class="art-mark">✧</span></div><div class="floating-note note-a">MEMORY<br /><b>IS A CRIME SCENE</b></div><div class="floating-note note-b">07 : 41 : 19</div></div>
+          </div>
+
+          <div class="section-heading"><div><p class="eyebrow">CURATED CASES</p><h2>为你挑选的剧本</h2></div><div class="section-tools"><div class="filter-tabs"><button class="filter-tab active" data-filter="all">全部</button><button class="filter-tab" data-filter="悬疑">悬疑</button><button class="filter-tab" data-filter="情感">情感</button><button class="filter-tab" data-filter="科幻">科幻</button></div><button class="round-button">↗</button></div></div>
+          <div class="script-grid" id="scriptGrid"></div>
+        </section>
+
+        <section id="roomsView" class="view">
+          <div class="page-intro"><div><p class="eyebrow">ROOM PREVIEW</p><h1>故事房间预览</h1><p>当前版本提供单人案件试玩；多人匹配和语音房间将在服务端接入后开放。</p></div><button class="primary-button" id="createRoom">查看试玩入口</button></div>
+          <div class="room-grid" id="roomGrid"></div>
+        </section>
+
+        <section id="libraryView" class="view"><div class="page-intro"><div><p class="eyebrow">YOUR ARCHIVE</p><h1>收藏与足迹</h1><p>保存那些值得二刷的故事，也记录你曾经成为谁。</p></div></div><div class="empty-library"><div class="empty-orbit">✦</div><h3>你的档案还很安静</h3><p>收藏剧本后，它们会出现在这里。</p><button class="ghost-button" data-view-target="discover">去探索剧本</button></div></section>
+
+        <section id="studioView" class="view">
+          <div class="page-intro"><div><p class="eyebrow">STUDIO / CONTENT OPS</p><h1>创作后台</h1><p>剧本文件进入指定目录后，Nocturne 会自动识别、整理并发布到剧本库。</p></div><span class="sync-badge" id="syncBadge"><span></span> 自动同步已开启</span></div>
+          <div class="studio-layout"><div class="sync-panel"><div class="panel-head"><div><p class="eyebrow">AUTO INGESTION</p><h3>剧本自动入库</h3></div><span class="panel-status">● LIVE</span></div><div class="dropzone" id="dropzone"><div class="upload-icon">↑</div><h4>拖入剧本文件</h4><p>支持 .json / .md · 上传后自动解析并发布为草稿</p><button class="secondary-button" id="chooseFile">选择文件</button><input type="file" id="fileInput" accept=".json,.md" hidden /></div><div class="sync-row"><span class="sync-pulse"></span><div><strong>后台文件夹监听中</strong><small>将文件放入 <code>/incoming</code>，每 4 秒自动同步</small></div><span class="sync-time" id="syncTime">等待数据</span></div></div><div class="feed-panel"><div class="panel-head"><div><p class="eyebrow">ACTIVITY FEED</p><h3>最近动态</h3></div><button class="text-button" id="scanNow">立即扫描 ↗</button></div><div id="activityFeed" class="activity-feed"></div></div></div>
+          <div class="schema-tip"><span>⌘</span><div><strong>内容格式提示</strong><p>JSON 文件可直接提供 title、genre、players、duration、tags、description 和 content 字段；Markdown 文件会自动读取一级标题作为剧本名。</p></div><code>{ "title": "月影审判", "players": 6 }</code></div>
+        </section>
+
+        <section id="gameView" class="view game-view">
+          <div class="game-topline"><button class="back-button" id="exitGame">← 返回剧本库</button><div class="case-progress"><span id="gameCaseLabel">CASE 014 / MOONLIGHT</span><strong id="gamePhaseLabel">序章 · 入场</strong></div><div class="game-clock" id="gameClock">00:00</div></div>
+          <div class="game-progress"><span class="game-progress-fill" id="gameProgressFill"></span></div>
+          <div class="game-layout"><aside class="game-sidebar"><div class="player-card"><div class="player-avatar"><img id="playerAvatarImage" src="assets/characters/lin-che.png" alt="林澈" /></div><div><span>你的角色</span><strong id="playerRole">林澈 · 馆长</strong></div></div><div class="game-nav"><div class="game-nav-item active" data-game-phase="briefing"><span>01</span>故事序章</div><div class="game-nav-item" data-game-phase="evidence"><span>02</span>搜寻线索</div><div class="game-nav-item" data-game-phase="question"><span>03</span>公开质询</div><div class="game-nav-item" data-game-phase="vote"><span>04</span>最终指认</div></div><div class="case-note"><span class="eyebrow">CASE NOTE</span><p id="caseNoteText">月光宝石在私人晚宴中失踪。凶手就在场内，而且只有一个人知道展柜密码。</p></div></aside><div class="game-main"><div class="game-heading"><div><p class="eyebrow" id="gameEyebrow">PROLOGUE / 21:00</p><h1 id="gameTitle">月影审判</h1></div><span class="live-pill"><i></i> 剧情演绎中</span></div><div id="gameContent" class="game-content"></div><div id="gameActionBar" class="game-action-bar"></div></div></div>
+        </section>
+      </main>
+    </div>
+
+<div class="modal-backdrop" id="modalBackdrop" aria-hidden="true"><div class="detail-modal" role="dialog" aria-modal="true"><button class="modal-close" id="modalClose">×</button><div class="modal-cover" id="modalCover"><span class="card-kicker">CASE FILE / PRIVATE</span><span class="modal-symbol">✧</span></div><div class="modal-content"><p class="eyebrow" id="modalGenre">MODERN MYSTERY</p><h2 id="modalTitle">—</h2><p class="modal-subtitle" id="modalSubtitle">—</p><div class="modal-stats" id="modalStats"></div><p class="modal-description" id="modalDescription">—</p><div class="modal-tags" id="modalTags"></div><button class="primary-button full-width" id="modalStart">开始试玩 <span>↗</span></button></div></div></div>
+    <div class="toast" id="toast"></div>
+  </body>
+</html>

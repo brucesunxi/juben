@@ -1,0 +1,18 @@
+node_modules/
+.build/
+.DS_Store
+*.log
+.env
+.env.*
+!.env.example
+
+# Local signing and build secrets
+*.jks
+*.keystore
+*.p12
+*.mobileprovision
+
+# Native IDE state
+.idea/
+xcuserdata/
+DerivedData/
