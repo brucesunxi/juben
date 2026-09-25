@@ -420,7 +420,11 @@ const caseTranslations = {
 function localizedCase(caseId) {
   const base = caseLibrary[caseId] || demoCase;
   const override = state.locale === "en" ? (caseTranslations[caseId] || {}) : {};
-  return { ...base, ...override, id: caseId, suspects: override.suspects || base.suspects, evidence: override.evidence || base.evidence, timeline: override.timeline || base.timeline };
+  const baseEvidence = new Map((base.evidence || []).map((item) => [item.id, item]));
+  const evidence = override.evidence
+    ? override.evidence.map((item) => ({ ...baseEvidence.get(item.id), ...item }))
+    : base.evidence;
+  return { ...base, ...override, id: caseId, suspects: override.suspects || base.suspects, evidence, timeline: override.timeline || base.timeline };
 }
 
 let activeCase = demoCase;
