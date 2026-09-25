@@ -12,20 +12,20 @@ const API_BASE = String(window.NOCTURNE_API_BASE || "").replace(/\/$/, "");
 const apiFetch = (path, options) => fetch(`${API_BASE}${path}`, options);
 const translations = {
   zh: {
-    brandCaption: "SCRIPT MYSTERY / SOCIAL PLAY", navDiscover: "发现剧本", navRooms: "房间预览", navLibrary: "我的收藏", navStudio: "创作后台", mobileHome: "首页", mobileRooms: "房间", mobileLibrary: "收藏", mobileStudio: "创作", localPlay: "LOCAL PLAY", offlineCases: "4 个案件可离线试玩", profileLevel: "探索者 Lv.12", privacy: "隐私政策", terms: "用户协议", discover: "发现剧本", rooms: "房间预览", library: "我的收藏", studio: "创作后台",
+    appTitle: "Nocturne · 剧本推理社交", brandCaption: "SCRIPT MYSTERY / SOCIAL PLAY", mobileCaption: "剧本探索社", navDiscover: "发现剧本", navRooms: "房间预览", navLibrary: "我的收藏", navStudio: "创作后台", mainNav: "主导航", mobileNav: "移动端主导航", mobileHome: "首页", mobileRooms: "房间", mobileLibrary: "收藏", mobileStudio: "创作", localPlay: "LOCAL PLAY", offlineCases: "4 个案件可离线试玩", profileAvatar: "凌", profileName: "凌 · 夜航员", profileLevel: "探索者 Lv.12", notification: "通知", heroCaseTitle: "月影审判", schemaExampleTitle: "月影审判", privacy: "隐私政策", terms: "用户协议", discover: "发现剧本", rooms: "房间预览", library: "我的收藏", studio: "创作后台",
     heroEyebrow: "今晚，进入另一个人生", heroTitleA: "真相藏在", heroTitleB: "每个人的沉默里。", heroDescription: "选择一段命运，和陌生人共同完成一场只发生一次的推理。", startTrial: "开始一局试玩", browseRooms: "浏览房间预览", curatedCases: "CURATED CASES", picksForYou: "为你挑选的剧本", all: "全部", mystery: "悬疑", emotion: "情感", sciFi: "科幻",
     roomKicker: "ROOM PREVIEW", roomTitle: "故事房间预览", roomDescription: "当前版本提供单人案件试玩；多人匹配和语音房间将在服务端接入后开放。", viewTrialEntry: "查看试玩入口", roomJoin: "加入", roomWatch: "观战", roomMissing: "还差 {count} 人", roomFull: "已满员", roomRequest: "{room}：已发送入场请求",
     archiveKicker: "YOUR ARCHIVE", archiveTitle: "收藏与足迹", archiveDescription: "保存那些值得二刷的故事，也记录你曾经成为谁。", archiveEmptyTitle: "你的档案还很安静", archiveEmptyDescription: "收藏剧本后，它们会出现在这里。", exploreScripts: "去探索剧本", studioKicker: "STUDIO / CONTENT OPS", studioTitle: "创作后台", studioDescription: "剧本文件进入指定目录后，Nocturne 会自动识别、整理并发布到剧本库。", syncEnabled: "自动同步已开启", synced: "已同步 {count} 个剧本", autoIngestion: "AUTO INGESTION", ingestionTitle: "剧本自动入库", live: "● LIVE", dropTitle: "拖入剧本文件", dropDescription: "支持 .json / .md · 上传后自动解析并发布为草稿", chooseFile: "选择文件", listening: "后台文件夹监听中", incomingFolder: "将文件放入 /incoming，每 4 秒自动同步", waiting: "等待数据", activity: "ACTIVITY FEED", recentActivity: "最近动态", scanNow: "立即扫描 ↗", schemaTitle: "内容格式提示", schemaDescription: "JSON 文件可直接提供 title、genre、players、duration、tags、description 和 content 字段；Markdown 文件会自动读取一级标题作为剧本名。",
     emptyFilterTitle: "还没有这个类型的剧本", emptyFilterDescription: "换一个筛选，或者去创作后台导入新剧本。", caseFile: "CASE FILE", privateCase: "CASE FILE / PRIVATE", players: "PLAYERS", duration: "DURATION", level: "LEVEL", defaultSubtitle: "一场关于真相、秘密与选择的沉浸式推理", defaultDescription: "一份新剧本已经抵达。请在所有人说出真话之前，找到唯一无法被伪造的证据。", detailStart: "开始试玩", cardStart: "查看详情 / 开始试玩",
-    gamePlaying: "正在游玩", backToLibrary: "← 返回剧本库", livePlay: "剧情演绎中", yourRole: "你的角色", caseNote: "案件笔记", phaseBriefing: "序章 · 入场", phaseEvidence: "第一幕 · 搜证", phaseQuestion: "第二幕 · 质询", phaseVote: "终局 · 指认", phaseResult: "终局 · 复盘", startEvidence: "开始搜证", continueEvidence: "继续搜证", enterQuestion: "进入公开质询", enterVote: "进入最终指认", finalVote: "最终指认", closed: "案件已归档", replay: "再玩一次", evidenceHint: "先搜集至少 3 条线索，再进入质询。", evidenceCount: "已发现 {count} / 3 条关键线索", questionHint: "{count} 次质询记录 · 线索越多，判断越接近真相", voteHint: "你只有一次正式指认机会。", inspectEvidence: "选择物证 · 点击查看细节", recordEvidence: "记入案件笔记", noEnoughEvidence: "至少查看三件物证，才能进入下一幕", noEnoughQuestions: "至少完成三次质询，再做最终指认", questionTime: "你在关键时间段在哪里？", questionMotive: "谁最有动机？", questionKey: "你见过关键物证吗？", accuse: "指认 TA ↗", correct: "真相浮出水面", wrong: "这个答案无法解释全部证据，再想想", localResponse: "{name} 已回应", recorded: "已记录",
+    gamePlaying: "正在游玩", backToLibrary: "← 返回剧本库", livePlay: "剧情演绎中", yourRole: "你的角色", caseNote: "案件笔记", phaseBriefing: "序章 · 入场", phaseEvidence: "第一幕 · 搜证", phaseQuestion: "第二幕 · 质询", phaseVote: "终局 · 指认", phaseResult: "终局 · 复盘", gameTitleEvidence: "搜寻线索", gameTitleQuestion: "公开质询", gameTitleVote: "最终指认", gameTitleResult: "真相浮出水面", startEvidence: "开始搜证", continueEvidence: "继续搜证", continueQuestion: "继续质询", enterQuestion: "进入公开质询", enterVote: "进入最终指认", finalVote: "最终指认", closed: "案件已归档", replay: "再玩一次", evidenceHint: "先搜集至少 3 条线索，再进入质询。", evidenceCount: "已发现 {count} / 3 条关键线索", questionHint: "{count} 次质询记录 · 线索越多，判断越接近真相", voteHint: "你只有一次正式指认机会。", inspectEvidence: "选择物证 · 点击查看细节", recordEvidence: "记入案件笔记", noEnoughEvidence: "至少查看三件物证，才能进入下一幕", noEnoughQuestions: "至少完成三次质询，再做最终指认", questionTime: "你在关键时间段在哪里？", questionMotive: "谁最有动机？", questionKey: "你见过关键物证吗？", accuse: "指认 TA ↗", correct: "真相浮出水面", wrong: "这个答案无法解释全部证据，再想想", localResponse: "{name} 已回应", recorded: "已记录", close: "关闭", sceneAlt: "案件现场", roomTrialPrompt: "请选择一个案件开始试玩", scanComplete: "扫描完成，剧本库已更新", scanOffline: "当前为离线试玩模式，无法扫描服务端文件夹",
   },
   en: {
-    brandCaption: "SCRIPT MYSTERY / SOCIAL PLAY", navDiscover: "Discover", navRooms: "Rooms", navLibrary: "My Archive", navStudio: "Studio", mobileHome: "Home", mobileRooms: "Rooms", mobileLibrary: "Archive", mobileStudio: "Studio", localPlay: "LOCAL PLAY", offlineCases: "4 cases ready offline", profileLevel: "Explorer Lv.12", privacy: "Privacy", terms: "Terms", discover: "Discover", rooms: "Rooms", library: "My Archive", studio: "Studio",
+    appTitle: "Nocturne · Script Mystery Social", brandCaption: "SCRIPT MYSTERY / SOCIAL PLAY", mobileCaption: "Script mystery social", navDiscover: "Discover", navRooms: "Rooms", navLibrary: "My Archive", navStudio: "Studio", mainNav: "Main navigation", mobileNav: "Mobile navigation", mobileHome: "Home", mobileRooms: "Rooms", mobileLibrary: "Archive", mobileStudio: "Studio", localPlay: "LOCAL PLAY", offlineCases: "4 cases ready offline", profileAvatar: "L", profileName: "Ling · Night Watcher", profileLevel: "Explorer Lv.12", notification: "Notifications", heroCaseTitle: "The Trial of Moonlight", schemaExampleTitle: "The Trial of Moonlight", privacy: "Privacy", terms: "Terms", discover: "Discover", rooms: "Rooms", library: "My Archive", studio: "Studio",
     heroEyebrow: "TONIGHT, ENTER ANOTHER LIFE", heroTitleA: "Truth hides", heroTitleB: "inside every silence.", heroDescription: "Choose a fate and solve a one-night mystery with people you have never met.", startTrial: "Start a trial", browseRooms: "Browse rooms", curatedCases: "CURATED CASES", picksForYou: "Curated for you", all: "All", mystery: "Mystery", emotion: "Drama", sciFi: "Sci-fi",
     roomKicker: "ROOM PREVIEW", roomTitle: "Story rooms", roomDescription: "This version supports solo case trials. Multiplayer matching and voice rooms will open when the service layer is connected.", viewTrialEntry: "View trial entry", roomJoin: "Join", roomWatch: "Watch", roomMissing: "{count} spot(s) left", roomFull: "Full", roomRequest: "{room}: entry request sent",
     archiveKicker: "YOUR ARCHIVE", archiveTitle: "Saved stories", archiveDescription: "Keep the stories worth replaying and remember who you became.", archiveEmptyTitle: "Your archive is quiet", archiveEmptyDescription: "Saved scripts will appear here.", exploreScripts: "Explore scripts", studioKicker: "STUDIO / CONTENT OPS", studioTitle: "Creator studio", studioDescription: "Drop script files into the watched folder and Nocturne will parse, organize and publish them as drafts.", syncEnabled: "Auto-sync enabled", synced: "{count} scripts synced", autoIngestion: "AUTO INGESTION", ingestionTitle: "Script ingestion", live: "● LIVE", dropTitle: "Drop script files here", dropDescription: "Supports .json / .md · files are parsed into drafts automatically", chooseFile: "Choose file", listening: "Watching the incoming folder", incomingFolder: "Put files in /incoming; scan runs every 4 seconds", waiting: "Waiting for data", activity: "ACTIVITY FEED", recentActivity: "Recent activity", scanNow: "Scan now ↗", schemaTitle: "Content format", schemaDescription: "JSON may provide title, genre, players, duration, tags, description and content; Markdown uses its first-level heading as the script title.",
     emptyFilterTitle: "No scripts in this category", emptyFilterDescription: "Try another filter or import a new script from Studio.", caseFile: "CASE FILE", privateCase: "CASE FILE / PRIVATE", players: "PLAYERS", duration: "DURATION", level: "LEVEL", defaultSubtitle: "An immersive mystery about truth, secrets and choice", defaultDescription: "A new script has arrived. Find the one piece of evidence that cannot be forged before everyone tells you their version of the truth.", detailStart: "Start trial", cardStart: "View details / Start trial",
-    gamePlaying: "Playing", backToLibrary: "← Back to archive", livePlay: "Story in progress", yourRole: "Your role", caseNote: "Case notes", phaseBriefing: "Prologue · Arrival", phaseEvidence: "Act I · Evidence", phaseQuestion: "Act II · Questions", phaseVote: "Final act · Accusation", phaseResult: "Final act · Review", startEvidence: "Start evidence hunt", continueEvidence: "Keep searching", enterQuestion: "Open questioning", enterVote: "Make final accusation", finalVote: "Final accusation", closed: "Case archived", replay: "Play again", evidenceHint: "Collect at least 3 clues before questioning.", evidenceCount: "{count} / 3 key clues found", questionHint: "{count} questions asked · more clues, better judgment", voteHint: "You only get one formal accusation.", inspectEvidence: "Select an item · tap to inspect", recordEvidence: "Record in case notes", noEnoughEvidence: "Inspect at least three items before the next act", noEnoughQuestions: "Ask at least three questions before the final accusation", questionTime: "Where were you during the critical window?", questionMotive: "Who has the strongest motive?", questionKey: "Have you seen the key evidence?", accuse: "Accuse ↗", correct: "The truth comes to light", wrong: "That answer cannot explain all the evidence", localResponse: "{name} has responded", recorded: "Recorded",
+    gamePlaying: "Playing", backToLibrary: "← Back to archive", livePlay: "Story in progress", yourRole: "Your role", caseNote: "Case notes", phaseBriefing: "Prologue · Arrival", phaseEvidence: "Act I · Evidence", phaseQuestion: "Act II · Questions", phaseVote: "Final act · Accusation", phaseResult: "Final act · Review", gameTitleEvidence: "Evidence hunt", gameTitleQuestion: "Open questioning", gameTitleVote: "Final accusation", gameTitleResult: "The truth comes to light", startEvidence: "Start evidence hunt", continueEvidence: "Keep searching", continueQuestion: "Keep questioning", enterQuestion: "Open questioning", enterVote: "Make final accusation", finalVote: "Final accusation", closed: "Case archived", replay: "Play again", evidenceHint: "Collect at least 3 clues before questioning.", evidenceCount: "{count} / 3 key clues found", questionHint: "{count} questions asked · more clues, better judgment", voteHint: "You only get one formal accusation.", inspectEvidence: "Select an item · tap to inspect", recordEvidence: "Record in case notes", noEnoughEvidence: "Inspect at least three items before the next act", noEnoughQuestions: "Ask at least three questions before the final accusation", questionTime: "Where were you during the critical window?", questionMotive: "Who has the strongest motive?", questionKey: "Have you seen the key evidence?", accuse: "Accuse ↗", correct: "The truth comes to light", wrong: "That answer cannot explain all the evidence", localResponse: "{name} has responded", recorded: "Recorded", close: "Close", sceneAlt: "case scene", roomTrialPrompt: "Choose a case to start a trial", scanComplete: "Scan complete; the script library is updated", scanOffline: "Offline trial mode cannot scan the server folder",
   }
 };
 
@@ -82,7 +82,11 @@ const $$ = (selector) => [...document.querySelectorAll(selector)];
 
 function applyStaticLocale() {
   document.documentElement.lang = state.locale === "zh" ? "zh-CN" : "en";
+  document.title = t("appTitle");
   $(".brand-caption").textContent = t("brandCaption");
+  $(".mobile-page-mark small").textContent = t("mobileCaption");
+  $(".sidebar .nav-list").setAttribute("aria-label", t("mainNav"));
+  $(".mobile-bottom-nav").setAttribute("aria-label", t("mobileNav"));
   const navLabels = { discover: "navDiscover", rooms: "navRooms", library: "navLibrary", studio: "navStudio" };
   $$(".sidebar .nav-item").forEach((item) => {
     const icon = item.querySelector(".nav-icon");
@@ -92,7 +96,11 @@ function applyStaticLocale() {
   $$(".mobile-nav-item").forEach((item) => { item.querySelector("small").textContent = t(mobileLabels[item.dataset.view]); });
   $(".online-signal strong").textContent = t("localPlay");
   $(".online-signal small").textContent = t("offlineCases");
+  $(".profile-chip .avatar").textContent = t("profileAvatar");
+  $(".profile-chip strong").textContent = t("profileName");
   $(".profile-chip small").textContent = t("profileLevel");
+  $(".top-avatar").textContent = t("profileAvatar");
+  $(".icon-button").title = t("notification");
   $(".legal-links a[href='privacy.html']").textContent = t("privacy");
   $(".legal-links a[href='terms.html']").textContent = t("terms");
   $(".hero-copy .eyebrow").textContent = t("heroEyebrow");
@@ -100,6 +108,7 @@ function applyStaticLocale() {
   $(".hero-description").textContent = t("heroDescription");
   $("#quickStart").innerHTML = `${t("startTrial")} <span>↗</span>`;
   $(".hero-actions .ghost-button").textContent = t("browseRooms");
+  $(".art-card strong").textContent = t("heroCaseTitle");
   $(".section-heading .eyebrow").textContent = t("curatedCases");
   $(".section-heading h2").textContent = t("picksForYou");
   const filterLabels = { all: "all", 悬疑: "mystery", 情感: "emotion", 科幻: "sciFi" };
@@ -134,6 +143,7 @@ function applyStaticLocale() {
   $("#scanNow").textContent = t("scanNow");
   $(".schema-tip strong").textContent = t("schemaTitle");
   $(".schema-tip p").textContent = t("schemaDescription");
+  $(".schema-tip code").textContent = `{ "title": "${t("schemaExampleTitle")}", "players": 6 }`;
   $("#modalCover .card-kicker").textContent = t("privateCase");
   $("#modalSubtitle").textContent = t("defaultSubtitle");
   $("#modalStart").innerHTML = `${t("detailStart")} <span>↗</span>`;
@@ -456,9 +466,9 @@ function renderBriefing() {
 function renderEvidence() {
   setGameNav("evidence");
   $("#gameEyebrow").textContent = "ACT I / COLLECT EVIDENCE";
-  $("#gameTitle").textContent = "搜寻线索";
+  $("#gameTitle").textContent = t("gameTitleEvidence");
   const selectedEvidence = activeCase.evidence.find((entry) => entry.id === gameState.selectedEvidence);
-  const evidenceModal = selectedEvidence ? `<div class="evidence-modal open" id="evidenceModal" role="dialog" aria-modal="true" aria-label="${selectedEvidence.name}"><div class="evidence-modal-card"><button class="evidence-modal-close" data-evidence-close aria-label="Close">×</button><img class="evidence-modal-image" src="${selectedEvidence.image}" alt="${selectedEvidence.name}" /><div class="evidence-modal-body"><span class="game-kicker">CASE NOTE / EVIDENCE ${String(gameState.discovered.size).padStart(2, "0")}</span><h3>${selectedEvidence.name}</h3><p class="evidence-modal-type">${selectedEvidence.type}</p><p>${selectedEvidence.detail}</p><button class="primary-button evidence-modal-done" data-evidence-close>${t("recordEvidence")} <span>↗</span></button></div></div></div>` : "";
+  const evidenceModal = selectedEvidence ? `<div class="evidence-modal open" id="evidenceModal" role="dialog" aria-modal="true" aria-label="${selectedEvidence.name}"><div class="evidence-modal-card"><button class="evidence-modal-close" data-evidence-close aria-label="${t("close")}">×</button><img class="evidence-modal-image" src="${selectedEvidence.image}" alt="${selectedEvidence.name}" /><div class="evidence-modal-body"><span class="game-kicker">CASE NOTE / EVIDENCE ${String(gameState.discovered.size).padStart(2, "0")}</span><h3>${selectedEvidence.name}</h3><p class="evidence-modal-type">${selectedEvidence.type}</p><p>${selectedEvidence.detail}</p><button class="primary-button evidence-modal-done" data-evidence-close>${t("recordEvidence")} <span>↗</span></button></div></div></div>` : "";
   $("#gameContent").innerHTML = `<span class="game-kicker">${t("inspectEvidence")}</span><div class="game-scene game-scene-evidence"><img src="${activeCase.sceneImage}" alt="${activeCase.title}" /></div><p class="game-lede">${activeCase.evidenceLead}</p><p class="game-copy">${activeCase.evidenceCopy}</p><div class="scene-line"></div><div class="evidence-grid">${activeCase.evidence.map((item) => `<button class="evidence-card ${gameState.discovered.has(item.id) ? "discovered" : ""}" data-evidence="${item.id}"><img class="evidence-thumb" src="${item.image}" alt="${item.name}" /><strong>${item.name}</strong><small>${item.type}</small><span class="discovered-badge">${t("recorded")}</span></button>`).join("")}</div>${evidenceModal}`;
   $$(".evidence-card").forEach((card) => card.addEventListener("click", () => inspectEvidence(card.dataset.evidence)));
   $$('[data-evidence-close]').forEach((button) => button.addEventListener("click", () => { gameState.selectedEvidence = null; renderEvidence(); }));
@@ -478,13 +488,13 @@ function inspectEvidence(id) {
 function renderQuestion() {
   setGameNav("question");
   $("#gameEyebrow").textContent = "ACT II / OPEN QUESTIONING";
-  $("#gameTitle").textContent = "公开质询";
+  $("#gameTitle").textContent = t("gameTitleQuestion");
   const suspect = activeCase.suspects.find((entry) => entry.id === gameState.selectedSuspect) || activeCase.suspects[0];
   const answered = gameState.answers.has(suspect.id);
   $("#gameContent").innerHTML = `<span class="game-kicker">SCRIPTED ROLEPLAY / RESPONSE</span><div class="game-scene game-scene-question"><img src="${activeCase.sceneImage}" alt="${activeCase.title}" /></div><p class="game-copy" style="margin:12px 0 20px">${activeCase.questionCopy}</p><div class="question-layout"><div class="suspect-list">${activeCase.suspects.map((entry) => `<button class="suspect-button ${entry.id === suspect.id ? "active" : ""}" data-suspect="${entry.id}"><img src="${entry.avatar}" alt="" /><span>${entry.name}<small>${entry.role}</small></span></button>`).join("")}</div><div class="dialogue-box"><div class="dialogue-person"><img src="${suspect.avatar}" alt="${suspect.name}" /><div><h3 class="dialogue-name">${suspect.name}</h3><span class="dialogue-role">${suspect.role}</span></div></div><p class="dialogue-text">${answered ? suspect.answers.time : suspect.line}</p><div class="question-options">${Object.entries({ time: t("questionTime"), motive: t("questionMotive"), key: t("questionKey") }).map(([key, label]) => `<button class="question-option ${gameState.answers.has(`${suspect.id}:${key}`) ? "used" : ""}" data-question="${key}" data-suspect="${suspect.id}">${label}</button>`).join("")}</div></div></div>`;
   $$(".suspect-button").forEach((button) => button.addEventListener("click", () => { gameState.selectedSuspect = button.dataset.suspect; renderQuestion(); }));
   $$(".question-option").forEach((button) => button.addEventListener("click", () => askQuestion(button.dataset.suspect, button.dataset.question)));
-  gameAction(null, t("questionHint", { count: gameState.questionCount }), gameState.questionCount >= 3 ? t("enterVote") : (state.locale === "zh" ? "继续质询" : "Keep questioning"), gameState.questionCount >= 3 ? renderVote : () => showToast(t("noEnoughQuestions")));
+  gameAction(null, t("questionHint", { count: gameState.questionCount }), gameState.questionCount >= 3 ? t("enterVote") : t("continueQuestion"), gameState.questionCount >= 3 ? renderVote : () => showToast(t("noEnoughQuestions")));
 }
 
 function askQuestion(suspectId, question) {
@@ -502,7 +512,7 @@ function askQuestion(suspectId, question) {
 function renderVote() {
   setGameNav("vote");
   $("#gameEyebrow").textContent = "FINAL ACT / NAME THE CULPRIT";
-  $("#gameTitle").textContent = "最终指认";
+  $("#gameTitle").textContent = t("gameTitleVote");
   $("#gameContent").innerHTML = `<span class="game-kicker">ONE ACCUSATION / ONE TRUTH</span><div class="game-scene game-scene-vote"><img src="${activeCase.sceneImage}" alt="${activeCase.title}" /></div><p class="game-lede">${activeCase.voteLead}</p><p class="game-copy">${activeCase.voteCopy}</p><div class="scene-line"></div><div class="vote-grid">${activeCase.suspects.map((suspect) => `<div class="vote-card"><img src="${suspect.avatar}" alt="" /><strong>${suspect.name}</strong><small>${suspect.role}</small><button class="vote-button" data-vote="${suspect.id}">${t("accuse")}</button></div>`).join("")}</div>`;
   $$(".vote-button").forEach((button) => button.addEventListener("click", () => castVote(button.dataset.vote)));
   gameAction(null, t("voteHint"), null, null);
@@ -522,8 +532,8 @@ function castVote(id) {
 function renderResult() {
   setGameNav("result");
   $("#gameEyebrow").textContent = `CASE CLOSED / ${activeCase.closeStamp}`;
-  $("#gameTitle").textContent = "真相浮出水面";
-  $("#gameContent").innerHTML = `<div class="result-card"><div class="result-scene"><img src="${activeCase.sceneImage}" alt="${activeCase.title}案件现场" /></div><div class="result-symbol">✓</div><h2>${activeCase.resultTitle}</h2><p>${activeCase.resultText}</p><div class="timeline">${activeCase.timeline.map(([time, text]) => `<div class="timeline-item"><b>${time}</b><span>${text}</span></div>`).join("")}</div></div>`;
+  $("#gameTitle").textContent = t("gameTitleResult");
+  $("#gameContent").innerHTML = `<div class="result-card"><div class="result-scene"><img src="${activeCase.sceneImage}" alt="${activeCase.title} ${t("sceneAlt")}" /></div><div class="result-symbol">✓</div><h2>${activeCase.resultTitle}</h2><p>${activeCase.resultText}</p><div class="timeline">${activeCase.timeline.map(([time, text]) => `<div class="timeline-item"><b>${time}</b><span>${text}</span></div>`).join("")}</div></div>`;
   gameAction(null, `${t("closed")} · ${activeCase.badge}`, t("replay"), () => { gameState.discovered = new Set(); gameState.selectedEvidence = null; gameState.answers = new Set(); gameState.questionCount = 0; gameState.selectedSuspect = activeCase.suspects[0].id; renderBriefing(); });
 }
 
@@ -538,6 +548,7 @@ function startGame() {
   $("#gameCaseLabel").textContent = activeCase.caseLabel || "CASE 014 / MOONLIGHT";
   $("#playerRole").textContent = activeCase.player;
   $("#playerAvatarImage").src = activeCase.playerAvatar || "assets/characters/lin-che.jpg";
+  $("#playerAvatarImage").alt = activeCase.player;
   $("#caseNoteText").textContent = activeCase.intro;
   gameState.startedAt = Date.now();
   setView("game");
@@ -557,12 +568,12 @@ function bindEvents() {
     state.selectedScript = state.scripts.find((script) => script.id === "moon-trial") || state.scripts[0] || fallbackScripts[0];
     startGame();
   });
-  $("#createRoom").addEventListener("click", () => { setView("discover"); showToast("请选择一个案件开始试玩"); });
+  $("#createRoom").addEventListener("click", () => { setView("discover"); showToast(t("roomTrialPrompt")); });
   $("#modalClose").addEventListener("click", closeModal);
   $("#modalBackdrop").addEventListener("click", (event) => { if (event.target.id === "modalBackdrop") closeModal(); });
   $("#modalStart").addEventListener("click", startGame);
   $("#exitGame").addEventListener("click", () => { clearInterval(gameState.timer); setView("discover"); });
-  $("#scanNow").addEventListener("click", async () => { try { await apiFetch("/api/scripts/scan", { method: "POST" }); await loadScripts(); await refreshSync(); showToast("扫描完成，剧本库已更新"); } catch { showToast("当前为离线试玩模式，无法扫描服务端文件夹"); } });
+  $("#scanNow").addEventListener("click", async () => { try { await apiFetch("/api/scripts/scan", { method: "POST" }); await loadScripts(); await refreshSync(); showToast(t("scanComplete")); } catch { showToast(t("scanOffline")); } });
   document.addEventListener("keydown", (event) => { if (event.key === "Escape") closeModal(); });
   $("#chooseFile").addEventListener("click", () => $("#fileInput").click());
   $("#fileInput").addEventListener("change", async (event) => { const file = event.target.files[0]; if (file) { try { await importFile(file); } catch (error) { showToast(error.message); } event.target.value = ""; } });
