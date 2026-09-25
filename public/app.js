@@ -549,7 +549,10 @@ function bindEvents() {
   $$('[data-locale]').forEach((button) => button.addEventListener("click", () => setLocale(button.dataset.locale)));
   $$(`[data-view-target]`).forEach((item) => item.addEventListener("click", () => setView(item.dataset.viewTarget)));
   $$(".filter-tab").forEach((tab) => tab.addEventListener("click", () => { state.activeFilter = tab.dataset.filter; $$(".filter-tab").forEach((item) => item.classList.toggle("active", item === tab)); renderScripts(); }));
-  $("#quickStart").addEventListener("click", () => { setView("rooms"); showToast("已打开试玩入口预览"); });
+  $("#quickStart").addEventListener("click", () => {
+    state.selectedScript = state.scripts.find((script) => script.id === "moon-trial") || state.scripts[0] || fallbackScripts[0];
+    startGame();
+  });
   $("#createRoom").addEventListener("click", () => { setView("discover"); showToast("请选择一个案件开始试玩"); });
   $("#modalClose").addEventListener("click", closeModal);
   $("#modalBackdrop").addEventListener("click", (event) => { if (event.target.id === "modalBackdrop") closeModal(); });
