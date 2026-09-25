@@ -9,6 +9,7 @@ const publicDir = path.join(root, "public");
 const scriptsDir = path.join(root, "data", "scripts");
 const incomingDir = path.join(root, "incoming");
 const port = Number(process.env.PORT || 4173);
+const isVercel = process.env.VERCEL === "1";
 const corsOrigins = new Set((process.env.CORS_ORIGINS || "http://localhost:4173,http://localhost,capacitor://localhost").split(",").map((origin) => origin.trim()).filter(Boolean));
 const syncState = {
   running: false,
@@ -27,10 +28,12 @@ const mime = {
   ".svg": "image/svg+xml"
 };
 
-await Promise.all([
-  fs.mkdir(scriptsDir, { recursive: true }),
-  fs.mkdir(incomingDir, { recursive: true })
-]);
+if (!isVercel) {
+  await Promise.all([
+    fs.mkdir(scriptsDir, { recursive: true }),
+    fs.mkdir(incomingDir, { recursive: true })
+  ]);
+}
 
 function slugify(input) {
   return String(input || "script")
@@ -79,6 +82,7 @@ async function listScripts() {
 }
 
 async function saveScript(raw, filename = "script.json") {
+  if (isVercel) throw new Error("Script import is disabled in the read-only Vercel runtime; use the configured API service.");
   const script = normalizeScript(raw, filename);
   const safeName = `${slugify(script.title)}.json`;
   await fs.writeFile(path.join(scriptsDir, safeName), `${JSON.stringify(script, null, 2)}\n`);
@@ -123,18 +127,20 @@ async function scanIncoming() {
   }
 }
 
-try {
-  const watcher = fsSync.watch(incomingDir, { persistent: false }, () => scanIncoming());
-  watcher.on("error", (error) => {
+if (!isVercel) {
+  try {
+    const watcher = fsSync.watch(incomingDir, { persistent: false }, () => scanIncoming());
+    watcher.on("error", (error) => {
+      syncState.lastError = `native watcher unavailable; using interval scan (${error.code || "unknown"})`;
+      watcher.close();
+    });
+  } catch (error) {
+    // Some managed environments cap native file watchers. The interval below
+    // keeps automatic ingestion available without requiring a watcher handle.
     syncState.lastError = `native watcher unavailable; using interval scan (${error.code || "unknown"})`;
-    watcher.close();
-  });
-} catch (error) {
-  // Some managed environments cap native file watchers. The interval below
-  // keeps automatic ingestion available without requiring a watcher handle.
-  syncState.lastError = `native watcher unavailable; using interval scan (${error.code || "unknown"})`;
+  }
+  setInterval(scanIncoming, 4000).unref();
 }
-setInterval(scanIncoming, 4000).unref();
 await scanIncoming();
 
 async function readBody(request) {
@@ -181,11 +187,13 @@ const server = http.createServer(async (request, response) => {
       return sendJson(response, 200, { country_code: countryCode, source: countryCode ? "edge-header" : "browser-fallback" });
     }
     if (url.pathname === "/api/scripts/import" && request.method === "POST") {
+      if (isVercel) return sendJson(response, 501, { error: "Script import requires the configured writable API service." });
       const payload = JSON.parse(await readBody(request));
       const script = await saveScript(payload.script || payload, payload.filename || "uploaded.json");
       return sendJson(response, 201, { script });
     }
     if (url.pathname === "/api/scripts/scan" && request.method === "POST") {
+      if (isVercel) return sendJson(response, 200, { ...syncState, scripts: await listScripts(), readOnly: true });
       await scanIncoming();
       return sendJson(response, 200, { ...syncState, scripts: await listScripts() });
     }
