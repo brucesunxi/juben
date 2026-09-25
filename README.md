@@ -20,6 +20,12 @@ npm run dev
 
 然后打开 <http://localhost:4173>。
 
+## 双语与地区默认
+
+界面支持中文和英文，右上角可以手动切换，选择会保存在当前设备。首次打开时，应用请求同源的 `/api/locale`：如果部署边缘提供 `CF-IPCountry`、`X-Vercel-IP-Country` 或 `X-Country-Code`，中国大陆默认中文，其他国家/地区默认英文；没有地区头时使用浏览器语言作为兜底。Capacitor 生产构建可在 `public/runtime-config.js` 将 `NOCTURNE_LOCALE_ENDPOINT` 指向部署 API。
+
+导入剧本可增加 `i18n.en` 对象，为 `title`、`subtitle`、`genre`、`tags`、`description` 和 `status` 提供英文内容；未提供时会保留原始剧本文本。
+
 ## Android / iOS 打包
 
 项目已加入 Capacitor 配置。先安装依赖并生成平台工程：

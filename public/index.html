@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="styles.css?v=20260924-3" />
     <link rel="stylesheet" href="game.css?v=20260924-3" />
     <link rel="stylesheet" href="game-fixes.css?v=20260924-8" />
-<link rel="stylesheet" href="ui-fixes.css?v=20260924-2" />
+    <link rel="stylesheet" href="ui-fixes.css?v=20260925-1" />
     <script src="runtime-config.js?v=20260924-1"></script>
     <script src="app.js?v=20260924-14" defer></script>
   </head>
@@ -37,8 +37,9 @@
 
       <main class="main-area">
         <header class="topbar">
+          <div class="mobile-page-mark"><span>✦</span><strong>NOCTURNE</strong><small>剧本探索社</small></div>
           <div class="breadcrumb"><span>NOCTURNE</span><i>/</i><strong id="viewLabel">发现剧本</strong></div>
-          <div class="top-actions"><button class="icon-button" title="通知">♢<b class="notification-dot"></b></button><button class="top-avatar">凌</button></div>
+          <div class="top-actions"><div class="language-switcher" role="group" aria-label="Language"><button type="button" data-locale="zh">中</button><span>/</span><button type="button" data-locale="en">EN</button></div><button class="icon-button" title="通知">♢<b class="notification-dot"></b></button><button class="top-avatar">凌</button></div>
         </header>
 
         <section id="discoverView" class="view active-view">
@@ -71,6 +72,13 @@
         </section>
       </main>
     </div>
+
+    <nav class="mobile-bottom-nav" aria-label="移动端主导航">
+      <button class="nav-item mobile-nav-item active" data-view="discover"><span class="nav-icon">⌂</span><small>首页</small></button>
+      <button class="nav-item mobile-nav-item" data-view="rooms"><span class="nav-icon">✦</span><small>房间</small></button>
+      <button class="nav-item mobile-nav-item" data-view="library"><span class="nav-icon">▤</span><small>收藏</small></button>
+      <button class="nav-item mobile-nav-item" data-view="studio"><span class="nav-icon">◌</span><small>创作</small></button>
+    </nav>
 
 <div class="modal-backdrop" id="modalBackdrop" aria-hidden="true"><div class="detail-modal" role="dialog" aria-modal="true"><button class="modal-close" id="modalClose">×</button><div class="modal-cover" id="modalCover"><span class="card-kicker">CASE FILE / PRIVATE</span><span class="modal-symbol">✧</span></div><div class="modal-content"><p class="eyebrow" id="modalGenre">MODERN MYSTERY</p><h2 id="modalTitle">—</h2><p class="modal-subtitle" id="modalSubtitle">—</p><div class="modal-stats" id="modalStats"></div><p class="modal-description" id="modalDescription">—</p><div class="modal-tags" id="modalTags"></div><button class="primary-button full-width" id="modalStart">开始试玩 <span>↗</span></button></div></div></div>
     <div class="toast" id="toast"></div>

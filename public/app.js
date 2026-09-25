@@ -1,21 +1,190 @@
-const state = { scripts: [], activeFilter: "all", selectedScript: null };
+function readLocalePreference() {
+  try {
+    const saved = localStorage.getItem("nocturne-locale");
+    return saved === "en" || saved === "zh" ? saved : null;
+  } catch {
+    return null;
+  }
+}
+
+const state = { scripts: [], activeFilter: "all", selectedScript: null, locale: readLocalePreference() || "zh", localeSource: readLocalePreference() ? "manual" : "auto" };
 const API_BASE = String(window.NOCTURNE_API_BASE || "").replace(/\/$/, "");
 const apiFetch = (path, options) => fetch(`${API_BASE}${path}`, options);
+const translations = {
+  zh: {
+    brandCaption: "SCRIPT MYSTERY / SOCIAL PLAY", navDiscover: "发现剧本", navRooms: "房间预览", navLibrary: "我的收藏", navStudio: "创作后台", mobileHome: "首页", mobileRooms: "房间", mobileLibrary: "收藏", mobileStudio: "创作", localPlay: "LOCAL PLAY", offlineCases: "4 个案件可离线试玩", profileLevel: "探索者 Lv.12", privacy: "隐私政策", terms: "用户协议", discover: "发现剧本", rooms: "房间预览", library: "我的收藏", studio: "创作后台",
+    heroEyebrow: "今晚，进入另一个人生", heroTitleA: "真相藏在", heroTitleB: "每个人的沉默里。", heroDescription: "选择一段命运，和陌生人共同完成一场只发生一次的推理。", startTrial: "开始一局试玩", browseRooms: "浏览房间预览", curatedCases: "CURATED CASES", picksForYou: "为你挑选的剧本", all: "全部", mystery: "悬疑", emotion: "情感", sciFi: "科幻",
+    roomKicker: "ROOM PREVIEW", roomTitle: "故事房间预览", roomDescription: "当前版本提供单人案件试玩；多人匹配和语音房间将在服务端接入后开放。", viewTrialEntry: "查看试玩入口", roomJoin: "加入", roomWatch: "观战", roomMissing: "还差 {count} 人", roomFull: "已满员", roomRequest: "{room}：已发送入场请求",
+    archiveKicker: "YOUR ARCHIVE", archiveTitle: "收藏与足迹", archiveDescription: "保存那些值得二刷的故事，也记录你曾经成为谁。", archiveEmptyTitle: "你的档案还很安静", archiveEmptyDescription: "收藏剧本后，它们会出现在这里。", exploreScripts: "去探索剧本", studioKicker: "STUDIO / CONTENT OPS", studioTitle: "创作后台", studioDescription: "剧本文件进入指定目录后，Nocturne 会自动识别、整理并发布到剧本库。", syncEnabled: "自动同步已开启", synced: "已同步 {count} 个剧本", autoIngestion: "AUTO INGESTION", ingestionTitle: "剧本自动入库", live: "● LIVE", dropTitle: "拖入剧本文件", dropDescription: "支持 .json / .md · 上传后自动解析并发布为草稿", chooseFile: "选择文件", listening: "后台文件夹监听中", incomingFolder: "将文件放入 /incoming，每 4 秒自动同步", waiting: "等待数据", activity: "ACTIVITY FEED", recentActivity: "最近动态", scanNow: "立即扫描 ↗", schemaTitle: "内容格式提示", schemaDescription: "JSON 文件可直接提供 title、genre、players、duration、tags、description 和 content 字段；Markdown 文件会自动读取一级标题作为剧本名。",
+    emptyFilterTitle: "还没有这个类型的剧本", emptyFilterDescription: "换一个筛选，或者去创作后台导入新剧本。", caseFile: "CASE FILE", privateCase: "CASE FILE / PRIVATE", players: "PLAYERS", duration: "DURATION", level: "LEVEL", defaultSubtitle: "一场关于真相、秘密与选择的沉浸式推理", defaultDescription: "一份新剧本已经抵达。请在所有人说出真话之前，找到唯一无法被伪造的证据。", detailStart: "开始试玩", cardStart: "查看详情 / 开始试玩",
+    gamePlaying: "正在游玩", backToLibrary: "← 返回剧本库", livePlay: "剧情演绎中", yourRole: "你的角色", caseNote: "案件笔记", phaseBriefing: "序章 · 入场", phaseEvidence: "第一幕 · 搜证", phaseQuestion: "第二幕 · 质询", phaseVote: "终局 · 指认", phaseResult: "终局 · 复盘", startEvidence: "开始搜证", continueEvidence: "继续搜证", enterQuestion: "进入公开质询", enterVote: "进入最终指认", finalVote: "最终指认", closed: "案件已归档", replay: "再玩一次", evidenceHint: "先搜集至少 3 条线索，再进入质询。", evidenceCount: "已发现 {count} / 3 条关键线索", questionHint: "{count} 次质询记录 · 线索越多，判断越接近真相", voteHint: "你只有一次正式指认机会。", inspectEvidence: "选择物证 · 点击查看细节", recordEvidence: "记入案件笔记", noEnoughEvidence: "至少查看三件物证，才能进入下一幕", noEnoughQuestions: "至少完成三次质询，再做最终指认", questionTime: "你在关键时间段在哪里？", questionMotive: "谁最有动机？", questionKey: "你见过关键物证吗？", accuse: "指认 TA ↗", correct: "真相浮出水面", wrong: "这个答案无法解释全部证据，再想想", localResponse: "{name} 已回应", recorded: "已记录",
+  },
+  en: {
+    brandCaption: "SCRIPT MYSTERY / SOCIAL PLAY", navDiscover: "Discover", navRooms: "Rooms", navLibrary: "My Archive", navStudio: "Studio", mobileHome: "Home", mobileRooms: "Rooms", mobileLibrary: "Archive", mobileStudio: "Studio", localPlay: "LOCAL PLAY", offlineCases: "4 cases ready offline", profileLevel: "Explorer Lv.12", privacy: "Privacy", terms: "Terms", discover: "Discover", rooms: "Rooms", library: "My Archive", studio: "Studio",
+    heroEyebrow: "TONIGHT, ENTER ANOTHER LIFE", heroTitleA: "Truth hides", heroTitleB: "inside every silence.", heroDescription: "Choose a fate and solve a one-night mystery with people you have never met.", startTrial: "Start a trial", browseRooms: "Browse rooms", curatedCases: "CURATED CASES", picksForYou: "Curated for you", all: "All", mystery: "Mystery", emotion: "Drama", sciFi: "Sci-fi",
+    roomKicker: "ROOM PREVIEW", roomTitle: "Story rooms", roomDescription: "This version supports solo case trials. Multiplayer matching and voice rooms will open when the service layer is connected.", viewTrialEntry: "View trial entry", roomJoin: "Join", roomWatch: "Watch", roomMissing: "{count} spot(s) left", roomFull: "Full", roomRequest: "{room}: entry request sent",
+    archiveKicker: "YOUR ARCHIVE", archiveTitle: "Saved stories", archiveDescription: "Keep the stories worth replaying and remember who you became.", archiveEmptyTitle: "Your archive is quiet", archiveEmptyDescription: "Saved scripts will appear here.", exploreScripts: "Explore scripts", studioKicker: "STUDIO / CONTENT OPS", studioTitle: "Creator studio", studioDescription: "Drop script files into the watched folder and Nocturne will parse, organize and publish them as drafts.", syncEnabled: "Auto-sync enabled", synced: "{count} scripts synced", autoIngestion: "AUTO INGESTION", ingestionTitle: "Script ingestion", live: "● LIVE", dropTitle: "Drop script files here", dropDescription: "Supports .json / .md · files are parsed into drafts automatically", chooseFile: "Choose file", listening: "Watching the incoming folder", incomingFolder: "Put files in /incoming; scan runs every 4 seconds", waiting: "Waiting for data", activity: "ACTIVITY FEED", recentActivity: "Recent activity", scanNow: "Scan now ↗", schemaTitle: "Content format", schemaDescription: "JSON may provide title, genre, players, duration, tags, description and content; Markdown uses its first-level heading as the script title.",
+    emptyFilterTitle: "No scripts in this category", emptyFilterDescription: "Try another filter or import a new script from Studio.", caseFile: "CASE FILE", privateCase: "CASE FILE / PRIVATE", players: "PLAYERS", duration: "DURATION", level: "LEVEL", defaultSubtitle: "An immersive mystery about truth, secrets and choice", defaultDescription: "A new script has arrived. Find the one piece of evidence that cannot be forged before everyone tells you their version of the truth.", detailStart: "Start trial", cardStart: "View details / Start trial",
+    gamePlaying: "Playing", backToLibrary: "← Back to archive", livePlay: "Story in progress", yourRole: "Your role", caseNote: "Case notes", phaseBriefing: "Prologue · Arrival", phaseEvidence: "Act I · Evidence", phaseQuestion: "Act II · Questions", phaseVote: "Final act · Accusation", phaseResult: "Final act · Review", startEvidence: "Start evidence hunt", continueEvidence: "Keep searching", enterQuestion: "Open questioning", enterVote: "Make final accusation", finalVote: "Final accusation", closed: "Case archived", replay: "Play again", evidenceHint: "Collect at least 3 clues before questioning.", evidenceCount: "{count} / 3 key clues found", questionHint: "{count} questions asked · more clues, better judgment", voteHint: "You only get one formal accusation.", inspectEvidence: "Select an item · tap to inspect", recordEvidence: "Record in case notes", noEnoughEvidence: "Inspect at least three items before the next act", noEnoughQuestions: "Ask at least three questions before the final accusation", questionTime: "Where were you during the critical window?", questionMotive: "Who has the strongest motive?", questionKey: "Have you seen the key evidence?", accuse: "Accuse ↗", correct: "The truth comes to light", wrong: "That answer cannot explain all the evidence", localResponse: "{name} has responded", recorded: "Recorded",
+  }
+};
+
+function t(key, vars = {}) {
+  let value = translations[state.locale]?.[key] ?? translations.zh[key] ?? key;
+  return Object.entries(vars).reduce((result, [name, replacement]) => result.replaceAll(`{${name}}`, String(replacement)), value);
+}
 const fallbackScripts = [
   { id: "moon-trial", title: "月影审判", subtitle: "The Trial of Moonlight", genre: "悬疑 · 古典", players: 6, duration: "90 分钟", difficulty: "进阶", tags: ["多线叙事", "情感沉浸"], author: "Nocturne Studio", cover: "violet", description: "一场发生在私人博物馆的晚宴，一枚失踪的月光宝石，和六段互相矛盾的记忆。", status: "可开局" },
   { id: "last-letter", title: "旧港来信", subtitle: "Letters from the Old Port", genre: "情感 · 时代", players: 5, duration: "75 分钟", difficulty: "入门", tags: ["情感还原", "双重结局"], author: "Morrow House", cover: "amber", description: "在潮水再次上涨之前，找出那封从未寄出的信，以及写信的人真正想留下什么。", status: "热度上升" },
   { id: "orbit-7", title: "轨道之外", subtitle: "Beyond the Orbit", genre: "科幻 · 密室", players: 7, duration: "110 分钟", difficulty: "硬核", tags: ["未来科幻", "机关线索"], author: "Signal / 07", cover: "blue", description: "空间站失去通讯的第七分钟，所有人都收到了来自未来的同一条讯息。", status: "可开局" },
   { id: "velvet-room", title: "绒幕之后", subtitle: "Behind the Velvet", genre: "情感 · 演绎", players: 6, duration: "80 分钟", difficulty: "进阶", tags: ["强角色", "语音演绎"], author: "Morrow House", cover: "rose", description: "剧院谢幕之后，真正的戏才刚刚开始。每个人都在争夺最后一个角色。", status: "新上线" }
 ];
+const scriptTranslations = {
+  "moon-trial": { title: "The Trial of Moonlight", subtitle: "THE TRIAL OF MOONLIGHT", genre: "Mystery · Classic", duration: "90 min", difficulty: "Advanced", tags: ["Multi-thread", "Emotional depth"], description: "At a private museum dinner, a moonstone vanishes while six memories begin to contradict one another.", status: "Ready to play" },
+  "old-port-letter": { title: "Letters from the Old Port", subtitle: "LETTERS FROM THE OLD PORT", genre: "Drama · Period", duration: "75 min", difficulty: "Beginner", tags: ["Emotional reveal", "Dual ending"], description: "Before the tide rises again, find the never-sent letter and what its writer truly wanted to leave behind.", status: "Trending" },
+  "last-letter": { title: "Letters from the Old Port", subtitle: "LETTERS FROM THE OLD PORT", genre: "Drama · Period", duration: "75 min", difficulty: "Beginner", tags: ["Emotional reveal", "Dual ending"], description: "Before the tide rises again, find the never-sent letter and what its writer truly wanted to leave behind.", status: "Trending" },
+  "orbit-7": { title: "Beyond the Orbit", subtitle: "BEYOND THE ORBIT", genre: "Sci-fi · Locked room", duration: "110 min", difficulty: "Expert", tags: ["Future noir", "Mechanical clues"], description: "Seven minutes after a station loses contact, everyone receives the same message from the future.", status: "Ready to play" },
+  "velvet-room": { title: "Behind the Velvet", subtitle: "BEHIND THE VELVET", genre: "Drama · Performance", duration: "80 min", difficulty: "Advanced", tags: ["Strong roles", "Voice acting"], description: "After the curtain falls, the real play begins. Everyone is fighting for the last role.", status: "New" }
+};
+
+function localizedScript(script) {
+  if (!script || state.locale === "zh") return script;
+  const custom = script.i18n?.en || {};
+  const fallback = scriptTranslations[script.id] || {};
+  return {
+    ...script,
+    ...fallback,
+    ...custom,
+    tags: custom.tags || fallback.tags || script.tags,
+    title: custom.title || fallback.title || script.title,
+    subtitle: custom.subtitle || fallback.subtitle || script.subtitle,
+    genre: custom.genre || fallback.genre || script.genre,
+    description: custom.description || fallback.description || script.description,
+    status: custom.status || fallback.status || script.status
+  };
+}
+
 const rooms = [
   { title: "月影审判", host: "Serein 的房间", players: "5 / 6", mood: "沉浸演绎", color: "violet", wait: "还差 1 人" },
   { title: "轨道之外", host: "ECHO-09", players: "4 / 7", mood: "硬核推理", color: "blue", wait: "还差 3 人" },
   { title: "旧港来信", host: "晚风不说话", players: "4 / 5", mood: "情感还原", color: "amber", wait: "还差 1 人" },
   { title: "绒幕之后", host: "Nocturne DM 03", players: "6 / 6", mood: "即将开始", color: "rose", wait: "已满员" }
 ];
+const roomTranslations = {
+  "月影审判": { title: "The Trial of Moonlight", host: "Serein's room", mood: "Immersive play", wait: "1 spot left" },
+  "轨道之外": { title: "Beyond the Orbit", host: "ECHO-09", mood: "Hard mystery", wait: "3 spots left" },
+  "旧港来信": { title: "Letters from the Old Port", host: "Late-night wind", mood: "Emotional reveal", wait: "1 spot left" },
+  "绒幕之后": { title: "Behind the Velvet", host: "Nocturne DM 03", mood: "Starting soon", wait: "Full" }
+};
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
+
+function applyStaticLocale() {
+  document.documentElement.lang = state.locale === "zh" ? "zh-CN" : "en";
+  $(".brand-caption").textContent = t("brandCaption");
+  const navLabels = { discover: "navDiscover", rooms: "navRooms", library: "navLibrary", studio: "navStudio" };
+  $$(".sidebar .nav-item").forEach((item) => {
+    const icon = item.querySelector(".nav-icon");
+    item.innerHTML = `${icon ? icon.outerHTML : ""}${t(navLabels[item.dataset.view])}`;
+  });
+  const mobileLabels = { discover: "mobileHome", rooms: "mobileRooms", library: "mobileLibrary", studio: "mobileStudio" };
+  $$(".mobile-nav-item").forEach((item) => { item.querySelector("small").textContent = t(mobileLabels[item.dataset.view]); });
+  $(".online-signal strong").textContent = t("localPlay");
+  $(".online-signal small").textContent = t("offlineCases");
+  $(".profile-chip small").textContent = t("profileLevel");
+  $(".legal-links a[href='privacy.html']").textContent = t("privacy");
+  $(".legal-links a[href='terms.html']").textContent = t("terms");
+  $(".hero-copy .eyebrow").textContent = t("heroEyebrow");
+  $(".hero-copy h1").innerHTML = `${t("heroTitleA")}<br /><em>${t("heroTitleB")}</em>`;
+  $(".hero-description").textContent = t("heroDescription");
+  $("#quickStart").innerHTML = `${t("startTrial")} <span>↗</span>`;
+  $(".hero-actions .ghost-button").textContent = t("browseRooms");
+  $(".section-heading .eyebrow").textContent = t("curatedCases");
+  $(".section-heading h2").textContent = t("picksForYou");
+  const filterLabels = { all: "all", 悬疑: "mystery", 情感: "emotion", 科幻: "sciFi" };
+  $$(".filter-tab").forEach((tab) => { tab.textContent = t(filterLabels[tab.dataset.filter] || "all"); });
+  $("#roomsView .page-intro .eyebrow").textContent = t("roomKicker");
+  $("#roomsView .page-intro h1").textContent = t("roomTitle");
+  $("#roomsView .page-intro p:last-child").textContent = t("roomDescription");
+  $("#createRoom").textContent = t("viewTrialEntry");
+  $("#libraryView .page-intro .eyebrow").textContent = t("archiveKicker");
+  $("#libraryView .page-intro h1").textContent = t("archiveTitle");
+  $("#libraryView .page-intro p:last-child").textContent = t("archiveDescription");
+  $("#libraryView .empty-library h3").textContent = t("archiveEmptyTitle");
+  $("#libraryView .empty-library p").textContent = t("archiveEmptyDescription");
+  $("#libraryView .empty-library .ghost-button").textContent = t("exploreScripts");
+  $("#studioView .page-intro .eyebrow").textContent = t("studioKicker");
+  $("#studioView .page-intro h1").textContent = t("studioTitle");
+  $("#studioView .page-intro p:last-child").textContent = t("studioDescription");
+  $("#syncBadge").innerHTML = `<span></span> ${t("syncEnabled")}`;
+  const studioHeadings = $$("#studioView .panel-head h3");
+  if (studioHeadings[0]) studioHeadings[0].textContent = t("ingestionTitle");
+  if (studioHeadings[1]) studioHeadings[1].textContent = t("recentActivity");
+  const studioEyebrows = $$("#studioView .panel-head .eyebrow");
+  if (studioEyebrows[0]) studioEyebrows[0].textContent = t("autoIngestion");
+  if (studioEyebrows[1]) studioEyebrows[1].textContent = t("activity");
+  $("#studioView .panel-status").textContent = t("live");
+  $(".dropzone h4").textContent = t("dropTitle");
+  $(".dropzone p").textContent = t("dropDescription");
+  $("#chooseFile").textContent = t("chooseFile");
+  $(".sync-row strong").textContent = t("listening");
+  $(".sync-row small").textContent = t("incomingFolder");
+  $("#syncTime").textContent = t("waiting");
+  $("#scanNow").textContent = t("scanNow");
+  $(".schema-tip strong").textContent = t("schemaTitle");
+  $(".schema-tip p").textContent = t("schemaDescription");
+  $("#modalCover .card-kicker").textContent = t("privateCase");
+  $("#modalSubtitle").textContent = t("defaultSubtitle");
+  $("#modalStart").innerHTML = `${t("detailStart")} <span>↗</span>`;
+  $(".player-card span").textContent = t("yourRole");
+  $(".back-button").textContent = t("backToLibrary");
+  $(".case-note .eyebrow").textContent = t("caseNote");
+  $(".live-pill").innerHTML = `<i></i> ${t("livePlay")}`;
+  const gameNavLabels = { briefing: "phaseBriefing", evidence: "phaseEvidence", question: "phaseQuestion", vote: "phaseVote" };
+  $$(".game-nav-item").forEach((item) => { const number = item.querySelector("span")?.textContent || ""; item.innerHTML = `<span>${number}</span>${t(gameNavLabels[item.dataset.gamePhase])}`; });
+  $$("[data-locale]").forEach((button) => button.classList.toggle("active", button.dataset.locale === state.locale));
+  if (!$("#gameView").classList.contains("active-view")) {
+    const currentView = $(".sidebar .nav-item.active")?.dataset.view || "discover";
+    $("#viewLabel").textContent = t(currentView);
+  }
+}
+
+function setLocale(locale, { persist = true, source = "manual" } = {}) {
+  if (locale !== "zh" && locale !== "en") return;
+  state.locale = locale;
+  state.localeSource = source;
+  if (persist) {
+    try { localStorage.setItem("nocturne-locale", locale); } catch { /* storage can be unavailable in private webviews */ }
+  }
+  applyStaticLocale();
+  renderScripts();
+  renderRooms();
+  renderActivity();
+  if ($("#gameView").classList.contains("active-view")) {
+    activeCase = localizedCase(activeCase?.id || state.selectedScript?.id || "moon-trial");
+    ({ briefing: renderBriefing, evidence: renderEvidence, question: renderQuestion, vote: renderVote, result: renderResult }[gameState.phase] || renderBriefing)();
+  }
+}
+
+async function detectLocale() {
+  if (state.localeSource === "manual") return;
+  let locale = /^zh-cn/i.test(navigator.language || "") ? "zh" : "en";
+  const endpoint = String(window.NOCTURNE_LOCALE_ENDPOINT || (API_BASE ? `${API_BASE}/api/locale` : "/api/locale")).trim();
+  if (endpoint) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 1800);
+      const response = await fetch(endpoint, { signal: controller.signal, cache: "no-store" });
+      clearTimeout(timeout);
+      if (response.ok) {
+        const data = await response.json();
+        locale = String(data.country_code || data.countryCode || "").toUpperCase() === "CN" ? "zh" : "en";
+      }
+    } catch { /* country lookup is optional; browser language remains the safe fallback */ }
+  }
+  if (state.localeSource !== "manual") setLocale(locale, { persist: false, source: "auto" });
+}
 
 async function loadScripts() {
   try {
@@ -32,8 +201,8 @@ async function loadScripts() {
 function scriptCard(script) {
   const coverImage = coverAsset(script);
   return `<article class="script-card" data-script-id="${script.id}">
-    <div class="script-cover cover-${script.cover || "violet"}" style="--cover-image: url('${coverImage}')"><span class="cover-kicker">CASE FILE / ${String(script.id).slice(0, 8).toUpperCase()}</span><div class="cover-title"><strong>${script.title}</strong><small>${script.subtitle || "AN IMMERSIVE MYSTERY"}</small></div></div>
-    <div class="script-body"><div class="script-top"><h3>${script.genre || "叙事推理"}</h3><small>${script.status || "可开局"}</small></div><div class="script-meta"><span>${script.players || 6} 人</span><span>${script.duration || "60–90 分钟"}</span><span>${script.difficulty || "进阶"}</span></div><div class="tag-list">${(script.tags || []).slice(0, 3).map((tag) => `<span class="tag">${tag}</span>`).join("")}</div><button class="card-start" data-start-script="${script.id}">查看详情 / 开始试玩 <span>↗</span></button></div>
+    <div class="script-cover cover-${script.cover || "violet"}" style="--cover-image: url('${coverImage}')"><span class="cover-kicker">${t("caseFile")} / ${String(script.id).slice(0, 8).toUpperCase()}</span><div class="cover-title"><strong>${script.title}</strong><small>${script.subtitle || "AN IMMERSIVE MYSTERY"}</small></div></div>
+    <div class="script-body"><div class="script-top"><h3>${script.genre || "Narrative mystery"}</h3><small>${script.status || (state.locale === "en" ? "Ready to play" : "可开局")}</small></div><div class="script-meta"><span>${script.players || 6} ${state.locale === "en" ? "players" : "人"}</span><span>${script.duration || (state.locale === "en" ? "60–90 min" : "60–90 分钟")}</span><span>${script.difficulty || (state.locale === "en" ? "Advanced" : "进阶")}</span></div><div class="tag-list">${(script.tags || []).slice(0, 3).map((tag) => `<span class="tag">${tag}</span>`).join("")}</div><button class="card-start" data-start-script="${script.id}">${t("cardStart")} <span>↗</span></button></div>
   </article>`;
 }
 
@@ -50,28 +219,28 @@ function coverAsset(script) {
 
 function renderScripts() {
   const filter = state.activeFilter;
-  const scripts = state.scripts.filter((script) => filter === "all" || script.genre?.includes(filter) || script.tags?.some((tag) => tag.includes(filter)));
-  $("#scriptGrid").innerHTML = scripts.map(scriptCard).join("") || `<div class="empty-library"><h3>还没有这个类型的剧本</h3><p>换一个筛选，或者去创作后台导入新剧本。</p></div>`;
+  const scripts = state.scripts.map(localizedScript).filter((script) => filter === "all" || script.genre?.includes(filter) || script.tags?.some((tag) => tag.includes(filter)));
+  $("#scriptGrid").innerHTML = scripts.map(scriptCard).join("") || `<div class="empty-library"><h3>${t("emptyFilterTitle")}</h3><p>${t("emptyFilterDescription")}</p></div>`;
   $$(".script-card").forEach((card) => card.addEventListener("click", () => openDetail(card.dataset.scriptId)));
   $$(".card-start").forEach((button) => button.addEventListener("click", (event) => { event.stopPropagation(); openDetail(button.dataset.startScript); }));
 }
 
 function renderRooms() {
-  $("#roomGrid").innerHTML = rooms.map((room) => `<article class="room-card"><div><span class="tag">${room.mood}</span><h3>${room.title}</h3><p>${room.host}<br />${room.wait}</p></div><div class="room-actions"><div class="room-players">${room.players}</div><button class="secondary-button join-room" data-room="${room.title}">${room.players === "6 / 6" ? "观战" : "加入"} ↗</button></div></article>`).join("");
-  $$(".join-room").forEach((button) => button.addEventListener("click", () => showToast(`${button.dataset.room}：已发送入场请求`)));
+  $("#roomGrid").innerHTML = rooms.map((room) => { const localized = state.locale === "en" ? (roomTranslations[room.title] || {}) : room; const title = localized.title || room.title; const host = localized.host || room.host; const mood = localized.mood || room.mood; const wait = localized.wait || room.wait; return `<article class="room-card"><div><span class="tag">${mood}</span><h3>${title}</h3><p>${host}<br />${wait}</p></div><div class="room-actions"><div class="room-players">${room.players}</div><button class="secondary-button join-room" data-room="${title}">${room.players === "6 / 6" ? t("roomWatch") : t("roomJoin")} ↗</button></div></article>`; }).join("");
+  $$(".join-room").forEach((button) => button.addEventListener("click", () => showToast(t("roomRequest", { room: button.dataset.room }))));
 }
 
 function openDetail(id) {
-  const script = state.scripts.find((item) => item.id === id) || fallbackScripts.find((item) => item.id === id);
+  const script = localizedScript(state.scripts.find((item) => item.id === id) || fallbackScripts.find((item) => item.id === id));
   if (!script) return;
   state.selectedScript = script;
   $("#modalCover").className = `modal-cover cover-${script.cover || "violet"}`;
   $("#modalCover").style.setProperty("--cover-image", `url('${coverAsset(script)}')`);
   $("#modalTitle").textContent = script.title;
-  $("#modalSubtitle").textContent = script.subtitle || "一场关于真相、秘密与选择的沉浸式推理";
+  $("#modalSubtitle").textContent = script.subtitle || t("defaultSubtitle");
   $("#modalGenre").textContent = (script.genre || "叙事推理").toUpperCase();
-  $("#modalDescription").textContent = script.description || "一份新剧本已经抵达。请在所有人说出真话之前，找到唯一无法被伪造的证据。";
-  $("#modalStats").innerHTML = [["PLAYERS", `${script.players || 6} 人`], ["DURATION", script.duration || "60–90 分钟"], ["LEVEL", script.difficulty || "进阶"]].map(([label, value]) => `<div class="modal-stat">${label}<strong>${value}</strong></div>`).join("");
+  $("#modalDescription").textContent = script.description || t("defaultDescription");
+  $("#modalStats").innerHTML = [[t("players"), `${script.players || 6} ${state.locale === "en" ? "players" : "人"}`], [t("duration"), script.duration || (state.locale === "en" ? "60–90 min" : "60–90 分钟")], [t("level"), script.difficulty || (state.locale === "en" ? "Advanced" : "进阶")]].map(([label, value]) => `<div class="modal-stat">${label}<strong>${value}</strong></div>`).join("");
   $("#modalTags").innerHTML = (script.tags || []).map((tag) => `<span class="tag">${tag}</span>`).join("");
   $("#modalBackdrop").classList.add("open");
   $("#modalBackdrop").setAttribute("aria-hidden", "false");
@@ -82,28 +251,28 @@ function closeModal() { $("#modalBackdrop").classList.remove("open"); $("#modalB
 function setView(view) {
   $$(".nav-item").forEach((item) => item.classList.toggle("active", item.dataset.view === view));
   $$(".view").forEach((item) => item.classList.toggle("active-view", item.id === `${view}View`));
-  $("#viewLabel").textContent = ({ discover: "发现剧本", rooms: "房间预览", library: "我的收藏", studio: "创作后台" })[view];
+  $("#viewLabel").textContent = view === "game" ? t("gamePlaying") : t(view);
 }
 
 function showToast(message) { const toast = $("#toast"); toast.textContent = message; toast.classList.add("show"); setTimeout(() => toast.classList.remove("show"), 2600); }
 
-function formatTime(value) { if (!value) return "尚未同步"; return new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date(value)); }
+function formatTime(value) { if (!value) return t("waiting"); return new Intl.DateTimeFormat(state.locale === "zh" ? "zh-CN" : "en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date(value)); }
 
 async function refreshSync() {
   try {
     const response = await apiFetch("/api/sync");
     const data = await response.json();
-    $("#syncTime").textContent = data.lastSync ? formatTime(data.lastSync) : "等待数据";
-    if (data.lastFile) $("#syncBadge").innerHTML = `<span></span> 已同步 ${data.total} 个剧本`;
+    $("#syncTime").textContent = data.lastSync ? formatTime(data.lastSync) : t("waiting");
+    if (data.lastFile) $("#syncBadge").innerHTML = `<span></span> ${t("synced", { count: data.total })}`;
     renderActivity(data);
   } catch { /* the static client remains usable without the API */ }
 }
 
 function renderActivity(data = {}) {
   const rows = [];
-  if (data.lastFile) rows.push(["新剧本已入库", `${data.lastFile} · ${formatTime(data.lastSync)}`]);
-  rows.push(["后台监听正常", "incoming 文件夹 · 自动扫描每 4 秒"]);
-  rows.push(["内容库已就绪", `${state.scripts.length || 4} 个公开剧本可供匹配`]);
+  if (data.lastFile) rows.push([state.locale === "zh" ? "新剧本已入库" : "New script ingested", `${data.lastFile} · ${formatTime(data.lastSync)}`]);
+  rows.push([state.locale === "zh" ? "后台监听正常" : "Folder watcher is healthy", t("incomingFolder")]);
+  rows.push([state.locale === "zh" ? "内容库已就绪" : "Script library ready", state.locale === "zh" ? `${state.scripts.length || 4} 个公开剧本可供匹配` : `${state.scripts.length || 4} public scripts ready`]);
   $("#activityFeed").innerHTML = rows.map(([title, detail]) => `<div class="activity-item"><span class="activity-dot"></span><div><strong>${title}</strong><small>${detail}</small></div></div>`).join("");
 }
 
@@ -117,7 +286,7 @@ async function importFile(file) {
   }
   const response = await apiFetch("/api/scripts/import", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ filename: file.name, script }) });
   if (!response.ok) throw new Error("导入失败");
-  showToast(`${script.title || file.name} 已自动入库`);
+  showToast(state.locale === "zh" ? `${script.title || file.name} 已自动入库` : `${script.title || file.name} was added to the library`);
   await loadScripts();
   await refreshSync();
 }
@@ -223,6 +392,37 @@ const caseLibrary = {
   }
 };
 caseLibrary["old-port-letter"] = caseLibrary["last-letter"];
+const caseTranslations = {
+  "moon-trial": {
+    title: "The Trial of Moonlight", player: "Lin Che · Curator", badge: "Moonlight Observer", sceneKicker: "THE WHITE HALL / PRIVATE VIEWING",
+    intro: "At 21:00, the private museum White Hall opens a moonstone viewing for six guests. Seven minutes later, the case is intact—but the stone is gone.",
+    evidenceLead: "The gallery still looks exactly as it did when the dinner ended.", evidenceCopy: "Every item may change your read of the room. Inspect them one by one; discovered clues stay in your case notes.", questionCopy: "Choose someone in the room and ask a question. Some answers will not be lies—they will simply avoid what matters most.",
+    voteLead: "You have heard every version. Now name the person who hid inside the details.", voteCopy: "The right answer must explain the access log, the rain on the window ledge and the partial print inside the case.", resultTitle: "The truth comes to light", resultText: "Correct. He Yunchuan used an old access credential and repair-room thread to fake an intrusion through the window. The partial print he thought no one would notice gave him away.",
+    suspects: [
+      { id: "shen", name: "Shen Yuan", role: "Gallery director", line: "I handled the guest list. Before the blackout, I stayed in the east lounge.", answers: { time: "The east lounge cameras can place me there—at least for most of the night.", motive: "If the stone disappears, the gallery loses its next round of funding. I need it found more than anyone.", key: "Only the curator and restorer handled the case key. I had no reason to go near it." } },
+      { id: "gu", name: "Gu Yan", role: "Collector's counsel", line: "I came to confirm a will. The stone has nothing to do with me.", answers: { time: "I was on a long inheritance call—long enough to miss several things.", motive: "The motive is not the stone but the insurance. Ask Shen Yuan.", key: "I saw the small silver key in the upstairs study, but I never took it." } },
+      { id: "he", name: "He Yunchuan", role: "Art restorer", line: "The lock was not forced. Someone used the right code, but that does not make it me.", answers: { time: "I was cleaning a painting in the studio. Rain came through the window, so I stayed there.", motive: "A restorer survives by protecting works. Destroying one would make no sense for me.", key: "The code changes monthly. Only the curator knew tonight's code—unless someone read her notes." } },
+      { id: "su", name: "Su Mi", role: "Investigative reporter", line: "I was reporting on the gallery. Tonight's incident practically wrote the headline.", answers: { time: "I was recording outside the washroom. I heard heels, but the light was too poor to see who passed.", motive: "I need a truth, not a stone—unless the truth itself can pay well.", key: "I photographed a corner of the code book. One date had been crossed out: 21/17." } },
+      { id: "luo", name: "Luo Xu", role: "Private security", line: "I guard the doors, not the display case. No one left through the front entrance with the stone.", answers: { time: "From 21:12 to 21:19, the main camera went dark. Someone sent me to check the power box.", motive: "I am paid for security. Do not confuse negligence with theft.", key: "The alarm was dismissed normally at 21:17. The credential belonged to an internal account." } }
+    ],
+    evidence: [
+      { id: "rain", symbol: "◒", name: "Rain on the ledge", type: "Physical trace · East window", detail: "Rain marks run inward from the sill, but the window lock was never opened. The sole pattern stops at the restoration-room door." },
+      { id: "log", symbol: "⌁", name: "Access log", type: "System record · 21:17", detail: "The display alarm was dismissed at 21:17:04 with Lin Che's old credential—one that should have expired three days ago." },
+      { id: "note", symbol: "✎", name: "Crossed-out date", type: "Photo · Su Mi's camera", detail: "The edge of the code book reads 21/17. The final stroke is fresh, made with the pen on the restoration desk." },
+      { id: "glass", symbol: "◇", name: "Print inside the glass", type: "Trace · Display case", detail: "Only half a print remains on the inside of the glass. The match points to He Yunchuan." },
+      { id: "thread", symbol: "—", name: "Blue repair thread", type: "Fiber · Gallery floor", detail: "A blue fiber is caught beneath the case base. It matches the tool kit in He Yunchuan's studio." },
+      { id: "letter", symbol: "▱", name: "Unsent letter", type: "Private item · Gu Yan", detail: "The letter mentions an insurance policy activating at 21:30 and an anonymous account as its recipient." }
+    ],
+    timeline: [["21:05", "He Yunchuan enters the east restoration room under the pretext of checking humidity."], ["21:12", "Luo Xu is sent to the power box and the main hall enters a camera blind spot."], ["21:17", "An old credential dismisses the alarm and opens the display case."], ["21:19", "A blue repair thread creates the false trail to the window."]]
+  }
+};
+
+function localizedCase(caseId) {
+  const base = caseLibrary[caseId] || demoCase;
+  const override = state.locale === "en" ? (caseTranslations[caseId] || {}) : {};
+  return { ...base, ...override, id: caseId, suspects: override.suspects || base.suspects, evidence: override.evidence || base.evidence, timeline: override.timeline || base.timeline };
+}
+
 let activeCase = demoCase;
 const gameState = { phase: "briefing", discovered: new Set(), selectedEvidence: null, selectedSuspect: "shen", answers: new Set(), questionCount: 0, startedAt: 0, timer: null };
 
@@ -231,7 +431,7 @@ function setGameNav(phase) {
   const phases = { briefing: 1, evidence: 2, question: 3, vote: 4, result: 4 };
   $("#gameProgressFill").style.width = `${(phases[phase] / 4) * 100}%`;
   $$(".game-nav-item").forEach((item) => item.classList.toggle("active", item.dataset.gamePhase === phase));
-  const labels = { briefing: "序章 · 入场", evidence: "第一幕 · 搜证", question: "第二幕 · 质询", vote: "终局 · 指认", result: "终局 · 复盘" };
+  const labels = { briefing: t("phaseBriefing"), evidence: t("phaseEvidence"), question: t("phaseQuestion"), vote: t("phaseVote"), result: t("phaseResult") };
   $("#gamePhaseLabel").textContent = labels[phase];
 }
 
@@ -244,8 +444,9 @@ function renderBriefing() {
   setGameNav("briefing");
   $("#gameEyebrow").textContent = `PROLOGUE / ${activeCase.openingStamp}`;
   $("#gameTitle").textContent = activeCase.title;
-  $("#gameContent").innerHTML = `<span class="game-kicker">${activeCase.sceneKicker}</span><div class="game-scene"><img src="${activeCase.sceneImage}" alt="${activeCase.title}案发现场" /></div><p class="game-lede">${activeCase.intro}</p><p class="game-copy">你是 <strong>${activeCase.player}</strong>。今晚的在场者都知道一部分真相，却没有人知道全部。你的目标不是马上找到答案，而是先确认：谁有机会，谁有动机，谁在说一个无法被证据支持的故事。</p><div class="scene-line"></div><div class="event-log">${activeCase.timeline.slice(0, 3).map(([time, text]) => `<div class="event-log-item"><b>${time}</b><span>${text}</span></div>`).join("")}</div>`;
-  gameAction(null, "先搜集至少 3 条线索，再进入质询。", "开始搜证", renderEvidence);
+  const playerCopy = state.locale === "zh" ? `你是 <strong>${activeCase.player}</strong>。今晚的在场者都知道一部分真相，却没有人知道全部。你的目标不是马上找到答案，而是先确认：谁有机会，谁有动机，谁在说一个无法被证据支持的故事。` : `You are <strong>${activeCase.player}</strong>. Everyone here knows part of the truth, but no one knows all of it. Do not rush to an answer; first work out who had the chance, who had the motive and whose story the evidence cannot support.`;
+  $("#gameContent").innerHTML = `<span class="game-kicker">${activeCase.sceneKicker}</span><div class="game-scene"><img src="${activeCase.sceneImage}" alt="${activeCase.title}" /></div><p class="game-lede">${activeCase.intro}</p><p class="game-copy">${playerCopy}</p><div class="scene-line"></div><div class="event-log">${activeCase.timeline.slice(0, 3).map(([time, text]) => `<div class="event-log-item"><b>${time}</b><span>${text}</span></div>`).join("")}</div>`;
+  gameAction(null, t("evidenceHint"), t("startEvidence"), renderEvidence);
 }
 
 function renderEvidence() {
@@ -253,12 +454,12 @@ function renderEvidence() {
   $("#gameEyebrow").textContent = "ACT I / COLLECT EVIDENCE";
   $("#gameTitle").textContent = "搜寻线索";
   const selectedEvidence = activeCase.evidence.find((entry) => entry.id === gameState.selectedEvidence);
-  const evidenceModal = selectedEvidence ? `<div class="evidence-modal open" id="evidenceModal" role="dialog" aria-modal="true" aria-label="${selectedEvidence.name}"><div class="evidence-modal-card"><button class="evidence-modal-close" data-evidence-close aria-label="关闭">×</button><img class="evidence-modal-image" src="${selectedEvidence.image}" alt="${selectedEvidence.name}" /><div class="evidence-modal-body"><span class="game-kicker">CASE NOTE / EVIDENCE ${String(gameState.discovered.size).padStart(2, "0")}</span><h3>${selectedEvidence.name}</h3><p class="evidence-modal-type">${selectedEvidence.type}</p><p>${selectedEvidence.detail}</p><button class="primary-button evidence-modal-done" data-evidence-close>记入案件笔记 <span>↗</span></button></div></div></div>` : "";
-  $("#gameContent").innerHTML = `<span class="game-kicker">选择物证 · 点击查看细节</span><div class="game-scene game-scene-evidence"><img src="${activeCase.sceneImage}" alt="${activeCase.title}案发现场" /></div><p class="game-lede">${activeCase.evidenceLead}</p><p class="game-copy">${activeCase.evidenceCopy}</p><div class="scene-line"></div><div class="evidence-grid">${activeCase.evidence.map((item) => `<button class="evidence-card ${gameState.discovered.has(item.id) ? "discovered" : ""}" data-evidence="${item.id}"><img class="evidence-thumb" src="${item.image}" alt="${item.name}" /><strong>${item.name}</strong><small>${item.type}</small><span class="discovered-badge">已记录</span></button>`).join("")}</div>${evidenceModal}`;
+  const evidenceModal = selectedEvidence ? `<div class="evidence-modal open" id="evidenceModal" role="dialog" aria-modal="true" aria-label="${selectedEvidence.name}"><div class="evidence-modal-card"><button class="evidence-modal-close" data-evidence-close aria-label="Close">×</button><img class="evidence-modal-image" src="${selectedEvidence.image}" alt="${selectedEvidence.name}" /><div class="evidence-modal-body"><span class="game-kicker">CASE NOTE / EVIDENCE ${String(gameState.discovered.size).padStart(2, "0")}</span><h3>${selectedEvidence.name}</h3><p class="evidence-modal-type">${selectedEvidence.type}</p><p>${selectedEvidence.detail}</p><button class="primary-button evidence-modal-done" data-evidence-close>${t("recordEvidence")} <span>↗</span></button></div></div></div>` : "";
+  $("#gameContent").innerHTML = `<span class="game-kicker">${t("inspectEvidence")}</span><div class="game-scene game-scene-evidence"><img src="${activeCase.sceneImage}" alt="${activeCase.title}" /></div><p class="game-lede">${activeCase.evidenceLead}</p><p class="game-copy">${activeCase.evidenceCopy}</p><div class="scene-line"></div><div class="evidence-grid">${activeCase.evidence.map((item) => `<button class="evidence-card ${gameState.discovered.has(item.id) ? "discovered" : ""}" data-evidence="${item.id}"><img class="evidence-thumb" src="${item.image}" alt="${item.name}" /><strong>${item.name}</strong><small>${item.type}</small><span class="discovered-badge">${t("recorded")}</span></button>`).join("")}</div>${evidenceModal}`;
   $$(".evidence-card").forEach((card) => card.addEventListener("click", () => inspectEvidence(card.dataset.evidence)));
   $$('[data-evidence-close]').forEach((button) => button.addEventListener("click", () => { gameState.selectedEvidence = null; renderEvidence(); }));
   const canContinue = gameState.discovered.size >= 3;
-  gameAction(null, `已发现 ${gameState.discovered.size} / 3 条关键线索`, canContinue ? "进入公开质询" : "继续搜证", canContinue ? renderQuestion : () => showToast("至少查看三件物证，才能进入下一幕"));
+  gameAction(null, t("evidenceCount", { count: gameState.discovered.size }), canContinue ? t("enterQuestion") : t("continueEvidence"), canContinue ? renderQuestion : () => showToast(t("noEnoughEvidence")));
 }
 
 function inspectEvidence(id) {
@@ -267,7 +468,7 @@ function inspectEvidence(id) {
   gameState.discovered.add(id);
   gameState.selectedEvidence = id;
   renderEvidence();
-  showToast(`已记录：${item.name}`);
+  showToast(state.locale === "zh" ? `已记录：${item.name}` : `${item.name}: ${t("recorded")}`);
 }
 
 function renderQuestion() {
@@ -276,10 +477,10 @@ function renderQuestion() {
   $("#gameTitle").textContent = "公开质询";
   const suspect = activeCase.suspects.find((entry) => entry.id === gameState.selectedSuspect) || activeCase.suspects[0];
   const answered = gameState.answers.has(suspect.id);
-  $("#gameContent").innerHTML = `<span class="game-kicker">SCRIPTED ROLEPLAY / RESPONSE</span><div class="game-scene game-scene-question"><img src="${activeCase.sceneImage}" alt="${activeCase.title}现场" /></div><p class="game-copy" style="margin:12px 0 20px">${activeCase.questionCopy}</p><div class="question-layout"><div class="suspect-list">${activeCase.suspects.map((entry) => `<button class="suspect-button ${entry.id === suspect.id ? "active" : ""}" data-suspect="${entry.id}"><img src="${entry.avatar}" alt="" /><span>${entry.name}<small>${entry.role}</small></span></button>`).join("")}</div><div class="dialogue-box"><div class="dialogue-person"><img src="${suspect.avatar}" alt="${suspect.name}" /><div><h3 class="dialogue-name">${suspect.name}</h3><span class="dialogue-role">${suspect.role}</span></div></div><p class="dialogue-text">${answered ? suspect.answers.time : suspect.line}</p><div class="question-options">${Object.entries({ time: "你在关键时间段在哪里？", motive: "谁最有动机？", key: "你见过关键物证吗？" }).map(([key, label]) => `<button class="question-option ${gameState.answers.has(`${suspect.id}:${key}`) ? "used" : ""}" data-question="${key}" data-suspect="${suspect.id}">${label}</button>`).join("")}</div></div></div>`;
+  $("#gameContent").innerHTML = `<span class="game-kicker">SCRIPTED ROLEPLAY / RESPONSE</span><div class="game-scene game-scene-question"><img src="${activeCase.sceneImage}" alt="${activeCase.title}" /></div><p class="game-copy" style="margin:12px 0 20px">${activeCase.questionCopy}</p><div class="question-layout"><div class="suspect-list">${activeCase.suspects.map((entry) => `<button class="suspect-button ${entry.id === suspect.id ? "active" : ""}" data-suspect="${entry.id}"><img src="${entry.avatar}" alt="" /><span>${entry.name}<small>${entry.role}</small></span></button>`).join("")}</div><div class="dialogue-box"><div class="dialogue-person"><img src="${suspect.avatar}" alt="${suspect.name}" /><div><h3 class="dialogue-name">${suspect.name}</h3><span class="dialogue-role">${suspect.role}</span></div></div><p class="dialogue-text">${answered ? suspect.answers.time : suspect.line}</p><div class="question-options">${Object.entries({ time: t("questionTime"), motive: t("questionMotive"), key: t("questionKey") }).map(([key, label]) => `<button class="question-option ${gameState.answers.has(`${suspect.id}:${key}`) ? "used" : ""}" data-question="${key}" data-suspect="${suspect.id}">${label}</button>`).join("")}</div></div></div>`;
   $$(".suspect-button").forEach((button) => button.addEventListener("click", () => { gameState.selectedSuspect = button.dataset.suspect; renderQuestion(); }));
   $$(".question-option").forEach((button) => button.addEventListener("click", () => askQuestion(button.dataset.suspect, button.dataset.question)));
-  gameAction(null, `${gameState.questionCount} 次质询记录 · 线索越多，判断越接近真相`, gameState.questionCount >= 3 ? "进入最终指认" : "继续质询", gameState.questionCount >= 3 ? renderVote : () => showToast("至少完成三次质询，再做最终指认"));
+  gameAction(null, t("questionHint", { count: gameState.questionCount }), gameState.questionCount >= 3 ? t("enterVote") : (state.locale === "zh" ? "继续质询" : "Keep questioning"), gameState.questionCount >= 3 ? renderVote : () => showToast(t("noEnoughQuestions")));
 }
 
 function askQuestion(suspectId, question) {
@@ -291,23 +492,23 @@ function askQuestion(suspectId, question) {
   renderQuestion();
   const box = $(".dialogue-text");
   box.textContent = suspect.answers[question];
-  showToast(`${suspect.name} 已回应`);
+  showToast(t("localResponse", { name: suspect.name }));
 }
 
 function renderVote() {
   setGameNav("vote");
   $("#gameEyebrow").textContent = "FINAL ACT / NAME THE CULPRIT";
   $("#gameTitle").textContent = "最终指认";
-  $("#gameContent").innerHTML = `<span class="game-kicker">ONE ACCUSATION / ONE TRUTH</span><div class="game-scene game-scene-vote"><img src="${activeCase.sceneImage}" alt="${activeCase.title}现场" /></div><p class="game-lede">${activeCase.voteLead}</p><p class="game-copy">${activeCase.voteCopy}</p><div class="scene-line"></div><div class="vote-grid">${activeCase.suspects.map((suspect) => `<div class="vote-card"><img src="${suspect.avatar}" alt="" /><strong>${suspect.name}</strong><small>${suspect.role}</small><button class="vote-button" data-vote="${suspect.id}">指认 TA ↗</button></div>`).join("")}</div>`;
+  $("#gameContent").innerHTML = `<span class="game-kicker">ONE ACCUSATION / ONE TRUTH</span><div class="game-scene game-scene-vote"><img src="${activeCase.sceneImage}" alt="${activeCase.title}" /></div><p class="game-lede">${activeCase.voteLead}</p><p class="game-copy">${activeCase.voteCopy}</p><div class="scene-line"></div><div class="vote-grid">${activeCase.suspects.map((suspect) => `<div class="vote-card"><img src="${suspect.avatar}" alt="" /><strong>${suspect.name}</strong><small>${suspect.role}</small><button class="vote-button" data-vote="${suspect.id}">${t("accuse")}</button></div>`).join("")}</div>`;
   $$(".vote-button").forEach((button) => button.addEventListener("click", () => castVote(button.dataset.vote)));
-  gameAction(null, "你只有一次正式指认机会。", null, null);
+  gameAction(null, t("voteHint"), null, null);
 }
 
 function castVote(id) {
   if (id !== activeCase.solution) {
     const card = document.querySelector(`[data-vote="${id}"]`).parentElement;
     card.classList.add("wrong-vote");
-    showToast("这个答案无法解释全部证据，再想想");
+    showToast(t("wrong"));
     setTimeout(() => card.classList.remove("wrong-vote"), 350);
     return;
   }
@@ -319,12 +520,12 @@ function renderResult() {
   $("#gameEyebrow").textContent = `CASE CLOSED / ${activeCase.closeStamp}`;
   $("#gameTitle").textContent = "真相浮出水面";
   $("#gameContent").innerHTML = `<div class="result-card"><div class="result-scene"><img src="${activeCase.sceneImage}" alt="${activeCase.title}案件现场" /></div><div class="result-symbol">✓</div><h2>${activeCase.resultTitle}</h2><p>${activeCase.resultText}</p><div class="timeline">${activeCase.timeline.map(([time, text]) => `<div class="timeline-item"><b>${time}</b><span>${text}</span></div>`).join("")}</div></div>`;
-  gameAction(null, `案件已归档 · 你获得「${activeCase.badge}」徽记`, "再玩一次", () => { gameState.discovered = new Set(); gameState.selectedEvidence = null; gameState.answers = new Set(); gameState.questionCount = 0; gameState.selectedSuspect = activeCase.suspects[0].id; renderBriefing(); });
+  gameAction(null, `${t("closed")} · ${activeCase.badge}`, t("replay"), () => { gameState.discovered = new Set(); gameState.selectedEvidence = null; gameState.answers = new Set(); gameState.questionCount = 0; gameState.selectedSuspect = activeCase.suspects[0].id; renderBriefing(); });
 }
 
 function startGame() {
   closeModal();
-  activeCase = caseLibrary[state.selectedScript?.id] || demoCase;
+  activeCase = localizedCase(state.selectedScript?.id || "moon-trial");
   gameState.discovered = new Set();
   gameState.selectedEvidence = null;
   gameState.answers = new Set();
@@ -336,7 +537,8 @@ function startGame() {
   $("#caseNoteText").textContent = activeCase.intro;
   gameState.startedAt = Date.now();
   setView("game");
-  $("#viewLabel").textContent = "正在游玩";
+  $("#viewLabel").textContent = t("gamePlaying");
+  window.scrollTo({ top: 0, behavior: "instant" });
   renderBriefing();
   clearInterval(gameState.timer);
   gameState.timer = setInterval(() => { const seconds = Math.floor((Date.now() - gameState.startedAt) / 1000); $("#gameClock").textContent = `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`; }, 1000);
@@ -344,6 +546,7 @@ function startGame() {
 
 function bindEvents() {
   $$(".nav-item").forEach((item) => item.addEventListener("click", () => setView(item.dataset.view)));
+  $$('[data-locale]').forEach((button) => button.addEventListener("click", () => setLocale(button.dataset.locale)));
   $$(`[data-view-target]`).forEach((item) => item.addEventListener("click", () => setView(item.dataset.viewTarget)));
   $$(".filter-tab").forEach((tab) => tab.addEventListener("click", () => { state.activeFilter = tab.dataset.filter; $$(".filter-tab").forEach((item) => item.classList.toggle("active", item === tab)); renderScripts(); }));
   $("#quickStart").addEventListener("click", () => { setView("rooms"); showToast("已打开试玩入口预览"); });
@@ -363,6 +566,8 @@ function bindEvents() {
 }
 
 bindEvents();
+applyStaticLocale();
 renderRooms();
 loadScripts();
+detectLocale();
 setInterval(refreshSync, 4500);

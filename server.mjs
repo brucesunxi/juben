@@ -172,6 +172,14 @@ const server = http.createServer(async (request, response) => {
       const scripts = await listScripts();
       return sendJson(response, 200, { ...syncState, total: scripts.length });
     }
+    if (url.pathname === "/api/locale" && request.method === "GET") {
+      // Use a country code supplied by the trusted deployment edge. The app
+      // never needs to send a visitor IP to a separate geolocation vendor.
+      const countryCode = ["cf-ipcountry", "x-vercel-ip-country", "x-country-code"]
+        .map((header) => String(request.headers[header] || "").trim().toUpperCase())
+        .find((value) => /^[A-Z]{2}$/.test(value)) || null;
+      return sendJson(response, 200, { country_code: countryCode, source: countryCode ? "edge-header" : "browser-fallback" });
+    }
     if (url.pathname === "/api/scripts/import" && request.method === "POST") {
       const payload = JSON.parse(await readBody(request));
       const script = await saveScript(payload.script || payload, payload.filename || "uploaded.json");
