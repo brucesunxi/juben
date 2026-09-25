@@ -141,7 +141,7 @@ if (!isVercel) {
   }
   setInterval(scanIncoming, 4000).unref();
 }
-await scanIncoming();
+if (!isVercel) await scanIncoming();
 
 async function readBody(request) {
   let body = "";
