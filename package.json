@@ -8,6 +8,7 @@
     "dev": "node server.mjs",
     "start": "node server.mjs",
     "check": "node --check server.mjs && node --check public/app.js",
+    "db:migrate": "node scripts/migrate-neon.mjs",
     "assets:generate": "node scripts/generate-icon.mjs",
     "mobile:sync": "npm run check && npx cap sync",
     "mobile:add:android": "npx cap add android",
@@ -18,7 +19,8 @@
   "dependencies": {
     "@capacitor/android": "^8.0.0",
     "@capacitor/core": "^8.0.0",
-    "@capacitor/ios": "^8.0.0"
+    "@capacitor/ios": "^8.0.0",
+    "pg": "^8.23.0"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.0.0"
