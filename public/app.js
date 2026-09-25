@@ -236,8 +236,12 @@ function renderScripts() {
 }
 
 function renderRooms() {
-  $("#roomGrid").innerHTML = rooms.map((room) => { const localized = state.locale === "en" ? (roomTranslations[room.title] || {}) : room; const title = localized.title || room.title; const host = localized.host || room.host; const mood = localized.mood || room.mood; const wait = localized.wait || room.wait; return `<article class="room-card"><div><span class="tag">${mood}</span><h3>${title}</h3><p>${host}<br />${wait}</p></div><div class="room-actions"><div class="room-players">${room.players}</div><button class="secondary-button join-room" data-room="${title}">${room.players === "6 / 6" ? t("roomWatch") : t("roomJoin")} ↗</button></div></article>`; }).join("");
-  $$(".join-room").forEach((button) => button.addEventListener("click", () => showToast(t("roomRequest", { room: button.dataset.room }))));
+  const roomScriptIds = { "月影审判": "moon-trial", "轨道之外": "orbit-7", "旧港来信": "last-letter", "绒幕之后": "velvet-room" };
+  $("#roomGrid").innerHTML = rooms.map((room) => { const localized = state.locale === "en" ? (roomTranslations[room.title] || {}) : room; const title = localized.title || room.title; const host = localized.host || room.host; const mood = localized.mood || room.mood; const wait = localized.wait || room.wait; return `<article class="room-card"><div><span class="tag">${mood}</span><h3>${title}</h3><p>${host}<br />${wait}</p></div><div class="room-actions"><div class="room-players">${room.players}</div><button class="secondary-button join-room" data-script-id="${roomScriptIds[room.title] || "moon-trial"}">${room.players === "6 / 6" ? t("roomWatch") : t("roomJoin")} ↗</button></div></article>`; }).join("");
+  $$(".join-room").forEach((button) => button.addEventListener("click", () => {
+    state.selectedScript = state.scripts.find((script) => script.id === button.dataset.scriptId) || fallbackScripts.find((script) => script.id === button.dataset.scriptId) || fallbackScripts[0];
+    startGame();
+  }));
 }
 
 function openDetail(id) {
