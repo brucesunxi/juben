@@ -330,8 +330,8 @@ function renderRoomLobby() {
   const script = localizedScript(state.scripts.find((item) => item.id === room.scriptId) || fallbackScripts.find((item) => item.id === room.scriptId) || fallbackScripts[0]);
   $("#roomLobbyTitle").textContent = `${t("roomLobbyTitle")} · ${state.locale === "en" ? script.title : (room.title || script.title)}`;
   $("#roomLobbyStatus").textContent = room.status === "live" ? t("roomLobbyLive") : t("roomLobbyWaiting");
-  $("#roomLobbyMembers").innerHTML = `<div class="room-lobby-count">${t("roomLobbyPlayers")} · ${room.players} / ${room.maxPlayers}</div>${(room.members || []).map((member) => `<div class="room-member"><span class="room-member-avatar">${escapeHtml(String(member.displayName || "?").slice(0, 1))}</span><strong>${escapeHtml(member.displayName)}</strong><small>${member.externalKey === profile.externalKey || member.userId === room.hostUserId ? t("roomHost") : t(member.role === "spectator" ? "roomSpectator" : "roomPlayer")}</small></div>`).join("")}`;
-  const isHost = room.hostExternalKey === profile.externalKey;
+  $("#roomLobbyMembers").innerHTML = `<div class="room-lobby-count">${t("roomLobbyPlayers")} · ${room.players} / ${room.maxPlayers}</div>${(room.members || []).map((member) => `<div class="room-member"><span class="room-member-avatar">${escapeHtml(String(member.displayName || "?").slice(0, 1))}</span><strong>${escapeHtml(member.displayName)}</strong><small>${member.role === "host" ? t("roomHost") : t(member.role === "spectator" ? "roomSpectator" : "roomPlayer")}</small></div>`).join("")}`;
+  const isHost = room.isHost === true;
   const buttons = [];
   if (room.status === "live") buttons.push(`<button class="primary-button" id="roomEnterGame">${t("startTrial")} ↗</button>`);
   else if (isHost) buttons.push(`<button class="primary-button" id="roomStartGame">${t("roomStart")} ↗</button>`);
@@ -356,7 +356,8 @@ async function openRoomLobby(room) {
   clearInterval(state.roomPollTimer);
   state.roomPollTimer = setInterval(async () => {
     try {
-      const response = await apiFetch(`/api/rooms/${encodeURIComponent(room.id)}`);
+      const profile = currentUserProfile();
+      const response = await apiFetch(`/api/rooms/${encodeURIComponent(room.id)}?externalKey=${encodeURIComponent(profile.externalKey)}`);
       if (!response.ok) throw new Error("room closed");
       state.activeRoom = (await response.json()).room;
       renderRoomLobby();

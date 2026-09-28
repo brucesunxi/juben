@@ -156,7 +156,6 @@ const roomSelect = `
          (SELECT count(*)::int FROM room_members active_rm WHERE active_rm.room_id = r.id AND active_rm.left_at IS NULL) AS players,
          COALESCE((SELECT json_agg(json_build_object(
            'userId', member.user_id,
-           'externalKey', member_user.external_key,
            'displayName', member_user.display_name,
            'role', member.member_role,
            'joinedAt', member.joined_at
@@ -172,16 +171,15 @@ const roomSelect = `
        LIMIT 1
     ) latest_session ON TRUE`;
 
-function rowToRoom(row) {
+function rowToRoom(row, viewerExternalKey = "") {
   return {
     id: row.id,
     scriptId: row.script_id,
     title: row.title,
     subtitle: row.subtitle,
     cover: row.cover,
-    hostUserId: row.host_user_id,
-    hostExternalKey: row.host_external_key,
     hostName: row.host_name || "Night Watcher",
+    isHost: Boolean(viewerExternalKey && row.host_external_key === viewerExternalKey),
     status: row.status,
     maxPlayers: row.max_players,
     players: row.players,
@@ -200,10 +198,10 @@ function rowToRoom(row) {
   };
 }
 
-async function getRoom(client, roomId) {
+async function getRoom(client, roomId, viewerExternalKey = "") {
   const result = await client.query(`${roomSelect} WHERE r.id = $1`, [roomId]);
   if (!result.rows[0]) throw new RoomError("ROOM_NOT_FOUND", "Room not found");
-  return rowToRoom(result.rows[0]);
+  return rowToRoom(result.rows[0], viewerExternalKey);
 }
 
 async function inTransaction(callback) {
@@ -221,11 +219,22 @@ async function inTransaction(callback) {
   }
 }
 
-export async function listDatabaseRooms(status = "waiting") {
+export async function listDatabaseRooms(status = "waiting", viewerExternalKey = "") {
   if (!pool) return null;
   const values = status && ["waiting", "live", "closed"].includes(status) ? [status] : [];
   const result = await pool.query(`${roomSelect}${values.length ? " WHERE r.status = $1" : ""} ORDER BY r.created_at DESC LIMIT 50`, values);
-  return result.rows.map(rowToRoom);
+  return result.rows.map((row) => rowToRoom(row, viewerExternalKey));
+}
+
+export async function getDatabaseRoom(roomId, profile = {}) {
+  if (!pool) return null;
+  const client = await pool.connect();
+  try {
+    const room = await getRoom(client, roomId, String(profile.externalKey || ""));
+    return room;
+  } finally {
+    client.release();
+  }
 }
 
 export async function createDatabaseRoom(scriptId, profile = {}, maxPlayers = 6) {
@@ -239,7 +248,7 @@ export async function createDatabaseRoom(scriptId, profile = {}, maxPlayers = 6)
       [scriptId, user.id, Math.min(Math.max(Number(maxPlayers) || 6, 2), 12)]
     );
     await client.query("INSERT INTO room_members (room_id, user_id, member_role) VALUES ($1, $2, 'host')", [room.rows[0].id, user.id]);
-    return getRoom(client, room.rows[0].id);
+    return getRoom(client, room.rows[0].id, user.external_key);
   });
 }
 
@@ -262,7 +271,7 @@ export async function joinDatabaseRoom(roomId, profile = {}, memberRole = "playe
        ON CONFLICT (room_id, user_id) DO UPDATE SET member_role = EXCLUDED.member_role, joined_at = now(), left_at = NULL`,
       [roomId, user.id, memberRole]
     );
-    return getRoom(client, roomId);
+    return getRoom(client, roomId, user.external_key);
   });
 }
 
@@ -271,7 +280,7 @@ export async function leaveDatabaseRoom(roomId, profile = {}) {
   return inTransaction(async (client) => {
     const user = await ensureUser(client, profile);
     await client.query("UPDATE room_members SET left_at = now() WHERE room_id = $1 AND user_id = $2", [roomId, user.id]);
-    return getRoom(client, roomId);
+    return getRoom(client, roomId, user.external_key);
   });
 }
 
@@ -283,13 +292,13 @@ export async function startDatabaseRoom(roomId, profile = {}) {
     if (!host.rows[0]) throw new RoomError("ROOM_NOT_FOUND", "Room not found");
     if (host.rows[0].host_user_id !== user.id) throw new RoomError("NOT_HOST", "Only the host can start the room");
     if (host.rows[0].status === "closed") throw new RoomError("ROOM_CLOSED", "Room is closed");
-    if (host.rows[0].status === "live") return getRoom(client, roomId);
+    if (host.rows[0].status === "live") return getRoom(client, roomId, user.external_key);
     await client.query("UPDATE rooms SET status = 'live', started_at = COALESCE(started_at, now()) WHERE id = $1", [roomId]);
     await client.query(
       "INSERT INTO game_sessions (script_id, room_id, mode, locale, phase, state) VALUES ($1, $2, 'room', $3, 'briefing', $4::jsonb)",
       [host.rows[0].script_id, roomId, user.locale, JSON.stringify({ phase: "briefing", discovered: [], questionCount: 0, answers: [], votes: [] })]
     );
-    return getRoom(client, roomId);
+    return getRoom(client, roomId, user.external_key);
   });
 }
 
@@ -301,7 +310,7 @@ export async function closeDatabaseRoom(roomId, profile = {}) {
     if (!room.rows[0]) throw new RoomError("ROOM_NOT_FOUND", "Room not found");
     if (room.rows[0].host_user_id !== user.id) throw new RoomError("NOT_HOST", "Only the host can close the room");
     await client.query("UPDATE rooms SET status = 'closed', ended_at = COALESCE(ended_at, now()) WHERE id = $1", [roomId]);
-    return getRoom(client, roomId);
+    return getRoom(client, roomId, user.external_key);
   });
 }
 

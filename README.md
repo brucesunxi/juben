@@ -4,6 +4,8 @@ Nocturne 是一个高质感线上剧本推理社交 MVP，包含：
 
 - 剧本发现、分类筛选和详情弹窗
 - 房间入口预览与单人试玩
+- Neon 房间大厅：创建、加入、退出、房主开局与关闭
+- 房间内多人游戏状态同步：阶段、搜证、质询和投票事件通过 `game_sessions` / `game_events` 增量同步
 - 创作后台与剧本文件导入
 - `incoming/` 文件夹自动扫描并写入 `data/scripts/`
 - JSON / Markdown 剧本解析
@@ -25,6 +27,18 @@ npm run dev
 界面支持中文和英文，右上角可以手动切换，选择会保存在当前设备。首次打开时，应用请求同源的 `/api/locale`：如果部署边缘提供 `CF-IPCountry`、`X-Vercel-IP-Country` 或 `X-Country-Code`，中国大陆默认中文，其他国家/地区默认英文；没有地区头时使用浏览器语言作为兜底。Capacitor 生产构建可在 `public/runtime-config.js` 将 `NOCTURNE_LOCALE_ENDPOINT` 指向部署 API。
 
 导入剧本可增加 `i18n.en` 对象，为 `title`、`subtitle`、`genre`、`tags`、`description` 和 `status` 提供英文内容；未提供时会保留原始剧本文本。
+
+## Neon 数据库
+
+生产服务使用 Vercel 的 `DATABASE_URL` 连接 Neon。数据库结构位于 [db/schema.sql](db/schema.sql)，包括用户、剧本、剧本版本、角色、证物、时间线、房间、房间成员、游戏 session 和事件日志。首次部署后，服务会以幂等方式补齐 `game_events.user_id` 兼容字段；不会删除或覆盖已有剧本和房间数据。
+
+生产接口可用性检查：
+
+```text
+GET https://juben-lyart.vercel.app/api/health
+GET https://juben-lyart.vercel.app/api/scripts
+GET https://juben-lyart.vercel.app/api/rooms?status=waiting
+```
 
 ## Android / iOS 打包
 
@@ -58,4 +72,4 @@ JSON 最小格式：
 }
 ```
 
-当前版本使用原生 Node HTTP 服务和内置剧本；试玩关卡为本地脚本化演绎。实时语音、真实多人匹配、账号和支付尚未接入，下一阶段可以基于现有界面和剧本数据模型继续扩展。
+当前版本使用原生 Node HTTP 服务和 Neon 持久化数据；剧本内容和推理关卡已可独立试玩，房间内的核心游戏状态已支持多人轮询同步。实时语音、第三方账号登录、支付、举报审核和运营后台权限仍属于商业化上线前的后续模块。

@@ -10,6 +10,7 @@ import {
   appendDatabaseGameEvent,
   databaseEnabled,
   databaseHealth,
+  getDatabaseRoom,
   getDatabaseRoomSession,
   joinDatabaseRoom,
   leaveDatabaseRoom,
@@ -261,8 +262,7 @@ const server = http.createServer(async (request, response) => {
     }
     if (roomMatch && request.method === "GET") {
       if (!databaseEnabled) return sendJson(response, 404, { error: "Room not found" });
-      const rooms = await listDatabaseRooms(null);
-      const room = rooms.find((entry) => entry.id === decodeURIComponent(roomMatch[1]));
+      const room = await getDatabaseRoom(decodeURIComponent(roomMatch[1]), { externalKey: url.searchParams.get("externalKey") || "" });
       return room ? sendJson(response, 200, { room }) : sendJson(response, 404, { error: "Room not found" });
     }
     if (url.pathname === "/api/locale" && request.method === "GET") {
