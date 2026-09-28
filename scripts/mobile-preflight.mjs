@@ -57,6 +57,6 @@ const androidSigningReady = signingKeys.every((key) => String(process.env[key] |
 console.log("\nBuild commands");
 console.log("--------------");
 console.log(javaReady ? "Android: ./android/gradlew :app:bundleRelease" : "Android: install a JDK and set JAVA_HOME before building the signed AAB");
-console.log(xcodeReady ? "iOS: open ios/App/App.xcworkspace in Xcode and Archive" : "iOS: install Xcode command line tools before archiving");
+console.log(xcodeReady ? "iOS: open ios/App/App.xcodeproj in Xcode and Archive" : "iOS: install Xcode command line tools before archiving");
 console.log(`${androidSigningReady ? "READY" : "MISSING"}   Android release signing: ${androidSigningReady ? "environment variables configured" : "set ANDROID_KEYSTORE_PATH, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS and ANDROID_KEY_PASSWORD"}`);
 console.log("The final store build still requires real signing credentials, store metadata, screenshots, privacy URL and review notes.");
