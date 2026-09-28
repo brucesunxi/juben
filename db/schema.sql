@@ -98,12 +98,14 @@ CREATE TABLE IF NOT EXISTS room_members (
   user_id UUID NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
   member_role TEXT NOT NULL DEFAULT 'player' CHECK (member_role IN ('host', 'player', 'spectator')),
   character_key TEXT,
+  ready BOOLEAN NOT NULL DEFAULT FALSE,
   joined_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   left_at TIMESTAMPTZ,
   PRIMARY KEY (room_id, user_id)
 );
 
 ALTER TABLE room_members ADD COLUMN IF NOT EXISTS character_key TEXT;
+ALTER TABLE room_members ADD COLUMN IF NOT EXISTS ready BOOLEAN NOT NULL DEFAULT FALSE;
 
 CREATE TABLE IF NOT EXISTS room_messages (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

@@ -17,6 +17,7 @@ const pool = databaseEnabled
 const databaseShapeReady = databaseEnabled
   ? pool.query("ALTER TABLE game_events ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES app_users(id) ON DELETE SET NULL")
     .then(() => pool.query("ALTER TABLE room_members ADD COLUMN IF NOT EXISTS character_key TEXT"))
+    .then(() => pool.query("ALTER TABLE room_members ADD COLUMN IF NOT EXISTS ready BOOLEAN NOT NULL DEFAULT FALSE"))
     .then(() => pool.query(`CREATE TABLE IF NOT EXISTS room_messages (
       id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
       room_id UUID NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
@@ -168,6 +169,8 @@ const roomSelect = `
            'displayName', member_user.display_name,
            'role', member.member_role,
            'characterKey', member.character_key,
+           'ready', member.ready,
+           'externalKey', member_user.external_key,
            'joinedAt', member.joined_at
          ) ORDER BY member.joined_at) FROM room_members member JOIN app_users member_user ON member_user.id = member.user_id WHERE member.room_id = r.id AND member.left_at IS NULL), '[]'::json) AS members
     FROM rooms r
@@ -206,7 +209,10 @@ function rowToRoom(row, viewerExternalKey = "") {
     } : null,
     // Character assignments are private. They are returned only by the
     // authenticated room-session endpoint, never by public room metadata.
-    members: (row.members || []).map((member) => ({ ...member, characterKey: null }))
+    members: (row.members || []).map((member) => {
+      const { externalKey, ...safeMember } = member;
+      return { ...safeMember, characterKey: null, isSelf: Boolean(viewerExternalKey && externalKey === viewerExternalKey) };
+    })
   };
 }
 
@@ -294,7 +300,7 @@ export async function joinDatabaseRoom(roomId, profile = {}, memberRole = "playe
     await client.query(
       `INSERT INTO room_members (room_id, user_id, member_role, left_at)
        VALUES ($1, $2, $3, NULL)
-       ON CONFLICT (room_id, user_id) DO UPDATE SET member_role = EXCLUDED.member_role, joined_at = now(), left_at = NULL`,
+       ON CONFLICT (room_id, user_id) DO UPDATE SET member_role = EXCLUDED.member_role, joined_at = now(), left_at = NULL, ready = FALSE`,
       [roomId, user.id, memberRole]
     );
     return getRoom(client, roomId, user.external_key);
@@ -351,6 +357,19 @@ export async function closeDatabaseRoom(roomId, profile = {}) {
     if (!room.rows[0]) throw new RoomError("ROOM_NOT_FOUND", "Room not found");
     if (room.rows[0].host_user_id !== user.id) throw new RoomError("NOT_HOST", "Only the host can close the room");
     await client.query("UPDATE rooms SET status = 'closed', ended_at = COALESCE(ended_at, now()) WHERE id = $1", [roomId]);
+    return getRoom(client, roomId, user.external_key);
+  });
+}
+
+export async function setDatabaseRoomReady(roomId, profile = {}, ready = true) {
+  if (!pool) return null;
+  await waitForDatabaseShape();
+  return inTransaction(async (client) => {
+    const { user } = await requireRoomMember(client, roomId, profile);
+    const room = await client.query("SELECT status FROM rooms WHERE id = $1", [roomId]);
+    if (!room.rows[0]) throw new RoomError("ROOM_NOT_FOUND", "Room not found");
+    if (room.rows[0].status !== "waiting") throw new RoomError("ROOM_LIVE", "This room has already started");
+    await client.query("UPDATE room_members SET ready = $3 WHERE room_id = $1 AND user_id = $2 AND left_at IS NULL", [roomId, user.id, Boolean(ready)]);
     return getRoom(client, roomId, user.external_key);
   });
 }

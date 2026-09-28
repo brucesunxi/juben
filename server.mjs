@@ -15,6 +15,7 @@ import {
   getDatabaseRoom,
   getDatabaseRoomMessages,
   getDatabaseRoomSession,
+  setDatabaseRoomReady,
   joinDatabaseRoom,
   leaveDatabaseRoom,
   listDatabaseRooms,
@@ -230,7 +231,7 @@ const server = http.createServer(async (request, response) => {
       const room = await createDatabaseRoom(payload.scriptId || payload.script_id, payload.user || payload.profile, payload.maxPlayers);
       return sendJson(response, 201, { room });
     }
-    const roomAction = url.pathname.match(/^\/api\/rooms\/([^/]+)\/(join|leave|start|close)$/);
+    const roomAction = url.pathname.match(/^\/api\/rooms\/([^/]+)\/(join|leave|start|close|ready)$/);
     if (roomAction && request.method === "POST") {
       if (!databaseEnabled) return sendJson(response, 503, { error: "Rooms require DATABASE_URL to be configured." });
       const payload = JSON.parse(await readBody(request));
@@ -241,7 +242,8 @@ const server = http.createServer(async (request, response) => {
         ? await joinDatabaseRoom(roomId, user, payload.memberRole === "spectator" ? "spectator" : "player")
         : action === "leave" ? await leaveDatabaseRoom(roomId, user)
           : action === "close" ? await closeDatabaseRoom(roomId, user)
-            : await startDatabaseRoom(roomId, user);
+            : action === "ready" ? await setDatabaseRoomReady(roomId, user, payload.ready !== false)
+              : await startDatabaseRoom(roomId, user);
       return sendJson(response, 200, { room });
     }
     const roomMatch = url.pathname.match(/^\/api\/rooms\/([^/]+)$/);
