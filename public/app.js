@@ -331,6 +331,7 @@ function applyStaticLocale() {
   $("#modalCover .card-kicker").textContent = t("privateCase");
   $("#modalSubtitle").textContent = t("defaultSubtitle");
   $("#modalStart").innerHTML = `${t("detailStart")} <span>↗</span>`;
+  $("#modalMatch").innerHTML = `${t("roomQuickMatch")} <span>↗</span>`;
   $("#modalRoom").innerHTML = `${state.locale === "zh" ? "创建房间" : "Create room"} <span>↗</span>`;
   $(".player-card span").textContent = t("yourRole");
   $(".back-button").textContent = t("backToLibrary");
@@ -1136,6 +1137,7 @@ async function createRoom(scriptId = "moon-trial") {
 }
 
 async function quickMatch(scriptId = "moon-trial") {
+  closeModal();
   try {
     const selectedScript = state.scripts.find((script) => script.id === scriptId) || fallbackScripts.find((script) => script.id === scriptId);
     const maxPlayers = Math.min(Math.max(Number(selectedScript?.players) || 6, 2), 8);
@@ -2007,6 +2009,7 @@ function bindEvents() {
   $("#modalClose").addEventListener("click", closeModal);
   $("#modalBackdrop").addEventListener("click", (event) => { if (event.target.id === "modalBackdrop") closeModal(); });
   $("#modalStart").addEventListener("click", startGame);
+  $("#modalMatch").addEventListener("click", () => quickMatch(state.selectedScript?.id || "moon-trial"));
   $("#modalRoom").addEventListener("click", () => createRoom(state.selectedScript?.id || "moon-trial"));
   $("#modalFavorite").addEventListener("click", () => toggleFavorite(state.selectedScript?.id || ""));
   $("#gameRoomButton").addEventListener("click", () => { if (state.activeRoom) openRoomLobby(state.activeRoom); });
