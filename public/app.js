@@ -89,6 +89,22 @@ const translations = {
 
 translations.zh.roomRestored = "已恢复你的房间";
 translations.en.roomRestored = "Your room has been restored";
+translations.zh.roomVoteTitle = "房间指认结果";
+translations.en.roomVoteTitle = "Room accusation results";
+translations.zh.roomVoteConsensus = "票数汇总";
+translations.en.roomVoteConsensus = "Vote tally";
+translations.zh.roomVoteYourChoice = "你的指认";
+translations.en.roomVoteYourChoice = "Your accusation";
+translations.zh.roomVoteCorrect = "指认正确";
+translations.en.roomVoteCorrect = "Correct accusation";
+translations.zh.roomVoteWrong = "指认偏离真相";
+translations.en.roomVoteWrong = "The truth was elsewhere";
+translations.zh.roomVoteVotes = "{count} 票";
+translations.en.roomVoteVotes = "{count} vote(s)";
+translations.zh.roomVoteNoVotes = "暂无投票记录";
+translations.en.roomVoteNoVotes = "No votes recorded";
+translations.zh.roomVoteReveal = "真相：{name}";
+translations.en.roomVoteReveal = "Truth: {name}";
 
 function t(key, vars = {}) {
   let value = translations[state.locale]?.[key] ?? translations.zh[key] ?? key;
@@ -1377,7 +1393,7 @@ function localizedCase(caseId) {
 }
 
 let activeCase = demoCase;
-const gameState = { phase: "briefing", discovered: new Set(), selectedEvidence: null, selectedSuspect: "shen", answers: new Set(), questionCount: 0, votedSuspect: null, startedAt: 0, timer: null, nextAction: null, roomId: null, sessionId: null, characterKey: "player", playerUserId: null, spectator: false, eventCursor: 0, roomPollTimer: null, lastEmittedPhase: null };
+const gameState = { phase: "briefing", discovered: new Set(), selectedEvidence: null, selectedSuspect: "shen", answers: new Set(), questionCount: 0, votedSuspect: null, roomVotes: [], startedAt: 0, timer: null, nextAction: null, roomId: null, sessionId: null, characterKey: "player", playerUserId: null, spectator: false, eventCursor: 0, roomPollTimer: null, lastEmittedPhase: null };
 
 function currentRoleProfile() {
   const key = gameState.characterKey || "player";
@@ -1475,6 +1491,9 @@ function applyRoomEvent(event) {
     gameState.answers.add(payload.answerKey);
     gameState.questionCount += 1;
   }
+  if (event.type === "vote_cast" && payload.suspectId && event.userId) {
+    gameState.roomVotes = [...gameState.roomVotes.filter((vote) => vote.userId !== String(event.userId)), { suspectId: String(payload.suspectId), userId: String(event.userId) }];
+  }
   if (event.type === "result_shown") gameState.phase = "result";
 }
 
@@ -1494,9 +1513,12 @@ async function syncRoomSession() {
     const remoteState = data.session?.state || {};
     if (Array.isArray(remoteState.discovered)) remoteState.discovered.forEach((id) => gameState.discovered.add(String(id)));
     if (Array.isArray(remoteState.answers)) remoteState.answers.forEach((answer) => gameState.answers.add(String(answer)));
-    if (Array.isArray(remoteState.votes) && gameState.playerUserId) {
-      const ownVote = remoteState.votes.find((vote) => vote.userId === gameState.playerUserId);
-      if (ownVote?.suspectId) gameState.votedSuspect = String(ownVote.suspectId);
+    if (Array.isArray(remoteState.votes)) {
+      gameState.roomVotes = remoteState.votes.map((vote) => ({ suspectId: String(vote.suspectId || ""), userId: vote.userId ? String(vote.userId) : null })).filter((vote) => vote.suspectId);
+      if (gameState.playerUserId) {
+        const ownVote = gameState.roomVotes.find((vote) => vote.userId === gameState.playerUserId);
+        if (ownVote?.suspectId) gameState.votedSuspect = String(ownVote.suspectId);
+      }
     }
     gameState.questionCount = Math.max(gameState.questionCount, Number(remoteState.questionCount || 0));
     for (const event of data.events || []) applyRoomEvent(event);
@@ -1527,6 +1549,9 @@ async function emitRoomEvent(type, payload = {}) {
     const data = await response.json();
     if (data.event?.sequence) gameState.eventCursor = Math.max(gameState.eventCursor, Number(data.event.sequence));
     if (data.session?.id) gameState.sessionId = data.session.id;
+    if (Array.isArray(data.session?.state?.votes)) {
+      gameState.roomVotes = data.session.state.votes.map((vote) => ({ suspectId: String(vote.suspectId || ""), userId: vote.userId ? String(vote.userId) : null })).filter((vote) => vote.suspectId);
+    }
     if (data.session?.phase && data.session.phase !== gameState.phase && document.querySelector("#gameView.active-view")) {
       gameState.phase = data.session.phase;
       renderCurrentGamePhase();
@@ -1627,13 +1652,30 @@ function castVote(id) {
   renderResult();
 }
 
+function renderRoomVoteSummary() {
+  if (!gameState.roomId) return "";
+  const votes = Array.isArray(gameState.roomVotes) ? gameState.roomVotes : [];
+  const counts = new Map();
+  votes.forEach((vote) => counts.set(vote.suspectId, (counts.get(vote.suspectId) || 0) + 1));
+  const ownVote = activeCase.suspects.find((suspect) => suspect.id === gameState.votedSuspect);
+  const rows = activeCase.suspects
+    .map((suspect) => ({ suspect, count: counts.get(suspect.id) || 0 }))
+    .filter((row) => row.count > 0)
+    .sort((a, b) => b.count - a.count)
+    .map(({ suspect, count }) => `<div class="room-vote-row${suspect.id === activeCase.solution ? " truth" : ""}"><span>${escapeHtml(suspect.name)}</span><strong>${t("roomVoteVotes", { count })}</strong></div>`)
+    .join("");
+  const yourVote = ownVote ? escapeHtml(ownVote.name) : t("roomVoteNoVotes");
+  const voteResult = ownVote?.id === activeCase.solution ? t("roomVoteCorrect") : t("roomVoteWrong");
+  return `<section class="room-vote-summary"><div class="room-vote-summary-head"><span class="game-kicker">${t("roomVoteTitle")}</span><strong>${t("roomVoteReveal", { name: escapeHtml(activeCase.solutionName || activeCase.solution) })}</strong></div><div class="room-vote-grid"><div><span>${t("roomVoteConsensus")}</span>${rows || `<small>${t("roomVoteNoVotes")}</small>`}</div><div><span>${t("roomVoteYourChoice")}</span><strong>${yourVote}</strong><small class="${ownVote?.id === activeCase.solution ? "correct" : "wrong"}">${voteResult}</small></div></div></section>`;
+}
+
 function renderResult() {
   rememberArchive(activeCase.id);
   renderLibrary();
   setGameNav("result");
   $("#gameEyebrow").textContent = `${t("gameClosedKicker")} / ${activeCase.closeStamp}`;
   $("#gameTitle").textContent = t("gameTitleResult");
-  $("#gameContent").innerHTML = `<div class="result-card"><div class="result-scene"><img src="${activeCase.sceneImage}" alt="${activeCase.title} ${t("sceneAlt")}" /></div><div class="result-symbol">✓</div><h2>${activeCase.resultTitle}</h2><p>${activeCase.resultText}</p><div class="timeline">${activeCase.timeline.map(([time, text]) => `<div class="timeline-item"><b>${time}</b><span>${text}</span></div>`).join("")}</div></div>`;
+  $("#gameContent").innerHTML = `<div class="result-card"><div class="result-scene"><img src="${activeCase.sceneImage}" alt="${activeCase.title} ${t("sceneAlt")}" /></div><div class="result-symbol">✓</div><h2>${activeCase.resultTitle}</h2><p>${activeCase.resultText}</p>${renderRoomVoteSummary()}<div class="timeline">${activeCase.timeline.map(([time, text]) => `<div class="timeline-item"><b>${time}</b><span>${text}</span></div>`).join("")}</div></div>`;
   gameAction(null, `${t("closed")} · ${activeCase.badge}`, gameState.roomId ? null : t("replay"), () => { gameState.discovered = new Set(); gameState.selectedEvidence = null; gameState.answers = new Set(); gameState.questionCount = 0; gameState.votedSuspect = null; gameState.selectedSuspect = activeCase.suspects[0].id; renderBriefing(); });
 }
 
@@ -1654,6 +1696,7 @@ function startGame(options = {}) {
   gameState.answers = new Set();
   gameState.questionCount = 0;
   gameState.votedSuspect = null;
+  gameState.roomVotes = [];
   gameState.selectedSuspect = activeCase.suspects[0].id;
   gameState.characterKey = options.characterKey || "player";
   $("#gameCaseLabel").textContent = activeCase.caseLabel || "CASE 014 / MOONLIGHT";
