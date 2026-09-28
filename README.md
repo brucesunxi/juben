@@ -64,7 +64,7 @@ npm run mobile:sync
 npm run mobile:preflight
 ```
 
-然后使用 Android Studio 生成签名的 AAB，或使用 Xcode 生成 Archive 并提交 TestFlight / App Store。当前 `public/runtime-config.js` 已配置生产 HTTPS API 地址，服务端默认允许 `capacitor://localhost` 和 `http://localhost`；如果更换域名，需要同步修改 API 地址和 `CORS_ORIGINS`。核心单人试玩仍内置在应用中，房间与剧本后台通过 Neon 服务同步。
+然后使用 Android Studio 生成签名的 AAB，或使用 Xcode 生成 Archive 并提交 TestFlight / App Store。Android Release 支持通过 `ANDROID_KEYSTORE_PATH`、`ANDROID_KEYSTORE_PASSWORD`、`ANDROID_KEY_ALIAS` 和 `ANDROID_KEY_PASSWORD` 注入正式签名，未配置时只会生成未签名 AAB。当前 `public/runtime-config.js` 已配置生产 HTTPS API 地址，服务端默认允许 `capacitor://localhost` 和 `http://localhost`；如果更换域名，需要同步修改 API 地址和 `CORS_ORIGINS`。核心单人试玩仍内置在应用中，房间与剧本后台通过 Neon 服务同步。
 
 `npm run mobile:preflight` 会检查 Node、Capacitor、Java、Xcode 命令行工具、原生工程、生产 API 配置和隐私页面。Android 构建需要 JDK；iOS 模拟器 Debug 构建已验证通过，正式 Archive 仍需要在 Xcode 中配置 Team、证书和 Provisioning Profile。
 

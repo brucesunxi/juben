@@ -1,5 +1,13 @@
 apply plugin: 'com.android.application'
 
+def releaseSigningValues = [
+    storeFile: System.getenv('ANDROID_KEYSTORE_PATH'),
+    storePassword: System.getenv('ANDROID_KEYSTORE_PASSWORD'),
+    keyAlias: System.getenv('ANDROID_KEY_ALIAS'),
+    keyPassword: System.getenv('ANDROID_KEY_PASSWORD')
+]
+def releaseSigningEnabled = releaseSigningValues.values().every { value -> value && value.trim() }
+
 android {
     namespace = "com.nocturne.scriptmystery"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -16,12 +24,27 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        if (releaseSigningEnabled) {
+            release {
+                storeFile file(releaseSigningValues.storeFile)
+                storePassword releaseSigningValues.storePassword
+                keyAlias releaseSigningValues.keyAlias
+                keyPassword releaseSigningValues.keyPassword
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (releaseSigningEnabled) signingConfig signingConfigs.release
         }
     }
+}
+
+if (!releaseSigningEnabled) {
+    logger.lifecycle('Android release signing is not configured; bundleRelease will produce an unsigned AAB.')
 }
 
 repositories {
