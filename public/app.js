@@ -347,7 +347,7 @@ function applyStaticLocale() {
   $(".note-a").innerHTML = t("heroNoteTop");
   $(".section-heading .eyebrow").textContent = t("curatedCases");
   $(".section-heading h2").textContent = t("picksForYou");
-  const filterLabels = { all: "all", 悬疑: "mystery", 情感: "emotion", 科幻: "sciFi" };
+  const filterLabels = { all: "all", mystery: "mystery", emotion: "emotion", sciFi: "sciFi" };
   $$(".filter-tab").forEach((tab) => { tab.textContent = t(filterLabels[tab.dataset.filter] || "all"); });
   const scriptSearch = $("#scriptSearch");
   if (scriptSearch) {
@@ -537,8 +537,15 @@ function coverAsset(script) {
 function renderScripts() {
   const filter = state.activeFilter;
   const query = state.searchQuery.trim().toLocaleLowerCase();
+  const filterTerms = {
+    all: [],
+    mystery: state.locale === "en" ? ["mystery"] : ["悬疑"],
+    emotion: state.locale === "en" ? ["drama", "emotion"] : ["情感"],
+    sciFi: state.locale === "en" ? ["sci-fi", "science fiction"] : ["科幻"]
+  };
   const scripts = state.scripts.map((rawScript) => ({ rawScript, script: localizedScript(rawScript) })).filter(({ rawScript, script }) => {
-    const matchesFilter = filter === "all" || script.genre?.includes(filter) || script.tags?.some((tag) => tag.includes(filter));
+    const searchableTags = [script.genre, ...(script.tags || [])].filter(Boolean).join(" ").toLocaleLowerCase();
+    const matchesFilter = filter === "all" || (filterTerms[filter] || []).some((term) => searchableTags.includes(term.toLocaleLowerCase()));
     const searchable = [script.title, script.subtitle, script.genre, script.description, script.status, ...(script.tags || []), rawScript.title, rawScript.subtitle, rawScript.genre, rawScript.description, rawScript.status, ...(rawScript.tags || []), JSON.stringify(rawScript.i18n || {})].filter(Boolean).join(" ").toLocaleLowerCase();
     return matchesFilter && (!query || searchable.includes(query));
   }).map(({ script }) => script);
