@@ -204,7 +204,7 @@ const roomSelect = `
          r.created_at, r.started_at, r.ended_at,
          latest_session.id AS session_id, latest_session.phase AS session_phase, latest_session.state AS session_state,
          latest_session.started_at AS session_started_at, latest_session.ended_at AS session_ended_at,
-         (SELECT count(*)::int FROM room_members active_rm WHERE active_rm.room_id = r.id AND active_rm.left_at IS NULL) AS players,
+         (SELECT count(*)::int FROM room_members active_rm WHERE active_rm.room_id = r.id AND active_rm.left_at IS NULL AND active_rm.member_role <> 'spectator') AS players,
          COALESCE((SELECT json_agg(json_build_object(
            'userId', member.user_id,
            'displayName', member_user.display_name,
@@ -335,7 +335,7 @@ export async function joinDatabaseRoom(roomId, profile = {}, memberRole = "playe
     const room = roomResult.rows[0];
     if (!room) throw new RoomError("ROOM_NOT_FOUND", "Room not found");
     if (room.status === "closed") throw new RoomError("ROOM_CLOSED", "Room is closed");
-    if (room.status === "live") throw new RoomError("ROOM_LIVE", "This room has already started");
+    if (room.status === "live" && memberRole !== "spectator") throw new RoomError("ROOM_LIVE", "This room has already started");
     const user = await ensureUser(client, profile);
     const existing = await client.query("SELECT member_role FROM room_members WHERE room_id = $1 AND user_id = $2", [roomId, user.id]);
     if (!existing.rows[0] || existing.rows[0].member_role !== "host") {
@@ -412,7 +412,8 @@ export async function setDatabaseRoomReady(roomId, profile = {}, ready = true) {
   if (!pool) return null;
   await waitForDatabaseShape();
   return inTransaction(async (client) => {
-    const { user } = await requireRoomMember(client, roomId, profile);
+    const { user, role } = await requireRoomMember(client, roomId, profile);
+    if (role === "spectator") throw new RoomError("ROLE_FORBIDDEN", "Spectators cannot change the game state");
     const room = await client.query("SELECT status FROM rooms WHERE id = $1", [roomId]);
     if (!room.rows[0]) throw new RoomError("ROOM_NOT_FOUND", "Room not found");
     if (room.rows[0].status !== "waiting") throw new RoomError("ROOM_LIVE", "This room has already started");
@@ -697,7 +698,8 @@ export async function appendDatabaseGameEvent(roomId, profile = {}, eventType, p
   await waitForDatabaseShape();
   if (!gameEventTypes.has(eventType)) throw new RoomError("INVALID_EVENT", "Unsupported game event");
   return inTransaction(async (client) => {
-    const { user } = await requireRoomMember(client, roomId, profile);
+    const { user, role } = await requireRoomMember(client, roomId, profile);
+    if (role === "spectator") throw new RoomError("ROLE_FORBIDDEN", "Spectators cannot change the game state");
     const session = await getLatestSession(client, roomId, true);
     const currentState = session.state || {};
     const nextState = reduceGameState(currentState, eventType, payload);

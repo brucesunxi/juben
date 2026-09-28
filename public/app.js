@@ -297,10 +297,14 @@ function currentUserProfile() {
 
 async function loadRooms() {
   try {
-    const response = await apiFetch("/api/rooms?status=waiting");
-    if (!response.ok) throw new Error("rooms unavailable");
-    const data = await response.json();
-    state.liveRooms = Array.isArray(data.rooms) ? data.rooms : [];
+    const profile = currentUserProfile();
+    const [waitingResponse, liveResponse] = await Promise.all([
+      apiFetch(`/api/rooms?status=waiting&externalKey=${encodeURIComponent(profile.externalKey)}`),
+      apiFetch(`/api/rooms?status=live&externalKey=${encodeURIComponent(profile.externalKey)}`)
+    ]);
+    if (!waitingResponse.ok || !liveResponse.ok) throw new Error("rooms unavailable");
+    const [waitingData, liveData] = await Promise.all([waitingResponse.json(), liveResponse.json()]);
+    state.liveRooms = [...(Array.isArray(waitingData.rooms) ? waitingData.rooms : []), ...(Array.isArray(liveData.rooms) ? liveData.rooms : [])];
   } catch {
     state.liveRooms = [];
   }
@@ -403,15 +407,19 @@ function renderRooms() {
     const script = localizedScript(state.scripts.find((item) => item.id === room.scriptId) || fallbackScripts.find((item) => item.id === room.scriptId) || fallbackScripts[0]);
     const spots = Math.max(0, Number(room.spotsLeft || 0));
     const isFull = spots === 0;
+    const isLive = room.status === "live";
+    const previewOnly = !isLive && isFull;
     const title = state.locale === "en" ? script.title : (room.title || script.title);
-    return `<article class="room-card live-room-card"><div><span class="tag">${escapeHtml(isFull ? t("roomFull") : t("livePlay"))}</span><h3>${escapeHtml(title)}</h3><p>${escapeHtml(room.hostName || t("roomHost"))}<br />${isFull ? t("roomFull") : t("roomMissing", { count: spots })}</p></div><div class="room-actions"><div class="room-players">${escapeHtml(room.players)} / ${escapeHtml(room.maxPlayers)}</div><button class="secondary-button join-room" data-room-id="${escapeHtml(room.id)}" data-script-id="${escapeHtml(room.scriptId)}">${isFull ? t("roomWatch") : t("roomJoin")} ↗</button></div></article>`;
+    const actionLabel = isLive || previewOnly ? t("roomWatch") : t("roomJoin");
+    return `<article class="room-card live-room-card"><div><span class="tag">${escapeHtml(isLive ? t("livePlay") : isFull ? t("roomFull") : t("roomJoin"))}</span><h3>${escapeHtml(title)}</h3><p>${escapeHtml(room.hostName || t("roomHost"))}<br />${isLive ? t("roomLobbyLive") : isFull ? t("roomFull") : t("roomMissing", { count: spots })}</p></div><div class="room-actions"><div class="room-players">${escapeHtml(room.players)} / ${escapeHtml(room.maxPlayers)}</div><button class="secondary-button join-room" data-room-id="${escapeHtml(room.id)}" data-script-id="${escapeHtml(room.scriptId)}" data-member-role="${isLive ? "spectator" : "player"}" data-preview="${previewOnly ? "true" : "false"}">${actionLabel} ↗</button></div></article>`;
   });
   const fallbackCards = rooms.map((room) => { const localized = state.locale === "en" ? (roomTranslations[room.title] || {}) : room; const title = localized.title || room.title; const host = localized.host || room.host; const mood = localized.mood || room.mood; const wait = localized.wait || room.wait; return `<article class="room-card"><div><span class="tag">${mood}</span><h3>${title}</h3><p>${host}<br />${wait}</p></div><div class="room-actions"><div class="room-players">${room.players}</div><button class="secondary-button join-room" data-script-id="${roomScriptIds[room.title] || "moon-trial"}">${room.players === "6 / 6" ? t("roomWatch") : t("roomJoin")} ↗</button></div></article>`; });
   $("#roomGrid").innerHTML = (liveCards.length ? liveCards : fallbackCards).join("");
   $$(".join-room").forEach((button) => button.addEventListener("click", async () => {
     if (button.dataset.roomId) {
-      if (button.textContent.includes(t("roomWatch"))) return openRoomLobby(state.liveRooms.find((room) => room.id === button.dataset.roomId));
-      return joinRoom(button.dataset.roomId);
+      const room = state.liveRooms.find((entry) => entry.id === button.dataset.roomId);
+      if (button.dataset.preview === "true") return openRoomLobby(room);
+      return joinRoom(button.dataset.roomId, button.dataset.memberRole || "player");
     }
     state.selectedScript = state.scripts.find((script) => script.id === button.dataset.scriptId) || fallbackScripts.find((script) => script.id === button.dataset.scriptId) || fallbackScripts[0];
     startGame();
@@ -849,7 +857,8 @@ function renderRoomLobby() {
     buttons.push(`<label class="room-role-picker"><span>${t("roomRoleTitle")}</span><select id="roomRoleSelect"><option value="">${t("roomRoleAuto")}</option>${roomRoleOptions(room, selfMember?.characterKey || "")}</select><small>${t("roomRoleHint")}</small></label>`);
   }
   if (!isMember && room.status === "waiting" && Number(room.spotsLeft) > 0) buttons.push(`<button class="primary-button" id="roomJoinFromLobby">${t("roomJoin")} ↗</button>`);
-  else if (room.status === "live" && isMember) buttons.push(`<button class="primary-button" id="roomEnterGame">${t("startTrial")} ↗</button>`);
+  if (!isMember && room.status === "live") buttons.push(`<button class="primary-button" id="roomWatchFromLobby">${t("roomWatch")} ↗</button>`);
+  else if (room.status === "live" && isMember) buttons.push(`<button class="primary-button" id="roomEnterGame">${selfMember?.role === "spectator" ? t("roomWatch") : t("startTrial")} ↗</button>`);
   else if (isHost) buttons.push(`<button class="primary-button" id="roomStartGame">${t("roomStart")} ↗</button>`);
   if (isMember && room.status === "waiting") buttons.push(`<button class="${selfMember?.ready ? "ghost-button" : "primary-button"}" id="roomReady">${selfMember?.ready ? t("roomUnready") : t("roomReady")}</button>`);
   if (isMember) buttons.push(`<button class="ghost-button" id="roomLeave">${isHost ? t("roomClose") : t("roomLeave")}</button>`);
@@ -873,6 +882,7 @@ function renderRoomLobby() {
     }
   });
   $("#roomJoinFromLobby")?.addEventListener("click", () => joinRoom(room.id));
+  $("#roomWatchFromLobby")?.addEventListener("click", () => joinRoom(room.id, "spectator"));
   $("#roomStartGame")?.addEventListener("click", () => roomAction(room.id, "start"));
   $("#roomReady")?.addEventListener("click", () => roomAction(room.id, "ready", !(selfMember?.ready === true)));
   $("#roomRoleSelect")?.addEventListener("change", (event) => void roomAction(room.id, "role", event.target.value));
@@ -880,14 +890,16 @@ function renderRoomLobby() {
     state.selectedScript = state.scripts.find((item) => item.id === room.scriptId) || fallbackScripts.find((item) => item.id === room.scriptId) || fallbackScripts[0];
     const roomId = room.id;
     closeRoomLobby();
-    startGame({ roomId });
+    startGame({ roomId, spectator: selfMember?.role === "spectator" });
   });
   $("#roomLeave")?.addEventListener("click", () => roomAction(room.id, isHost ? "close" : "leave"));
 }
 
 async function openRoomLobby(room) {
   if (!room) return;
+  const previousRoomId = state.activeRoom?.id;
   state.activeRoom = room;
+  if (previousRoomId !== room.id) state.roomMember = Boolean(room.members?.some((member) => member.isSelf === true));
   renderRoomLobby();
   clearInterval(state.roomPollTimer);
   clearInterval(state.roomChatTimer);
@@ -1310,7 +1322,7 @@ function localizedCase(caseId) {
 }
 
 let activeCase = demoCase;
-const gameState = { phase: "briefing", discovered: new Set(), selectedEvidence: null, selectedSuspect: "shen", answers: new Set(), questionCount: 0, startedAt: 0, timer: null, nextAction: null, roomId: null, sessionId: null, characterKey: "player", eventCursor: 0, roomPollTimer: null, lastEmittedPhase: null };
+const gameState = { phase: "briefing", discovered: new Set(), selectedEvidence: null, selectedSuspect: "shen", answers: new Set(), questionCount: 0, startedAt: 0, timer: null, nextAction: null, roomId: null, sessionId: null, characterKey: "player", spectator: false, eventCursor: 0, roomPollTimer: null, lastEmittedPhase: null };
 
 function currentRoleProfile() {
   const key = gameState.characterKey || "player";
@@ -1447,7 +1459,7 @@ async function connectRoomSession(roomId) {
 }
 
 async function emitRoomEvent(type, payload = {}) {
-  if (!gameState.roomId || !gameState.sessionId) return;
+  if (!gameState.roomId || !gameState.sessionId || gameState.spectator) return;
   try {
     const response = await apiFetch(`/api/rooms/${encodeURIComponent(gameState.roomId)}/session/events`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ user: currentUserProfile(), eventType: type, payload }) });
     if (!response.ok) return;
@@ -1555,6 +1567,7 @@ function startGame(options = {}) {
   stopRoomSessionSync();
   gameState.roomId = options.roomId || null;
   gameState.sessionId = null;
+  gameState.spectator = options.spectator === true;
   gameState.eventCursor = 0;
   gameState.lastEmittedPhase = null;
   activeCase = localizedCase(state.selectedScript?.id || "moon-trial");

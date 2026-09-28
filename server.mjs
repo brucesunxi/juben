@@ -228,7 +228,7 @@ const server = http.createServer(async (request, response) => {
       return sendJson(response, 200, result || { deleted: false });
     }
     if (url.pathname === "/api/rooms" && request.method === "GET") {
-      return sendJson(response, 200, { rooms: (await listDatabaseRooms(url.searchParams.get("status") || "waiting")) || [], database: databaseEnabled });
+      return sendJson(response, 200, { rooms: (await listDatabaseRooms(url.searchParams.get("status") || "waiting", url.searchParams.get("externalKey") || "")) || [], database: databaseEnabled });
     }
     if (url.pathname === "/api/rooms" && request.method === "POST") {
       if (!databaseEnabled) return sendJson(response, 503, { error: "Rooms require DATABASE_URL to be configured." });
