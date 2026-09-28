@@ -235,7 +235,7 @@ function setLocale(locale, { persist = true, source = "manual" } = {}) {
 
 async function detectLocale() {
   if (state.localeSource === "manual") return;
-  let locale = /^zh-cn/i.test(navigator.language || "") ? "zh" : "en";
+  let locale = browserFallbackLocale();
   const endpoint = String(window.NOCTURNE_LOCALE_ENDPOINT || (API_BASE ? `${API_BASE}/api/locale` : "/api/locale")).trim();
   if (endpoint) {
     try {
