@@ -1,4 +1,5 @@
 import pg from "pg";
+import crypto from "node:crypto";
 
 const { Pool } = pg;
 const connectionString = process.env.DATABASE_URL;
@@ -108,4 +109,170 @@ export async function databaseHealth() {
   if (!pool) return { enabled: false };
   const result = await pool.query("SELECT count(*)::int AS script_count FROM scripts WHERE published = TRUE");
   return { enabled: true, scriptCount: result.rows[0].script_count };
+}
+
+class RoomError extends Error {
+  constructor(code, message) {
+    super(message);
+    this.code = code;
+  }
+}
+
+export { RoomError };
+
+async function ensureUser(client, profile = {}) {
+  const externalKey = String(profile.externalKey || `guest-${crypto.randomUUID()}`).slice(0, 160);
+  const displayName = String(profile.displayName || "Night Watcher").slice(0, 80);
+  const locale = profile.locale === "zh" ? "zh" : "en";
+  const result = await client.query(
+    `INSERT INTO app_users (external_key, display_name, locale, country_code, avatar_url)
+     VALUES ($1, $2, $3, $4, $5)
+     ON CONFLICT (external_key) DO UPDATE SET
+       display_name = EXCLUDED.display_name,
+       locale = EXCLUDED.locale,
+       country_code = COALESCE(EXCLUDED.country_code, app_users.country_code),
+       avatar_url = COALESCE(EXCLUDED.avatar_url, app_users.avatar_url),
+       updated_at = now()
+     RETURNING id, external_key, display_name, locale, avatar_url`,
+    [externalKey, displayName, locale, profile.countryCode || null, profile.avatarUrl || null]
+  );
+  return result.rows[0];
+}
+
+const roomSelect = `
+  SELECT r.id, r.script_id, s.title, s.subtitle, s.cover,
+         r.host_user_id, host.external_key AS host_external_key, host.display_name AS host_name, r.status, r.max_players,
+         r.created_at, r.started_at, r.ended_at,
+         (SELECT count(*)::int FROM room_members active_rm WHERE active_rm.room_id = r.id AND active_rm.left_at IS NULL) AS players,
+         COALESCE((SELECT json_agg(json_build_object(
+           'userId', member.user_id,
+           'externalKey', member_user.external_key,
+           'displayName', member_user.display_name,
+           'role', member.member_role,
+           'joinedAt', member.joined_at
+         ) ORDER BY member.joined_at) FROM room_members member JOIN app_users member_user ON member_user.id = member.user_id WHERE member.room_id = r.id AND member.left_at IS NULL), '[]'::json) AS members
+    FROM rooms r
+    JOIN scripts s ON s.id = r.script_id
+    LEFT JOIN app_users host ON host.id = r.host_user_id`;
+
+function rowToRoom(row) {
+  return {
+    id: row.id,
+    scriptId: row.script_id,
+    title: row.title,
+    subtitle: row.subtitle,
+    cover: row.cover,
+    hostUserId: row.host_user_id,
+    hostExternalKey: row.host_external_key,
+    hostName: row.host_name || "Night Watcher",
+    status: row.status,
+    maxPlayers: row.max_players,
+    players: row.players,
+    spotsLeft: Math.max(0, row.max_players - row.players),
+    createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : row.created_at,
+    startedAt: row.started_at instanceof Date ? row.started_at.toISOString() : row.started_at,
+    endedAt: row.ended_at instanceof Date ? row.ended_at.toISOString() : row.ended_at,
+    members: row.members || []
+  };
+}
+
+async function getRoom(client, roomId) {
+  const result = await client.query(`${roomSelect} WHERE r.id = $1`, [roomId]);
+  if (!result.rows[0]) throw new RoomError("ROOM_NOT_FOUND", "Room not found");
+  return rowToRoom(result.rows[0]);
+}
+
+async function inTransaction(callback) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const result = await callback(client);
+    await client.query("COMMIT");
+    return result;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function listDatabaseRooms(status = "waiting") {
+  if (!pool) return null;
+  const values = status && ["waiting", "live", "closed"].includes(status) ? [status] : [];
+  const result = await pool.query(`${roomSelect}${values.length ? " WHERE r.status = $1" : ""} ORDER BY r.created_at DESC LIMIT 50`, values);
+  return result.rows.map(rowToRoom);
+}
+
+export async function createDatabaseRoom(scriptId, profile = {}, maxPlayers = 6) {
+  if (!pool) return null;
+  return inTransaction(async (client) => {
+    const script = await client.query("SELECT id FROM scripts WHERE id = $1 AND published = TRUE", [scriptId]);
+    if (!script.rows[0]) throw new RoomError("SCRIPT_NOT_FOUND", "Script not found");
+    const user = await ensureUser(client, profile);
+    const room = await client.query(
+      `INSERT INTO rooms (script_id, host_user_id, max_players) VALUES ($1, $2, $3) RETURNING id`,
+      [scriptId, user.id, Math.min(Math.max(Number(maxPlayers) || 6, 2), 12)]
+    );
+    await client.query("INSERT INTO room_members (room_id, user_id, member_role) VALUES ($1, $2, 'host')", [room.rows[0].id, user.id]);
+    return getRoom(client, room.rows[0].id);
+  });
+}
+
+export async function joinDatabaseRoom(roomId, profile = {}, memberRole = "player") {
+  if (!pool) return null;
+  return inTransaction(async (client) => {
+    const roomResult = await client.query("SELECT id, status, max_players FROM rooms WHERE id = $1 FOR UPDATE", [roomId]);
+    const room = roomResult.rows[0];
+    if (!room) throw new RoomError("ROOM_NOT_FOUND", "Room not found");
+    if (room.status === "closed") throw new RoomError("ROOM_CLOSED", "Room is closed");
+    const user = await ensureUser(client, profile);
+    const existing = await client.query("SELECT member_role FROM room_members WHERE room_id = $1 AND user_id = $2", [roomId, user.id]);
+    if (!existing.rows[0] || existing.rows[0].member_role !== "host") {
+      const count = await client.query("SELECT count(*)::int AS players FROM room_members WHERE room_id = $1 AND left_at IS NULL AND member_role <> 'spectator'", [roomId]);
+      if (memberRole !== "spectator" && count.rows[0].players >= room.max_players) throw new RoomError("ROOM_FULL", "Room is full");
+    }
+    await client.query(
+      `INSERT INTO room_members (room_id, user_id, member_role, left_at)
+       VALUES ($1, $2, $3, NULL)
+       ON CONFLICT (room_id, user_id) DO UPDATE SET member_role = EXCLUDED.member_role, joined_at = now(), left_at = NULL`,
+      [roomId, user.id, memberRole]
+    );
+    return getRoom(client, roomId);
+  });
+}
+
+export async function leaveDatabaseRoom(roomId, profile = {}) {
+  if (!pool) return null;
+  return inTransaction(async (client) => {
+    const user = await ensureUser(client, profile);
+    await client.query("UPDATE room_members SET left_at = now() WHERE room_id = $1 AND user_id = $2", [roomId, user.id]);
+    return getRoom(client, roomId);
+  });
+}
+
+export async function startDatabaseRoom(roomId, profile = {}) {
+  if (!pool) return null;
+  return inTransaction(async (client) => {
+    const user = await ensureUser(client, profile);
+    const host = await client.query("SELECT host_user_id, script_id, status FROM rooms WHERE id = $1 FOR UPDATE", [roomId]);
+    if (!host.rows[0]) throw new RoomError("ROOM_NOT_FOUND", "Room not found");
+    if (host.rows[0].host_user_id !== user.id) throw new RoomError("NOT_HOST", "Only the host can start the room");
+    if (host.rows[0].status === "closed") throw new RoomError("ROOM_CLOSED", "Room is closed");
+    await client.query("UPDATE rooms SET status = 'live', started_at = COALESCE(started_at, now()) WHERE id = $1", [roomId]);
+    await client.query("INSERT INTO game_sessions (script_id, room_id, mode, locale, phase) VALUES ($1, $2, 'room', $3, 'briefing')", [host.rows[0].script_id, roomId, user.locale]);
+    return getRoom(client, roomId);
+  });
+}
+
+export async function closeDatabaseRoom(roomId, profile = {}) {
+  if (!pool) return null;
+  return inTransaction(async (client) => {
+    const user = await ensureUser(client, profile);
+    const room = await client.query("SELECT host_user_id FROM rooms WHERE id = $1 FOR UPDATE", [roomId]);
+    if (!room.rows[0]) throw new RoomError("ROOM_NOT_FOUND", "Room not found");
+    if (room.rows[0].host_user_id !== user.id) throw new RoomError("NOT_HOST", "Only the host can close the room");
+    await client.query("UPDATE rooms SET status = 'closed', ended_at = COALESCE(ended_at, now()) WHERE id = $1", [roomId]);
+    return getRoom(client, roomId);
+  });
 }

@@ -3,7 +3,19 @@ import fs from "node:fs/promises";
 import fsSync from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { databaseEnabled, databaseHealth, listDatabaseScripts, saveDatabaseScript } from "./db/store.mjs";
+import {
+  RoomError,
+  closeDatabaseRoom,
+  createDatabaseRoom,
+  databaseEnabled,
+  databaseHealth,
+  joinDatabaseRoom,
+  leaveDatabaseRoom,
+  listDatabaseRooms,
+  listDatabaseScripts,
+  saveDatabaseScript,
+  startDatabaseRoom
+} from "./db/store.mjs";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(root, "public");
@@ -198,6 +210,36 @@ const server = http.createServer(async (request, response) => {
     if (url.pathname === "/api/health" && request.method === "GET") {
       return sendJson(response, 200, { ok: true, ...(await databaseHealth()) });
     }
+    if (url.pathname === "/api/rooms" && request.method === "GET") {
+      return sendJson(response, 200, { rooms: (await listDatabaseRooms(url.searchParams.get("status") || "waiting")) || [], database: databaseEnabled });
+    }
+    if (url.pathname === "/api/rooms" && request.method === "POST") {
+      if (!databaseEnabled) return sendJson(response, 503, { error: "Rooms require DATABASE_URL to be configured." });
+      const payload = JSON.parse(await readBody(request));
+      const room = await createDatabaseRoom(payload.scriptId || payload.script_id, payload.user || payload.profile, payload.maxPlayers);
+      return sendJson(response, 201, { room });
+    }
+    const roomAction = url.pathname.match(/^\/api\/rooms\/([^/]+)\/(join|leave|start|close)$/);
+    if (roomAction && request.method === "POST") {
+      if (!databaseEnabled) return sendJson(response, 503, { error: "Rooms require DATABASE_URL to be configured." });
+      const payload = JSON.parse(await readBody(request));
+      const roomId = decodeURIComponent(roomAction[1]);
+      const action = roomAction[2];
+      const user = payload.user || payload.profile || {};
+      const room = action === "join"
+        ? await joinDatabaseRoom(roomId, user, payload.memberRole === "spectator" ? "spectator" : "player")
+        : action === "leave" ? await leaveDatabaseRoom(roomId, user)
+          : action === "close" ? await closeDatabaseRoom(roomId, user)
+            : await startDatabaseRoom(roomId, user);
+      return sendJson(response, 200, { room });
+    }
+    const roomMatch = url.pathname.match(/^\/api\/rooms\/([^/]+)$/);
+    if (roomMatch && request.method === "GET") {
+      if (!databaseEnabled) return sendJson(response, 404, { error: "Room not found" });
+      const rooms = await listDatabaseRooms(null);
+      const room = rooms.find((entry) => entry.id === decodeURIComponent(roomMatch[1]));
+      return room ? sendJson(response, 200, { room }) : sendJson(response, 404, { error: "Room not found" });
+    }
     if (url.pathname === "/api/locale" && request.method === "GET") {
       // Use a country code supplied by the trusted deployment edge. The app
       // never needs to send a visitor IP to a separate geolocation vendor.
@@ -226,8 +268,15 @@ const server = http.createServer(async (request, response) => {
     response.writeHead(200, { "content-type": mime[path.extname(filePath)] || "application/octet-stream" });
     response.end(await fs.readFile(filePath));
   } catch (error) {
-    const status = error.code === "ENOENT" ? 404 : 500;
-    sendJson(response, status, { error: status === 404 ? "not found" : error.message });
+    const roomStatus = {
+      ROOM_NOT_FOUND: 404,
+      SCRIPT_NOT_FOUND: 404,
+      ROOM_FULL: 409,
+      ROOM_CLOSED: 409,
+      NOT_HOST: 403
+    }[error.code];
+    const status = roomStatus || (error.code === "ENOENT" ? 404 : 500);
+    sendJson(response, status, { error: status === 404 && !roomStatus ? "not found" : error.message, code: error.code });
   }
 });
 
