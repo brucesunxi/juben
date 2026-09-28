@@ -47,6 +47,23 @@ function readNotifications() {
   }
 }
 
+function readPlayerStats() {
+  try {
+    const saved = JSON.parse(localStorage.getItem("nocturne-player-stats") || "null");
+    return { played: Number(saved?.played) || 0, solved: Number(saved?.solved) || 0, clues: Number(saved?.clues) || 0, questions: Number(saved?.questions) || 0, completed: Array.isArray(saved?.completed) ? saved.completed.filter(Boolean).slice(-50) : [] };
+  } catch {
+    return { played: 0, solved: 0, clues: 0, questions: 0, completed: [] };
+  }
+}
+
+function savePlayerStats() {
+  try { localStorage.setItem("nocturne-player-stats", JSON.stringify(state.stats)); } catch { /* storage can be unavailable in private webviews */ }
+}
+
+function playerLevel() {
+  return Math.min(30, 1 + Math.floor((state.stats.played || 0) / 2) + Math.floor((state.stats.solved || 0) / 3));
+}
+
 function readActiveRoom() {
   try {
     const saved = JSON.parse(localStorage.getItem("nocturne-active-room") || "null");
@@ -65,7 +82,7 @@ function clearActiveRoom() {
 }
 
 const savedLocale = readLocalePreference();
-const state = { scripts: [], archive: readArchive(), favorites: readFavorites(), notifications: readNotifications(), profileName: readProfileName(), activeFilter: "all", selectedScript: null, locale: savedLocale || browserFallbackLocale(), localeSource: savedLocale ? "manual" : "auto", liveRooms: [], activeRoom: null, roomMember: false, roomPollTimer: null, roomChatTimer: null, roomVoiceTimer: null, roomChatRoomId: null, roomChatCursor: "0", roomMessages: [], blockedUsers: new Set(), voiceRoomId: null, voiceCursor: "0", voiceSelfId: null, voiceJoined: false, voiceMuted: false, voiceStream: null, voicePeers: new Map(), voicePendingCandidates: new Map() };
+const state = { scripts: [], archive: readArchive(), favorites: readFavorites(), notifications: readNotifications(), stats: readPlayerStats(), profileName: readProfileName(), activeFilter: "all", selectedScript: null, locale: savedLocale || browserFallbackLocale(), localeSource: savedLocale ? "manual" : "auto", liveRooms: [], activeRoom: null, roomMember: false, roomPollTimer: null, roomChatTimer: null, roomVoiceTimer: null, roomChatRoomId: null, roomChatCursor: "0", roomMessages: [], blockedUsers: new Set(), voiceRoomId: null, voiceCursor: "0", voiceSelfId: null, voiceJoined: false, voiceMuted: false, voiceStream: null, voicePeers: new Map(), voicePendingCandidates: new Map() };
 const API_BASE = String(window.NOCTURNE_API_BASE || "").replace(/\/$/, "");
 const apiFetch = (path, options) => fetch(`${API_BASE}${path}`, options);
 const translations = {
@@ -105,6 +122,26 @@ translations.zh.roomVoteNoVotes = "暂无投票记录";
 translations.en.roomVoteNoVotes = "No votes recorded";
 translations.zh.roomVoteReveal = "真相：{name}";
 translations.en.roomVoteReveal = "Truth: {name}";
+translations.zh.profileLevel = "探索者 Lv.{level}";
+translations.en.profileLevel = "Explorer Lv.{level}";
+translations.zh.profileStatsTitle = "推理档案";
+translations.en.profileStatsTitle = "Investigation record";
+translations.zh.statsPlayed = "完成案件";
+translations.en.statsPlayed = "Cases played";
+translations.zh.statsSolved = "正确指认";
+translations.en.statsSolved = "Correct calls";
+translations.zh.statsClues = "发现线索";
+translations.en.statsClues = "Clues found";
+translations.zh.statsQuestions = "公开质询";
+translations.en.statsQuestions = "Questions asked";
+translations.zh.resultAward = "本局记录";
+translations.en.resultAward = "This case";
+translations.zh.resultAwardFirst = "首次完成案件，档案已建立";
+translations.en.resultAwardFirst = "First case complete; your record has begun";
+translations.zh.resultAwardSolved = "最终指认命中真相";
+translations.en.resultAwardSolved = "Final accusation matched the truth";
+translations.zh.resultAwardObserver = "你以观战身份见证了本局";
+translations.en.resultAwardObserver = "You witnessed this case as a spectator";
 
 function t(key, vars = {}) {
   let value = translations[state.locale]?.[key] ?? translations.zh[key] ?? key;
@@ -184,7 +221,7 @@ function applyStaticLocale() {
   const displayName = state.profileName || t("profileName");
   $(".profile-chip .avatar").textContent = displayName.slice(0, 1);
   $(".profile-chip strong").textContent = displayName;
-  $(".profile-chip small").textContent = t("profileLevel");
+  $(".profile-chip small").textContent = t("profileLevel", { level: playerLevel() });
   $(".profile-chip").setAttribute("aria-label", t("profileEdit"));
   $(".top-avatar").textContent = displayName.slice(0, 1);
   $(".top-avatar").setAttribute("aria-label", t("profileEdit"));
@@ -465,7 +502,7 @@ function renderRooms() {
 
 function ensureProfileModal() {
   if ($("#profileModalBackdrop")) return;
-  document.body.insertAdjacentHTML("beforeend", `<div class="room-lobby-backdrop" id="profileModalBackdrop" aria-hidden="true"><section class="room-lobby-card profile-modal-card" role="dialog" aria-modal="true" aria-labelledby="profileModalTitle"><button class="modal-close" id="profileModalClose">×</button><p class="eyebrow">NOCTURNE / PROFILE</p><h2 id="profileModalTitle">${t("profileEdit")}</h2><label class="profile-field"><span id="profileNameLabel">${t("profileNameLabel")}</span><input id="profileNameInput" maxlength="80" autocomplete="nickname" /></label><p class="profile-note" id="profileGuestNote">${t("profileGuestNote")}</p><div class="room-lobby-actions"><button class="primary-button" id="profileModalSave">${t("profileSave")}</button><button class="ghost-button" id="profileModalCancel">${t("close")}</button></div><button class="profile-delete-button" id="profileDeleteButton">${t("profileDelete")}</button></section></div>`);
+  document.body.insertAdjacentHTML("beforeend", `<div class="room-lobby-backdrop" id="profileModalBackdrop" aria-hidden="true"><section class="room-lobby-card profile-modal-card" role="dialog" aria-modal="true" aria-labelledby="profileModalTitle"><button class="modal-close" id="profileModalClose">×</button><p class="eyebrow">NOCTURNE / PROFILE</p><h2 id="profileModalTitle">${t("profileEdit")}</h2><label class="profile-field"><span id="profileNameLabel">${t("profileNameLabel")}</span><input id="profileNameInput" maxlength="80" autocomplete="nickname" /></label><p class="profile-note" id="profileGuestNote">${t("profileGuestNote")}</p><section class="profile-stats" aria-labelledby="profileStatsTitle"><span class="eyebrow" id="profileStatsTitle">${t("profileStatsTitle")}</span><div id="profileStats"></div></section><div class="room-lobby-actions"><button class="primary-button" id="profileModalSave">${t("profileSave")}</button><button class="ghost-button" id="profileModalCancel">${t("close")}</button></div><button class="profile-delete-button" id="profileDeleteButton">${t("profileDelete")}</button></section></div>`);
   $("#profileModalClose").addEventListener("click", closeProfileModal);
   $("#profileModalCancel").addEventListener("click", closeProfileModal);
   $("#profileModalBackdrop").addEventListener("click", (event) => { if (event.target.id === "profileModalBackdrop") closeProfileModal(); });
@@ -479,6 +516,8 @@ function renderProfileModal() {
   $("#profileNameLabel").textContent = t("profileNameLabel");
   $("#profileNameInput").placeholder = t("profileNamePlaceholder");
   $("#profileGuestNote").textContent = t("profileGuestNote");
+  $("#profileStatsTitle").textContent = t("profileStatsTitle");
+  $("#profileStats").innerHTML = [[t("statsPlayed"), state.stats.played], [t("statsSolved"), state.stats.solved], [t("statsClues"), state.stats.clues], [t("statsQuestions"), state.stats.questions]].map(([label, value]) => `<div class="profile-stat"><strong>${value}</strong><span>${label}</span></div>`).join("");
   $("#profileModalSave").textContent = t("profileSave");
   $("#profileModalCancel").textContent = t("close");
   $("#profileDeleteButton").textContent = t("profileDelete");
@@ -522,11 +561,13 @@ async function deleteProfile() {
     localStorage.removeItem("nocturne-archive");
     localStorage.removeItem("nocturne-favorites");
     localStorage.removeItem("nocturne-notifications");
+    localStorage.removeItem("nocturne-player-stats");
   } catch { /* storage can be unavailable in private webviews */ }
   state.profileName = "";
   state.archive = [];
   state.favorites = [];
   state.notifications = [];
+  state.stats = readPlayerStats();
   closeProfileModal();
   applyStaticLocale();
   renderLibrary();
@@ -1753,13 +1794,34 @@ function renderRoomVoteSummary() {
   return `<section class="room-vote-summary"><div class="room-vote-summary-head"><span class="game-kicker">${t("roomVoteTitle")}</span><strong>${t("roomVoteReveal", { name: escapeHtml(activeCase.solutionName || activeCase.solution) })}</strong></div><div class="room-vote-grid"><div><span>${t("roomVoteConsensus")}</span>${rows || `<small>${t("roomVoteNoVotes")}</small>`}</div><div><span>${t("roomVoteYourChoice")}</span><strong>${yourVote}</strong><small class="${ownVote?.id === activeCase.solution ? "correct" : "wrong"}">${voteResult}</small></div></div></section>`;
 }
 
+function recordCaseCompletion() {
+  const solved = gameState.votedSuspect === activeCase.solution;
+  if (gameState.spectator) return { solved: false, first: false, spectator: true };
+  const completionKey = `${activeCase.id}:${gameState.roomId || "solo"}`;
+  if (state.stats.completed.includes(completionKey)) return { solved, first: false, spectator: false };
+  const first = state.stats.played === 0;
+  state.stats = {
+    ...state.stats,
+    played: state.stats.played + 1,
+    solved: state.stats.solved + (solved ? 1 : 0),
+    clues: state.stats.clues + gameState.discovered.size,
+    questions: state.stats.questions + gameState.questionCount,
+    completed: [...state.stats.completed, completionKey].slice(-50)
+  };
+  savePlayerStats();
+  applyStaticLocale();
+  return { solved, first, spectator: false };
+}
+
 function renderResult() {
   rememberArchive(activeCase.id);
+  const completion = recordCaseCompletion();
   renderLibrary();
   setGameNav("result");
   $("#gameEyebrow").textContent = `${t("gameClosedKicker")} / ${activeCase.closeStamp}`;
   $("#gameTitle").textContent = t("gameTitleResult");
-  $("#gameContent").innerHTML = `<div class="result-card"><div class="result-scene"><img src="${activeCase.sceneImage}" alt="${activeCase.title} ${t("sceneAlt")}" /></div><div class="result-symbol">✓</div><h2>${activeCase.resultTitle}</h2><p>${activeCase.resultText}</p>${renderRoomVoteSummary()}<div class="timeline">${activeCase.timeline.map(([time, text]) => `<div class="timeline-item"><b>${time}</b><span>${text}</span></div>`).join("")}</div></div>`;
+  const awardText = completion.spectator ? t("resultAwardObserver") : completion.solved ? t("resultAwardSolved") : completion.first ? t("resultAwardFirst") : t("resultAward");
+  $("#gameContent").innerHTML = `<div class="result-card"><div class="result-scene"><img src="${activeCase.sceneImage}" alt="${activeCase.title} ${t("sceneAlt")}" /></div><div class="result-symbol">✓</div><h2>${activeCase.resultTitle}</h2><p>${activeCase.resultText}</p>${renderRoomVoteSummary()}<section class="result-award"><span class="game-kicker">${t("resultAward")}</span><strong>${awardText}</strong><small>${t("profileLevel", { level: playerLevel() })} · ${t("statsSolved")}: ${state.stats.solved}</small></section><div class="timeline">${activeCase.timeline.map(([time, text]) => `<div class="timeline-item"><b>${time}</b><span>${text}</span></div>`).join("")}</div></div>`;
   gameAction(null, `${t("closed")} · ${activeCase.badge}`, gameState.roomId ? null : t("replay"), () => { gameState.discovered = new Set(); gameState.selectedEvidence = null; gameState.answers = new Set(); gameState.questionCount = 0; gameState.votedSuspect = null; gameState.selectedSuspect = activeCase.suspects[0].id; renderBriefing(); });
 }
 
