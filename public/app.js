@@ -1059,8 +1059,15 @@ async function restoreActiveRoom() {
     if (!selfMember || data.room.status === "closed") throw new Error("saved room membership expired");
     state.roomMember = true;
     state.activeRoom = data.room;
-    setView("rooms");
     await openRoomLobby(data.room);
+    if (data.room.status === "live") {
+      state.selectedScript = state.scripts.find((script) => script.id === data.room.scriptId) || fallbackScripts.find((script) => script.id === data.room.scriptId) || fallbackScripts[0];
+      closeRoomLobby({ preserveRoom: true });
+      startGame({ roomId: data.room.id, spectator: selfMember.role === "spectator", characterKey: selfMember.characterKey || "player" });
+      showToast(t("roomRestored"));
+      return;
+    }
+    setView("rooms");
     showToast(t("roomRestored"));
   } catch {
     clearActiveRoom();
