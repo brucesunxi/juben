@@ -165,6 +165,18 @@ translations.zh.hintSecond = "把物证放在一起看：真正关键的是能�
 translations.en.hintSecond = "Read the evidence together: the key detail should explain both opportunity and motive.";
 translations.zh.hintLabel = "案件提示";
 translations.en.hintLabel = "Case hint";
+translations.zh.notebookTitle = "推理桌";
+translations.en.notebookTitle = "Deduction board";
+translations.zh.notebookEmpty = "把重要物证放到这里，整理你的推理路径。";
+translations.en.notebookEmpty = "Pin important evidence here and build your line of reasoning.";
+translations.zh.notebookPin = "加入推理桌";
+translations.en.notebookPin = "Pin to board";
+translations.zh.notebookUnpin = "移出推理桌";
+translations.en.notebookUnpin = "Remove from board";
+translations.zh.notebookPinned = "已标记关键";
+translations.en.notebookPinned = "Pinned clue";
+translations.zh.notebookCount = "已标记 {count} 条线索";
+translations.en.notebookCount = "{count} clue(s) pinned";
 translations.en.achievementUnlocked = "Unlocked";
 translations.zh.achievementLocked = "未解锁";
 translations.en.achievementLocked = "Locked";
@@ -1673,7 +1685,7 @@ function localizedCase(caseId) {
 }
 
 let activeCase = demoCase;
-const gameState = { phase: "briefing", discovered: new Set(), selectedEvidence: null, selectedSuspect: "shen", answers: new Set(), questionCount: 0, hintsUsed: 0, votedSuspect: null, roomVotes: [], startedAt: 0, timer: null, nextAction: null, roomId: null, sessionId: null, characterKey: "player", playerUserId: null, spectator: false, eventCursor: 0, roomPollTimer: null, lastEmittedPhase: null };
+const gameState = { phase: "briefing", discovered: new Set(), pinnedEvidence: new Set(), selectedEvidence: null, selectedSuspect: "shen", answers: new Set(), questionCount: 0, hintsUsed: 0, votedSuspect: null, roomVotes: [], startedAt: 0, timer: null, nextAction: null, roomId: null, sessionId: null, characterKey: "player", playerUserId: null, spectator: false, eventCursor: 0, roomPollTimer: null, lastEmittedPhase: null };
 
 function currentRoleProfile() {
   const key = gameState.characterKey || "player";
@@ -1861,10 +1873,14 @@ function renderEvidence() {
   $("#gameEyebrow").textContent = t("gameEvidenceKicker");
   $("#gameTitle").textContent = t("gameTitleEvidence");
   const selectedEvidence = activeCase.evidence.find((entry) => entry.id === gameState.selectedEvidence);
-  const evidenceModal = selectedEvidence ? `<div class="evidence-modal open" id="evidenceModal" role="dialog" aria-modal="true" aria-label="${selectedEvidence.name}"><div class="evidence-modal-card"><button class="evidence-modal-close" data-evidence-close aria-label="${t("close")}">×</button><img class="evidence-modal-image" src="${selectedEvidence.image}" alt="${selectedEvidence.name}" /><div class="evidence-modal-body"><span class="game-kicker">${t("gameEvidenceModalKicker", { count: String(gameState.discovered.size).padStart(2, "0") })}</span><h3>${selectedEvidence.name}</h3><p class="evidence-modal-type">${selectedEvidence.type}</p><p>${selectedEvidence.detail}</p><button class="primary-button evidence-modal-done" data-evidence-close>${t("recordEvidence")} <span>↗</span></button></div></div></div>` : "";
-  $("#gameContent").innerHTML = `<span class="game-kicker">${t("inspectEvidence")}</span><div class="game-scene game-scene-evidence"><img src="${activeCase.sceneImage}" alt="${activeCase.title}" /></div><p class="game-lede">${activeCase.evidenceLead}</p><p class="game-copy">${activeCase.evidenceCopy}</p><div class="scene-line"></div><div class="evidence-grid">${activeCase.evidence.map((item) => `<button class="evidence-card ${gameState.discovered.has(item.id) ? "discovered" : ""}" data-evidence="${item.id}"><img class="evidence-thumb" src="${item.image}" alt="${item.name}" /><strong>${item.name}</strong><small>${item.type}</small><span class="discovered-badge">${t("recorded")}</span></button>`).join("")}</div>${evidenceModal}`;
+  const evidenceModal = selectedEvidence ? `<div class="evidence-modal open" id="evidenceModal" role="dialog" aria-modal="true" aria-label="${selectedEvidence.name}"><div class="evidence-modal-card"><button class="evidence-modal-close" data-evidence-close aria-label="${t("close")}">×</button><img class="evidence-modal-image" src="${selectedEvidence.image}" alt="${selectedEvidence.name}" /><div class="evidence-modal-body"><span class="game-kicker">${t("gameEvidenceModalKicker", { count: String(gameState.discovered.size).padStart(2, "0") })}</span><h3>${selectedEvidence.name}</h3><p class="evidence-modal-type">${selectedEvidence.type}</p><p>${selectedEvidence.detail}</p><div class="evidence-modal-actions">${!gameState.spectator ? `<button class="ghost-button" data-evidence-pin>${gameState.pinnedEvidence.has(selectedEvidence.id) ? t("notebookUnpin") : t("notebookPin")}</button>` : ""}<button class="primary-button evidence-modal-done" data-evidence-close>${t("recordEvidence")} <span>↗</span></button></div></div></div></div>` : "";
+  const pinnedItems = activeCase.evidence.filter((item) => gameState.pinnedEvidence.has(item.id));
+  const deductionBoard = `<section class="deduction-board" aria-label="${t("notebookTitle")}"><div class="deduction-board-heading"><div><span class="game-kicker">${t("notebookTitle")}</span><strong>${t("notebookCount", { count: pinnedItems.length })}</strong></div><span class="deduction-board-mark">✦</span></div>${pinnedItems.length ? `<div class="deduction-board-items">${pinnedItems.map((item) => `<article class="deduction-board-item"><img src="${item.image}" alt="${item.name}" /><div><strong>${item.name}</strong><small>${item.type}</small></div>${!gameState.spectator ? `<button class="text-button" type="button" data-note-unpin="${item.id}" aria-label="${t("notebookUnpin")}">×</button>` : ""}</article>`).join("")}</div>` : `<p class="deduction-board-empty">${t("notebookEmpty")}</p>`}</section>`;
+  $("#gameContent").innerHTML = `<span class="game-kicker">${t("inspectEvidence")}</span><div class="game-scene game-scene-evidence"><img src="${activeCase.sceneImage}" alt="${activeCase.title}" /></div><p class="game-lede">${activeCase.evidenceLead}</p><p class="game-copy">${activeCase.evidenceCopy}</p><div class="scene-line"></div><div class="evidence-grid">${activeCase.evidence.map((item) => `<button class="evidence-card ${gameState.discovered.has(item.id) ? "discovered" : ""}" data-evidence="${item.id}"><img class="evidence-thumb" src="${item.image}" alt="${item.name}" /><strong>${item.name}</strong><small>${item.type}</small><span class="discovered-badge">${t("recorded")}</span></button>`).join("")}</div>${deductionBoard}${evidenceModal}`;
   $$(".evidence-card").forEach((card) => card.addEventListener("click", () => inspectEvidence(card.dataset.evidence)));
   $$('[data-evidence-close]').forEach((button) => button.addEventListener("click", () => { gameState.selectedEvidence = null; renderEvidence(); }));
+  $("[data-evidence-pin]")?.addEventListener("click", () => toggleEvidencePin(selectedEvidence.id));
+  $$('[data-note-unpin]').forEach((button) => button.addEventListener("click", () => toggleEvidencePin(button.dataset.noteUnpin)));
   const canContinue = gameState.discovered.size >= 3;
   gameAction(null, t("evidenceCount", { count: gameState.discovered.size }), canContinue ? t("enterQuestion") : t("continueEvidence"), canContinue ? renderQuestion : () => showToast(t("noEnoughEvidence")));
 }
@@ -1877,6 +1893,19 @@ function inspectEvidence(id) {
   renderEvidence();
   void emitRoomEvent("evidence_found", { evidenceId: id });
   showToast(state.locale === "zh" ? `已记录：${item.name}` : `${item.name}: ${t("recorded")}`);
+}
+
+function toggleEvidencePin(id) {
+  const item = activeCase.evidence.find((entry) => entry.id === id);
+  if (!item) return;
+  if (gameState.pinnedEvidence.has(id)) {
+    gameState.pinnedEvidence.delete(id);
+    showToast(state.locale === "zh" ? `${item.name} 已移出推理桌` : `${item.name} removed from the board`);
+  } else {
+    gameState.pinnedEvidence.add(id);
+    showToast(state.locale === "zh" ? `${item.name} 已加入推理桌` : `${item.name} pinned to the board`);
+  }
+  renderEvidence();
 }
 
 function showEvidenceHint() {
@@ -2014,7 +2043,7 @@ function renderResult() {
   $("#gameTitle").textContent = t("gameTitleResult");
   const awardText = completion.spectator ? t("resultAwardObserver") : completion.solved ? t("resultAwardSolved") : completion.first ? t("resultAwardFirst") : t("resultAward");
   $("#gameContent").innerHTML = `<div class="result-card"><div class="result-scene"><img src="${activeCase.sceneImage}" alt="${activeCase.title} ${t("sceneAlt")}" /></div><div class="result-symbol">✓</div><h2>${activeCase.resultTitle}</h2><p>${activeCase.resultText}</p>${renderRoomVoteSummary()}<section class="result-award"><span class="game-kicker">${t("resultAward")}</span><strong>${awardText}</strong><small>${t("profileLevel", { level: playerLevel() })} · ${t("statsSolved")}: ${state.stats.solved}</small></section><div class="timeline">${activeCase.timeline.map(([time, text]) => `<div class="timeline-item"><b>${time}</b><span>${text}</span></div>`).join("")}</div></div>`;
-  gameAction(null, `${t("closed")} · ${activeCase.badge}`, gameState.roomId ? null : t("replay"), () => { gameState.discovered = new Set(); gameState.selectedEvidence = null; gameState.answers = new Set(); gameState.questionCount = 0; gameState.hintsUsed = 0; gameState.votedSuspect = null; gameState.selectedSuspect = activeCase.suspects[0].id; renderBriefing(); });
+  gameAction(null, `${t("closed")} · ${activeCase.badge}`, gameState.roomId ? null : t("replay"), () => { gameState.discovered = new Set(); gameState.pinnedEvidence = new Set(); gameState.selectedEvidence = null; gameState.answers = new Set(); gameState.questionCount = 0; gameState.hintsUsed = 0; gameState.votedSuspect = null; gameState.selectedSuspect = activeCase.suspects[0].id; renderBriefing(); });
 }
 
 function startGame(options = {}) {
@@ -2030,6 +2059,7 @@ function startGame(options = {}) {
   gameState.lastEmittedPhase = null;
   activeCase = localizedCase(state.selectedScript?.id || "moon-trial");
   gameState.discovered = new Set();
+  gameState.pinnedEvidence = new Set();
   gameState.selectedEvidence = null;
   gameState.answers = new Set();
   gameState.questionCount = 0;
