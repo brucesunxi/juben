@@ -15,6 +15,8 @@ import {
   getDatabaseRoom,
   getDatabaseRoomMessages,
   getDatabaseRoomSession,
+  getDatabaseRoomVoiceSignals,
+  appendDatabaseRoomVoiceSignal,
   setDatabaseRoomReady,
   joinDatabaseRoom,
   leaveDatabaseRoom,
@@ -248,7 +250,30 @@ const server = http.createServer(async (request, response) => {
     }
     const roomMatch = url.pathname.match(/^\/api\/rooms\/([^/]+)$/);
     const roomMessagesMatch = url.pathname.match(/^\/api\/rooms\/([^/]+)\/messages$/);
+    const roomVoiceSignalsMatch = url.pathname.match(/^\/api\/rooms\/([^/]+)\/voice\/signals$/);
     const roomSessionMatch = url.pathname.match(/^\/api\/rooms\/([^/]+)\/session$/);
+    if (roomVoiceSignalsMatch && request.method === "GET") {
+      if (!databaseEnabled) return sendJson(response, 404, { error: "Room voice signals not found" });
+      const profile = {
+        externalKey: url.searchParams.get("externalKey") || "",
+        displayName: url.searchParams.get("displayName") || "Night Watcher",
+        locale: url.searchParams.get("locale") || "en"
+      };
+      const signals = await getDatabaseRoomVoiceSignals(decodeURIComponent(roomVoiceSignalsMatch[1]), profile, url.searchParams.get("since"));
+      return sendJson(response, 200, signals);
+    }
+    if (roomVoiceSignalsMatch && request.method === "POST") {
+      if (!databaseEnabled) return sendJson(response, 503, { error: "Room voice signals require DATABASE_URL to be configured." });
+      const payload = JSON.parse(await readBody(request));
+      const signal = await appendDatabaseRoomVoiceSignal(
+        decodeURIComponent(roomVoiceSignalsMatch[1]),
+        payload.user || payload.profile,
+        payload.receiverUserId || payload.toUserId,
+        payload.signalType || payload.type,
+        payload.payload || {}
+      );
+      return sendJson(response, 201, { signal });
+    }
     if (roomMessagesMatch && request.method === "GET") {
       if (!databaseEnabled) return sendJson(response, 404, { error: "Room messages not found" });
       const profile = {
@@ -336,6 +361,7 @@ const server = http.createServer(async (request, response) => {
       SESSION_NOT_FOUND: 409,
       INVALID_EVENT: 400,
       EMPTY_MESSAGE: 400
+      ,INVALID_VOICE_SIGNAL: 400
     }[error.code];
     const status = roomStatus || (error.code === "ENOENT" ? 404 : 500);
     sendJson(response, status, { error: status === 404 && !roomStatus ? "not found" : error.message, code: error.code });

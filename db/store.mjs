@@ -26,6 +26,16 @@ const databaseShapeReady = databaseEnabled
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )`))
     .then(() => pool.query("CREATE INDEX IF NOT EXISTS room_messages_room_idx ON room_messages (room_id, id)"))
+    .then(() => pool.query(`CREATE TABLE IF NOT EXISTS room_voice_signals (
+      id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      room_id UUID NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+      sender_user_id UUID NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+      receiver_user_id UUID NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+      signal_type TEXT NOT NULL CHECK (signal_type IN ('hello', 'offer', 'answer', 'candidate', 'leave')),
+      payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )`))
+    .then(() => pool.query("CREATE INDEX IF NOT EXISTS room_voice_signals_receiver_idx ON room_voice_signals (room_id, receiver_user_id, id)"))
   : Promise.resolve();
 
 async function waitForDatabaseShape() {
@@ -424,6 +434,60 @@ export async function appendDatabaseRoomMessage(roomId, profile = {}, body = "")
       [roomId, user.id, message]
     );
     return { message: roomMessagePayload({ ...result.rows[0], display_name: user.display_name }) };
+  });
+}
+
+const voiceSignalTypes = new Set(["hello", "offer", "answer", "candidate", "leave"]);
+
+function voiceSignalPayload(row) {
+  return {
+    id: String(row.id),
+    senderUserId: row.sender_user_id,
+    type: row.signal_type,
+    payload: row.payload || {},
+    createdAt: isoDate(row.created_at)
+  };
+}
+
+export async function getDatabaseRoomVoiceSignals(roomId, profile = {}, since = 0) {
+  if (!pool) return null;
+  await waitForDatabaseShape();
+  return inTransaction(async (client) => {
+    const { user } = await requireRoomMember(client, roomId, profile);
+    const cursor = Math.max(0, Number(since) || 0);
+    const result = await client.query(
+      `SELECT id, sender_user_id, signal_type, payload, created_at
+         FROM room_voice_signals
+        WHERE room_id = $1 AND receiver_user_id = $2 AND id > $3::bigint
+        ORDER BY id ASC
+        LIMIT 100`,
+      [roomId, user.id, cursor]
+    );
+    return { signals: result.rows.map(voiceSignalPayload), nextCursor: result.rows.at(-1)?.id ? String(result.rows.at(-1).id) : String(cursor) };
+  });
+}
+
+export async function appendDatabaseRoomVoiceSignal(roomId, profile = {}, receiverUserId, signalType, payload = {}) {
+  if (!pool) return null;
+  await waitForDatabaseShape();
+  if (!voiceSignalTypes.has(signalType)) throw new RoomError("INVALID_VOICE_SIGNAL", "Unsupported voice signal");
+  if (!receiverUserId || typeof receiverUserId !== "string") throw new RoomError("INVALID_VOICE_SIGNAL", "A voice signal recipient is required");
+  const serialized = JSON.stringify(payload && typeof payload === "object" ? payload : {});
+  if (serialized.length > 20000) throw new RoomError("INVALID_VOICE_SIGNAL", "Voice signal is too large");
+  return inTransaction(async (client) => {
+    const { user } = await requireRoomMember(client, roomId, profile);
+    const receiver = await client.query(
+      `SELECT user_id FROM room_members WHERE room_id = $1 AND user_id = $2 AND left_at IS NULL`,
+      [roomId, receiverUserId]
+    );
+    if (!receiver.rows[0] || receiver.rows[0].user_id === user.id) throw new RoomError("INVALID_VOICE_SIGNAL", "Voice signal recipient is not available");
+    const result = await client.query(
+      `INSERT INTO room_voice_signals (room_id, sender_user_id, receiver_user_id, signal_type, payload)
+       VALUES ($1, $2, $3, $4, $5::jsonb)
+       RETURNING id, sender_user_id, signal_type, payload, created_at`,
+      [roomId, user.id, receiverUserId, signalType, serialized]
+    );
+    return voiceSignalPayload(result.rows[0]);
   });
 }
 
