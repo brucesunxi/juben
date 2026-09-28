@@ -1390,8 +1390,9 @@ function setGameNav(phase) {
 }
 
 function gameAction(content, hint, button, handler) {
-  gameState.nextAction = handler || null;
-  $("#gameActionBar").innerHTML = `<span class="action-hint">${hint}</span>${button ? `<button class="primary-button" id="gameNextAction">${button} <span>↗</span></button>` : ""}`;
+  gameState.nextAction = gameState.spectator ? null : (handler || null);
+  const actionHint = gameState.spectator ? `${t("roomSpectator")} · ${t("roomLobbyLive")}` : hint;
+  $("#gameActionBar").innerHTML = `<span class="action-hint">${actionHint}</span>${!gameState.spectator && button ? `<button class="primary-button" id="gameNextAction">${button} <span>↗</span></button>` : ""}`;
 }
 
 function stopRoomSessionSync() {
