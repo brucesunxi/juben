@@ -15,7 +15,7 @@
     <link rel="stylesheet" href="game-fixes.css?v=20260924-8" />
     <link rel="stylesheet" href="ui-fixes.css?v=20260928-7" />
     <script src="runtime-config.js?v=20260924-1"></script>
-    <script src="app.js?v=20260929-41" defer></script>
+    <script src="app.js?v=20260929-42" defer></script>
   </head>
   <body>
     <div class="app-shell">
@@ -55,6 +55,7 @@
 
         <section id="roomsView" class="view">
           <div class="page-intro"><div><p class="eyebrow">ROOM PREVIEW</p><h1>故事房间预览</h1><p>当前版本提供单人案件试玩和可选的多人剧本房间，房主开始后可同步推进案件。</p></div><div class="page-intro-actions"><button class="primary-button" id="quickMatchRoom">快速组局 ↗</button><button class="ghost-button" id="createRoom">创建房间</button></div></div>
+          <form class="room-code-entry" id="roomCodeForm"><label for="roomCodeInput" id="roomCodeLabel">输入房间码</label><div><input id="roomCodeInput" maxlength="36" autocomplete="off" spellcheck="false" placeholder="例如：A1B2C3D4" /><button class="ghost-button" type="submit" id="joinRoomCode">进入房间 ↗</button></div><small id="roomCodeHint">输入朋友分享的 8 位房间码，直接进入大厅。</small></form>
           <div class="room-grid" id="roomGrid"></div>
         </section>
 

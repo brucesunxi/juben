@@ -408,6 +408,20 @@ export async function getDatabaseRoom(roomId, profile = {}) {
   }
 }
 
+export async function getDatabaseRoomByCode(code, profile = {}) {
+  if (!pool) return null;
+  const normalized = String(code || "").trim().toLowerCase();
+  if (!/^[a-f0-9]{8}(?:[a-f0-9-]{0,28})$/.test(normalized)) return null;
+  await expireStaleRooms();
+  const client = await pool.connect();
+  try {
+    const result = await client.query(`${roomSelect} WHERE r.id::text LIKE $1 AND r.status IN ('waiting', 'live') ORDER BY r.created_at DESC LIMIT 1`, [`${normalized}%`]);
+    return result.rows[0] ? rowToRoom(result.rows[0], String(profile.externalKey || "")) : null;
+  } finally {
+    client.release();
+  }
+}
+
 export async function deleteDatabaseUser(profile = {}) {
   if (!pool) return null;
   const externalKey = String(profile.externalKey || "").trim();

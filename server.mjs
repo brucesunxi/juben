@@ -15,6 +15,7 @@ import {
   databaseHealth,
   deleteDatabaseUser,
   getDatabaseRoom,
+  getDatabaseRoomByCode,
   getDatabaseRoomMessages,
   getDatabaseRoomSession,
   getDatabaseRoomVoiceSignals,
@@ -361,6 +362,12 @@ const server = http.createServer(async (request, response) => {
         payload.payload || {}
       );
       return sendJson(response, 201, event);
+    }
+    const roomCodeMatch = url.pathname.match(/^\/api\/rooms\/code\/([a-f0-9-]{8,36})$/i);
+    if (roomCodeMatch && request.method === "GET") {
+      if (!databaseEnabled) return sendJson(response, 404, { error: "Room not found" });
+      const room = await getDatabaseRoomByCode(roomCodeMatch[1], { externalKey: url.searchParams.get("externalKey") || "" });
+      return room ? sendJson(response, 200, { room }) : sendJson(response, 404, { error: "Room not found" });
     }
     if (roomMatch && request.method === "GET") {
       if (!databaseEnabled) return sendJson(response, 404, { error: "Room not found" });
