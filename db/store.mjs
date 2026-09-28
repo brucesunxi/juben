@@ -334,9 +334,10 @@ export async function startDatabaseRoom(roomId, profile = {}) {
     };
     const roleKeys = rolePools[host.rows[0].script_id] || rolePools["moon-trial"];
     const members = await client.query(
-      `SELECT user_id FROM room_members WHERE room_id = $1 AND left_at IS NULL AND member_role <> 'spectator' ORDER BY joined_at ASC FOR UPDATE`,
+      `SELECT user_id, ready FROM room_members WHERE room_id = $1 AND left_at IS NULL AND member_role <> 'spectator' ORDER BY joined_at ASC FOR UPDATE`,
       [roomId]
     );
+    if (members.rows.some((member) => member.ready !== true)) throw new RoomError("ROOM_NOT_READY", "All players must be ready before the host starts the room");
     for (const [index, member] of members.rows.entries()) {
       await client.query("UPDATE room_members SET character_key = $2 WHERE room_id = $1 AND user_id = $3", [roomId, roleKeys[index] || roleKeys[index % roleKeys.length], member.user_id]);
     }
