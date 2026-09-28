@@ -425,7 +425,8 @@ export async function setDatabaseRoomRole(roomId, profile = {}, characterKey = "
   if (!pool) return null;
   await waitForDatabaseShape();
   return inTransaction(async (client) => {
-    const { user } = await requireRoomMember(client, roomId, profile);
+    const { user, role } = await requireRoomMember(client, roomId, profile);
+    if (role === "spectator") throw new RoomError("ROLE_FORBIDDEN", "Spectators cannot choose a character");
     const room = await client.query("SELECT script_id, status FROM rooms WHERE id = $1", [roomId]);
     if (!room.rows[0]) throw new RoomError("ROOM_NOT_FOUND", "Room not found");
     if (room.rows[0].status !== "waiting") throw new RoomError("ROOM_LIVE", "This room has already started");

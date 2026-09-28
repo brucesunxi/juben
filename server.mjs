@@ -385,6 +385,7 @@ const server = http.createServer(async (request, response) => {
       ROOM_NOT_READY: 409,
       NOT_HOST: 403,
       NOT_MEMBER: 403,
+      ROLE_FORBIDDEN: 403,
       SESSION_NOT_FOUND: 409,
       INVALID_EVENT: 400,
       EMPTY_MESSAGE: 400,
