@@ -16,7 +16,16 @@ function readArchive() {
   }
 }
 
-const state = { scripts: [], archive: readArchive(), activeFilter: "all", selectedScript: null, locale: readLocalePreference() || "zh", localeSource: readLocalePreference() ? "manual" : "auto", liveRooms: [], activeRoom: null, roomPollTimer: null };
+function readProfileName() {
+  try {
+    const saved = localStorage.getItem("nocturne-profile-name");
+    return saved ? String(saved).slice(0, 80) : "";
+  } catch {
+    return "";
+  }
+}
+
+const state = { scripts: [], archive: readArchive(), profileName: readProfileName(), activeFilter: "all", selectedScript: null, locale: readLocalePreference() || "zh", localeSource: readLocalePreference() ? "manual" : "auto", liveRooms: [], activeRoom: null, roomPollTimer: null };
 const API_BASE = String(window.NOCTURNE_API_BASE || "").replace(/\/$/, "");
 const apiFetch = (path, options) => fetch(`${API_BASE}${path}`, options);
 const translations = {
@@ -24,7 +33,7 @@ const translations = {
     appTitle: "Nocturne · 剧本推理社交", brandCaption: "SCRIPT MYSTERY / SOCIAL PLAY", mobileCaption: "剧本探索社", navDiscover: "发现剧本", navRooms: "房间预览", navLibrary: "我的收藏", navStudio: "创作后台", mainNav: "主导航", mobileNav: "移动端主导航", mobileHome: "首页", mobileRooms: "房间", mobileLibrary: "收藏", mobileStudio: "创作", localPlay: "LOCAL PLAY", offlineCases: "4 个案件可离线试玩", profileAvatar: "凌", profileName: "凌 · 夜航员", profileLevel: "探索者 Lv.12", notification: "通知", heroCaseTitle: "月影审判", schemaExampleTitle: "月影审判", privacy: "隐私政策", terms: "用户协议", discover: "发现剧本", rooms: "房间预览", library: "我的收藏", studio: "创作后台",
     heroEyebrow: "今晚，进入另一个人生", heroTitleA: "真相藏在", heroTitleB: "每个人的沉默里。", heroDescription: "选择一段命运，和陌生人共同完成一场只发生一次的推理。", startTrial: "开始一局试玩", browseRooms: "浏览房间预览", curatedCases: "CURATED CASES", picksForYou: "为你挑选的剧本", all: "全部", mystery: "悬疑", emotion: "情感", sciFi: "科幻",
     roomKicker: "ROOM PREVIEW", roomTitle: "故事房间", roomDescription: "创建或加入一个真实房间，等待成员到齐后由房主开始剧本。", viewTrialEntry: "创建房间", roomJoin: "加入房间", roomWatch: "查看房间", roomMissing: "还差 {count} 人", roomFull: "已满员", roomRequest: "{room}：已进入房间", roomLobbyTitle: "房间大厅", roomLobbyPlayers: "房间成员", roomLobbyWaiting: "等待房主开始游戏", roomLobbyLive: "剧本已经开始", roomStart: "开始剧本", roomLeave: "离开房间", roomClose: "关闭房间", roomCreateSuccess: "房间已创建", roomJoinSuccess: "已加入房间", roomLeaveSuccess: "已离开房间", roomStartSuccess: "剧本已开始", roomOffline: "服务端暂不可用，已切换为单人试玩", roomNoRooms: "当前还没有公开房间，创建一个吧。", roomHost: "房主", roomPlayer: "玩家", roomSpectator: "观战",
-    archiveKicker: "YOUR ARCHIVE", archiveTitle: "收藏与足迹", archiveDescription: "保存那些值得二刷的故事，也记录你曾经成为谁。", archiveEmptyTitle: "你的档案还很安静", archiveEmptyDescription: "完成一局试玩后，案件会自动归档到这里。", archiveCompleted: "已完成", archiveReplay: "重新开始", exploreScripts: "去探索剧本", studioKicker: "STUDIO / CONTENT OPS", studioTitle: "创作后台", studioDescription: "剧本文件进入指定目录后，Nocturne 会自动识别、整理并发布到剧本库。", syncEnabled: "自动同步已开启", synced: "已同步 {count} 个剧本", autoIngestion: "AUTO INGESTION", ingestionTitle: "剧本自动入库", live: "● LIVE", dropTitle: "拖入剧本文件", dropDescription: "支持 .json / .md · 上传后自动解析并发布为草稿", chooseFile: "选择文件", listening: "后台文件夹监听中", incomingFolder: "将文件放入 /incoming，每 4 秒自动同步", waiting: "等待数据", activity: "ACTIVITY FEED", recentActivity: "最近动态", scanNow: "立即扫描 ↗", schemaTitle: "内容格式提示", schemaDescription: "JSON 文件可直接提供 title、genre、players、duration、tags、description 和 content 字段；Markdown 文件会自动读取一级标题作为剧本名。",
+    archiveKicker: "YOUR ARCHIVE", archiveTitle: "收藏与足迹", archiveDescription: "保存那些值得二刷的故事，也记录你曾经成为谁。", archiveEmptyTitle: "你的档案还很安静", archiveEmptyDescription: "完成一局试玩后，案件会自动归档到这里。", archiveCompleted: "已完成", archiveReplay: "重新开始", exploreScripts: "去探索剧本", profileEdit: "编辑资料", profileSave: "保存资料", profileNameLabel: "显示名称", profileNamePlaceholder: "输入你在房间里显示的名称", profileGuestNote: "当前为匿名访客身份；名称仅用于房间成员展示。", profileSaved: "资料已保存", profileDelete: "删除访客资料", profileDeleteConfirm: "确定删除本设备的访客资料和房间记录吗？", profileDeleted: "访客资料已删除", studioKicker: "STUDIO / CONTENT OPS", studioTitle: "创作后台", studioDescription: "剧本文件进入指定目录后，Nocturne 会自动识别、整理并发布到剧本库。", syncEnabled: "自动同步已开启", synced: "已同步 {count} 个剧本", autoIngestion: "AUTO INGESTION", ingestionTitle: "剧本自动入库", live: "● LIVE", dropTitle: "拖入剧本文件", dropDescription: "支持 .json / .md · 上传后自动解析并发布为草稿", chooseFile: "选择文件", listening: "后台文件夹监听中", incomingFolder: "将文件放入 /incoming，每 4 秒自动同步", waiting: "等待数据", activity: "ACTIVITY FEED", recentActivity: "最近动态", scanNow: "立即扫描 ↗", schemaTitle: "内容格式提示", schemaDescription: "JSON 文件可直接提供 title、genre、players、duration、tags、description 和 content 字段；Markdown 文件会自动读取一级标题作为剧本名。",
     emptyFilterTitle: "还没有这个类型的剧本", emptyFilterDescription: "换一个筛选，或者去创作后台导入新剧本。", caseFile: "CASE FILE", privateCase: "CASE FILE / PRIVATE", players: "PLAYERS", duration: "DURATION", level: "LEVEL", defaultSubtitle: "一场关于真相、秘密与选择的沉浸式推理", defaultDescription: "一份新剧本已经抵达。请在所有人说出真话之前，找到唯一无法被伪造的证据。", detailStart: "开始试玩", cardStart: "查看详情 / 开始试玩",
     gamePlaying: "正在游玩", backToLibrary: "← 返回剧本库", livePlay: "剧情演绎中", yourRole: "你的角色", caseNote: "案件笔记", phaseBriefing: "序章 · 入场", phaseEvidence: "第一幕 · 搜证", phaseQuestion: "第二幕 · 质询", phaseVote: "终局 · 指认", phaseResult: "终局 · 复盘", gameTitleEvidence: "搜寻线索", gameTitleQuestion: "公开质询", gameTitleVote: "最终指认", gameTitleResult: "真相浮出水面", startEvidence: "开始搜证", continueEvidence: "继续搜证", continueQuestion: "继续质询", enterQuestion: "进入公开质询", enterVote: "进入最终指认", finalVote: "最终指认", closed: "案件已归档", replay: "再玩一次", evidenceHint: "先搜集至少 3 条线索，再进入质询。", evidenceCount: "已发现 {count} / 3 条关键线索", questionHint: "{count} 次质询记录 · 线索越多，判断越接近真相", voteHint: "你只有一次正式指认机会。", inspectEvidence: "选择物证 · 点击查看细节", recordEvidence: "记入案件笔记", noEnoughEvidence: "至少查看三件物证，才能进入下一幕", noEnoughQuestions: "至少完成三次质询，再做最终指认", questionTime: "你在关键时间段在哪里？", questionMotive: "谁最有动机？", questionKey: "你见过关键物证吗？", accuse: "指认 TA ↗", correct: "真相浮出水面", wrong: "这个答案无法解释全部证据，再想想", localResponse: "{name} 已回应", recorded: "已记录", close: "关闭", sceneAlt: "案件现场", roomTrialPrompt: "请选择一个案件开始试玩", scanComplete: "扫描完成，剧本库已更新", scanOffline: "当前为离线试玩模式，无法扫描服务端文件夹",
   },
@@ -32,7 +41,7 @@ const translations = {
     appTitle: "Nocturne · Script Mystery Social", brandCaption: "SCRIPT MYSTERY / SOCIAL PLAY", mobileCaption: "Script mystery social", navDiscover: "Discover", navRooms: "Rooms", navLibrary: "My Archive", navStudio: "Studio", mainNav: "Main navigation", mobileNav: "Mobile navigation", mobileHome: "Home", mobileRooms: "Rooms", mobileLibrary: "Archive", mobileStudio: "Studio", localPlay: "LOCAL PLAY", offlineCases: "4 cases ready offline", profileAvatar: "L", profileName: "Ling · Night Watcher", profileLevel: "Explorer Lv.12", notification: "Notifications", heroCaseTitle: "The Trial of Moonlight", schemaExampleTitle: "The Trial of Moonlight", privacy: "Privacy", terms: "Terms", discover: "Discover", rooms: "Rooms", library: "My Archive", studio: "Studio",
     heroEyebrow: "TONIGHT, ENTER ANOTHER LIFE", heroTitleA: "Truth hides", heroTitleB: "inside every silence.", heroDescription: "Choose a fate and solve a one-night mystery with people you have never met.", startTrial: "Start a trial", browseRooms: "Browse rooms", curatedCases: "CURATED CASES", picksForYou: "Curated for you", all: "All", mystery: "Mystery", emotion: "Drama", sciFi: "Sci-fi",
     roomKicker: "ROOM PREVIEW", roomTitle: "Story rooms", roomDescription: "Create or join a live room, then let the host start the case when everyone is ready.", viewTrialEntry: "Create room", roomJoin: "Join room", roomWatch: "View room", roomMissing: "{count} spot(s) left", roomFull: "Full", roomRequest: "{room}: you are in", roomLobbyTitle: "Room lobby", roomLobbyPlayers: "Room members", roomLobbyWaiting: "Waiting for the host to start", roomLobbyLive: "The case is live", roomStart: "Start case", roomLeave: "Leave room", roomClose: "Close room", roomCreateSuccess: "Room created", roomJoinSuccess: "You joined the room", roomLeaveSuccess: "You left the room", roomStartSuccess: "The case has started", roomOffline: "The service is unavailable; opening a solo trial instead", roomNoRooms: "No public rooms yet. Create the first one.", roomHost: "Host", roomPlayer: "Player", roomSpectator: "Spectator",
-    archiveKicker: "YOUR ARCHIVE", archiveTitle: "Saved stories", archiveDescription: "Keep the stories worth replaying and remember who you became.", archiveEmptyTitle: "Your archive is quiet", archiveEmptyDescription: "Completed trials will appear here automatically.", archiveCompleted: "Completed", archiveReplay: "Replay", exploreScripts: "Explore scripts", studioKicker: "STUDIO / CONTENT OPS", studioTitle: "Creator studio", studioDescription: "Drop script files into the watched folder and Nocturne will parse, organize and publish them as drafts.", syncEnabled: "Auto-sync enabled", synced: "{count} scripts synced", autoIngestion: "AUTO INGESTION", ingestionTitle: "Script ingestion", live: "● LIVE", dropTitle: "Drop script files here", dropDescription: "Supports .json / .md · files are parsed into drafts automatically", chooseFile: "Choose file", listening: "Watching the incoming folder", incomingFolder: "Put files in /incoming; scan runs every 4 seconds", waiting: "Waiting for data", activity: "ACTIVITY FEED", recentActivity: "Recent activity", scanNow: "Scan now ↗", schemaTitle: "Content format", schemaDescription: "JSON may provide title, genre, players, duration, tags, description and content; Markdown uses its first-level heading as the script title.",
+    archiveKicker: "YOUR ARCHIVE", archiveTitle: "Saved stories", archiveDescription: "Keep the stories worth replaying and remember who you became.", archiveEmptyTitle: "Your archive is quiet", archiveEmptyDescription: "Completed trials will appear here automatically.", archiveCompleted: "Completed", archiveReplay: "Replay", exploreScripts: "Explore scripts", profileEdit: "Edit profile", profileSave: "Save profile", profileNameLabel: "Display name", profileNamePlaceholder: "Name shown to room members", profileGuestNote: "You are using an anonymous guest identity; this name is only shown in rooms.", profileSaved: "Profile saved", profileDelete: "Delete guest data", profileDeleteConfirm: "Delete this device's guest profile and room records?", profileDeleted: "Guest data deleted", studioKicker: "STUDIO / CONTENT OPS", studioTitle: "Creator studio", studioDescription: "Drop script files into the watched folder and Nocturne will parse, organize and publish them as drafts.", syncEnabled: "Auto-sync enabled", synced: "{count} scripts synced", autoIngestion: "AUTO INGESTION", ingestionTitle: "Script ingestion", live: "● LIVE", dropTitle: "Drop script files here", dropDescription: "Supports .json / .md · files are parsed into drafts automatically", chooseFile: "Choose file", listening: "Watching the incoming folder", incomingFolder: "Put files in /incoming; scan runs every 4 seconds", waiting: "Waiting for data", activity: "ACTIVITY FEED", recentActivity: "Recent activity", scanNow: "Scan now ↗", schemaTitle: "Content format", schemaDescription: "JSON may provide title, genre, players, duration, tags, description and content; Markdown uses its first-level heading as the script title.",
     emptyFilterTitle: "No scripts in this category", emptyFilterDescription: "Try another filter or import a new script from Studio.", caseFile: "CASE FILE", privateCase: "CASE FILE / PRIVATE", players: "PLAYERS", duration: "DURATION", level: "LEVEL", defaultSubtitle: "An immersive mystery about truth, secrets and choice", defaultDescription: "A new script has arrived. Find the one piece of evidence that cannot be forged before everyone tells you their version of the truth.", detailStart: "Start trial", cardStart: "View details / Start trial",
     gamePlaying: "Playing", backToLibrary: "← Back to archive", livePlay: "Story in progress", yourRole: "Your role", caseNote: "Case notes", phaseBriefing: "Prologue · Arrival", phaseEvidence: "Act I · Evidence", phaseQuestion: "Act II · Questions", phaseVote: "Final act · Accusation", phaseResult: "Final act · Review", gameTitleEvidence: "Evidence hunt", gameTitleQuestion: "Open questioning", gameTitleVote: "Final accusation", gameTitleResult: "The truth comes to light", startEvidence: "Start evidence hunt", continueEvidence: "Keep searching", continueQuestion: "Keep questioning", enterQuestion: "Open questioning", enterVote: "Make final accusation", finalVote: "Final accusation", closed: "Case archived", replay: "Play again", evidenceHint: "Collect at least 3 clues before questioning.", evidenceCount: "{count} / 3 key clues found", questionHint: "{count} questions asked · more clues, better judgment", voteHint: "You only get one formal accusation.", inspectEvidence: "Select an item · tap to inspect", recordEvidence: "Record in case notes", noEnoughEvidence: "Inspect at least three items before the next act", noEnoughQuestions: "Ask at least three questions before the final accusation", questionTime: "Where were you during the critical window?", questionMotive: "Who has the strongest motive?", questionKey: "Have you seen the key evidence?", accuse: "Accuse ↗", correct: "The truth comes to light", wrong: "That answer cannot explain all the evidence", localResponse: "{name} has responded", recorded: "Recorded", close: "Close", sceneAlt: "case scene", roomTrialPrompt: "Choose a case to start a trial", scanComplete: "Scan complete; the script library is updated", scanOffline: "Offline trial mode cannot scan the server folder",
   }
@@ -105,10 +114,13 @@ function applyStaticLocale() {
   $$(".mobile-nav-item").forEach((item) => { item.querySelector("small").textContent = t(mobileLabels[item.dataset.view]); });
   $(".online-signal strong").textContent = t("localPlay");
   $(".online-signal small").textContent = t("offlineCases");
-  $(".profile-chip .avatar").textContent = t("profileAvatar");
-  $(".profile-chip strong").textContent = t("profileName");
+  const displayName = state.profileName || t("profileName");
+  $(".profile-chip .avatar").textContent = displayName.slice(0, 1);
+  $(".profile-chip strong").textContent = displayName;
   $(".profile-chip small").textContent = t("profileLevel");
-  $(".top-avatar").textContent = t("profileAvatar");
+  $(".profile-chip").setAttribute("aria-label", t("profileEdit"));
+  $(".top-avatar").textContent = displayName.slice(0, 1);
+  $(".top-avatar").setAttribute("aria-label", t("profileEdit"));
   $(".icon-button").title = t("notification");
   $(".legal-links a[href='privacy.html']").textContent = t("privacy");
   $(".legal-links a[href='terms.html']").textContent = t("terms");
@@ -163,6 +175,7 @@ function applyStaticLocale() {
   $(".back-button").textContent = t("backToLibrary");
   $(".case-note .eyebrow").textContent = t("caseNote");
   $(".live-pill").innerHTML = `<i></i> ${t("livePlay")}`;
+  renderProfileModal();
   const gameNavLabels = { briefing: "phaseBriefing", evidence: "phaseEvidence", question: "phaseQuestion", vote: "phaseVote" };
   $$(".game-nav-item").forEach((item) => { const number = item.querySelector("span")?.textContent || ""; item.innerHTML = `<span>${number}</span>${t(gameNavLabels[item.dataset.gamePhase])}`; });
   $$("[data-locale]").forEach((button) => button.classList.toggle("active", button.dataset.locale === state.locale));
@@ -240,7 +253,7 @@ function currentUserProfile() {
   } catch {
     externalKey = `guest-${Date.now()}`;
   }
-  return { externalKey, displayName: t("profileName"), locale: state.locale };
+  return { externalKey, displayName: state.profileName || t("profileName"), locale: state.locale };
 }
 
 async function loadRooms() {
@@ -305,6 +318,71 @@ function renderRooms() {
     state.selectedScript = state.scripts.find((script) => script.id === button.dataset.scriptId) || fallbackScripts.find((script) => script.id === button.dataset.scriptId) || fallbackScripts[0];
     startGame();
   }));
+}
+
+function ensureProfileModal() {
+  if ($("#profileModalBackdrop")) return;
+  document.body.insertAdjacentHTML("beforeend", `<div class="room-lobby-backdrop" id="profileModalBackdrop" aria-hidden="true"><section class="room-lobby-card profile-modal-card" role="dialog" aria-modal="true" aria-labelledby="profileModalTitle"><button class="modal-close" id="profileModalClose">×</button><p class="eyebrow">NOCTURNE / PROFILE</p><h2 id="profileModalTitle">${t("profileEdit")}</h2><label class="profile-field"><span id="profileNameLabel">${t("profileNameLabel")}</span><input id="profileNameInput" maxlength="80" autocomplete="nickname" /></label><p class="profile-note" id="profileGuestNote">${t("profileGuestNote")}</p><div class="room-lobby-actions"><button class="primary-button" id="profileModalSave">${t("profileSave")}</button><button class="ghost-button" id="profileModalCancel">${t("close")}</button></div><button class="profile-delete-button" id="profileDeleteButton">${t("profileDelete")}</button></section></div>`);
+  $("#profileModalClose").addEventListener("click", closeProfileModal);
+  $("#profileModalCancel").addEventListener("click", closeProfileModal);
+  $("#profileModalBackdrop").addEventListener("click", (event) => { if (event.target.id === "profileModalBackdrop") closeProfileModal(); });
+  $("#profileModalSave").addEventListener("click", saveProfile);
+  $("#profileDeleteButton").addEventListener("click", deleteProfile);
+}
+
+function renderProfileModal() {
+  if (!$("#profileModalBackdrop")) return;
+  $("#profileModalTitle").textContent = t("profileEdit");
+  $("#profileNameLabel").textContent = t("profileNameLabel");
+  $("#profileNameInput").placeholder = t("profileNamePlaceholder");
+  $("#profileGuestNote").textContent = t("profileGuestNote");
+  $("#profileModalSave").textContent = t("profileSave");
+  $("#profileModalCancel").textContent = t("close");
+  $("#profileDeleteButton").textContent = t("profileDelete");
+}
+
+function openProfileModal() {
+  ensureProfileModal();
+  renderProfileModal();
+  $("#profileNameInput").value = state.profileName || t("profileName");
+  $("#profileModalBackdrop").classList.add("open");
+  $("#profileModalBackdrop").setAttribute("aria-hidden", "false");
+  setTimeout(() => $("#profileNameInput")?.focus(), 0);
+}
+
+function closeProfileModal() {
+  $("#profileModalBackdrop")?.classList.remove("open");
+  $("#profileModalBackdrop")?.setAttribute("aria-hidden", "true");
+}
+
+function saveProfile() {
+  const value = $("#profileNameInput").value.trim().slice(0, 80);
+  state.profileName = value || t("profileName");
+  try { localStorage.setItem("nocturne-profile-name", state.profileName); } catch { /* storage can be unavailable in private webviews */ }
+  applyStaticLocale();
+  closeProfileModal();
+  showToast(t("profileSaved"));
+}
+
+async function deleteProfile() {
+  if (!window.confirm(t("profileDeleteConfirm"))) return;
+  try {
+    const response = await apiFetch("/api/profile", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ user: currentUserProfile() }) });
+    if (!response.ok) throw new Error("profile delete failed");
+  } catch {
+    // Local data is still removed when the API is unavailable.
+  }
+  try {
+    localStorage.removeItem("nocturne-user-key");
+    localStorage.removeItem("nocturne-profile-name");
+    localStorage.removeItem("nocturne-archive");
+  } catch { /* storage can be unavailable in private webviews */ }
+  state.profileName = "";
+  state.archive = [];
+  closeProfileModal();
+  applyStaticLocale();
+  renderLibrary();
+  showToast(t("profileDeleted"));
 }
 
 function ensureRoomLobby() {
@@ -932,13 +1010,16 @@ function bindEvents() {
     state.selectedScript = state.scripts.find((script) => script.id === "moon-trial") || state.scripts[0] || fallbackScripts[0];
     startGame();
   });
+  $(".profile-chip").addEventListener("click", openProfileModal);
+  $(".profile-chip").addEventListener("keydown", (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openProfileModal(); } });
+  $(".top-avatar").addEventListener("click", openProfileModal);
   $("#createRoom").addEventListener("click", () => createRoom("moon-trial"));
   $("#modalClose").addEventListener("click", closeModal);
   $("#modalBackdrop").addEventListener("click", (event) => { if (event.target.id === "modalBackdrop") closeModal(); });
   $("#modalStart").addEventListener("click", startGame);
   $("#exitGame").addEventListener("click", () => { clearInterval(gameState.timer); stopRoomSessionSync(); gameState.roomId = null; gameState.sessionId = null; setView("discover"); });
   $("#scanNow").addEventListener("click", async () => { try { await apiFetch("/api/scripts/scan", { method: "POST" }); await loadScripts(); await refreshSync(); showToast(t("scanComplete")); } catch { showToast(t("scanOffline")); } });
-  document.addEventListener("keydown", (event) => { if (event.key === "Escape") closeModal(); });
+  document.addEventListener("keydown", (event) => { if (event.key === "Escape") { closeModal(); closeProfileModal(); } });
   $("#chooseFile").addEventListener("click", () => $("#fileInput").click());
   $("#fileInput").addEventListener("change", async (event) => { const file = event.target.files[0]; if (file) { try { await importFile(file); } catch (error) { showToast(error.message); } event.target.value = ""; } });
   document.addEventListener("click", (event) => {

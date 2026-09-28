@@ -1,3 +1,28 @@
 <!doctype html>
-<!-- Language default uses a same-origin country code supplied by the deployment edge; no third-party geolocation request is made. -->
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Nocturne · 隐私政策</title><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="ui-fixes.css"></head><body><main class="legal-page"><p class="eyebrow">NOCTURNE / PRIVACY</p><h1>隐私政策</h1><p>生效日期：2026-09-24</p><h2>当前版本</h2><p>当前 MVP 版本不要求注册，不主动收集姓名、手机号、通讯录、定位、相机或麦克风数据。剧本试玩状态仅保存在当前页面内；创作后台上传的剧本会发送到部署方配置的服务端，用于剧本入库。</p><h2>服务端数据</h2><p>如果部署方启用了远程 API，服务端可能记录必要的请求日志和用户主动上传的剧本内容。正式发布前请将运营主体、保存期限、处理目的、第三方服务商和删除方式补充为真实信息。</p><h2>联系我们</h2><p>请将此处替换为真实客服邮箱或网页地址。此页面不是法律意见，正式上架前应由运营主体审核。</p><p><a href="index.html">返回 Nocturne</a></p></main></body></html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Nocturne · 隐私政策</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="ui-fixes.css" />
+  </head>
+  <body>
+    <main class="legal-page">
+      <p class="eyebrow">NOCTURNE / PRIVACY</p>
+      <h1>隐私政策</h1>
+      <p>生效日期：2026-09-28</p>
+      <h2>我们收集什么</h2>
+      <p>Nocturne 的核心单人试玩不要求注册，也不主动请求相机、麦克风、通讯录、定位或短信权限。应用会在本设备保存语言偏好、访客显示名称、剧本完成记录和匿名访客标识，用于恢复你的界面和房间体验。</p>
+      <h2>多人房间数据</h2>
+      <p>当你创建或加入房间时，匿名访客标识、显示名称、语言、房间成员关系以及你主动产生的游戏阶段、搜证、质询和投票事件会发送到 Nocturne 服务端，用于同步同一房间的游戏进度。剧本内容不会因为删除访客资料而被删除。</p>
+      <h2>服务商与地区判断</h2>
+      <p>生产服务托管在 Vercel，房间和剧本数据存储在 Neon PostgreSQL。首次打开时，应用可读取部署边缘提供的国家/地区代码，用于中国大陆默认中文、其他地区默认英文；不会把访客 IP 主动发送给第三方地理定位服务。当前版本不包含广告和行为分析 SDK。</p>
+      <h2>你的选择与删除</h2>
+      <p>你可以在应用内打开个人资料面板修改显示名称，或使用“删除访客资料”删除本设备的本地记录，并请求服务端删除对应的访客资料、成员记录和游戏事件关联；该操作会关闭你创建的未结束房间。若设备无法联网，本地资料仍会先被清除。</p>
+      <h2>联系信息</h2>
+      <p>正式商店提交前，发布方必须在此处补充真实运营主体、客服邮箱、数据保存期限和适用法律信息。当前项目反馈入口为 <a href="https://github.com/brucesunxi/juben/issues">GitHub Issues</a>。</p>
+      <p><a href="index.html">返回 Nocturne</a></p>
+    </main>
+  </body>
+</html>

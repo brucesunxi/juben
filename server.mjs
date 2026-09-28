@@ -10,6 +10,7 @@ import {
   appendDatabaseGameEvent,
   databaseEnabled,
   databaseHealth,
+  deleteDatabaseUser,
   getDatabaseRoom,
   getDatabaseRoomSession,
   joinDatabaseRoom,
@@ -195,7 +196,7 @@ const server = http.createServer(async (request, response) => {
     if (origin && corsOrigins.has(origin)) {
       response.setHeader("access-control-allow-origin", origin);
       response.setHeader("vary", "Origin");
-      response.setHeader("access-control-allow-methods", "GET,POST,OPTIONS");
+      response.setHeader("access-control-allow-methods", "GET,POST,DELETE,OPTIONS");
       response.setHeader("access-control-allow-headers", "content-type");
     }
     if (request.method === "OPTIONS") {
@@ -212,6 +213,11 @@ const server = http.createServer(async (request, response) => {
     }
     if (url.pathname === "/api/health" && request.method === "GET") {
       return sendJson(response, 200, { ok: true, ...(await databaseHealth()) });
+    }
+    if (url.pathname === "/api/profile" && request.method === "DELETE") {
+      const payload = JSON.parse(await readBody(request));
+      const result = await deleteDatabaseUser(payload.user || payload.profile || {});
+      return sendJson(response, 200, result || { deleted: false });
     }
     if (url.pathname === "/api/rooms" && request.method === "GET") {
       return sendJson(response, 200, { rooms: (await listDatabaseRooms(url.searchParams.get("status") || "waiting")) || [], database: databaseEnabled });

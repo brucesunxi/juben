@@ -237,6 +237,19 @@ export async function getDatabaseRoom(roomId, profile = {}) {
   }
 }
 
+export async function deleteDatabaseUser(profile = {}) {
+  if (!pool) return null;
+  const externalKey = String(profile.externalKey || "").trim();
+  if (!externalKey) return { deleted: false };
+  return inTransaction(async (client) => {
+    const user = await client.query("SELECT id FROM app_users WHERE external_key = $1 FOR UPDATE", [externalKey]);
+    if (!user.rows[0]) return { deleted: false };
+    await client.query("UPDATE rooms SET status = 'closed', ended_at = COALESCE(ended_at, now()), host_user_id = NULL WHERE host_user_id = $1 AND status <> 'closed'", [user.rows[0].id]);
+    await client.query("DELETE FROM app_users WHERE id = $1", [user.rows[0].id]);
+    return { deleted: true };
+  });
+}
+
 export async function createDatabaseRoom(scriptId, profile = {}, maxPlayers = 6) {
   if (!pool) return null;
   return inTransaction(async (client) => {
