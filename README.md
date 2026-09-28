@@ -67,7 +67,7 @@ JSON 最小格式：
   "genre": "悬疑 · 都市",
   "players": 6,
   "duration": "60 分钟",
-  "tags": ["搜证", "语音演绎"],
+  "tags": ["搜证", "角色演绎"],
   "description": "剧本简介"
 }
 ```

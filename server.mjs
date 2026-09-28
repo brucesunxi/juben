@@ -71,7 +71,7 @@ function normalizeScript(raw, filename = "script.json") {
     players,
     duration: raw.duration || "60–90 分钟",
     difficulty: raw.difficulty || "进阶",
-    tags: Array.isArray(raw.tags) ? raw.tags : ["沉浸推理", "多人语音"],
+    tags: Array.isArray(raw.tags) ? raw.tags : ["沉浸推理", "多人房间"],
     author: raw.author || "Nocturne Studio",
     cover: raw.cover || ["violet", "amber", "blue", "rose"][Math.floor(Math.random() * 4)],
     description: raw.description || "一份新剧本已经抵达。请在所有人说出真话之前，找到唯一无法被伪造的证据。",
