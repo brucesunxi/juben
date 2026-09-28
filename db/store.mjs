@@ -17,6 +17,14 @@ const pool = databaseEnabled
 const databaseShapeReady = databaseEnabled
   ? pool.query("ALTER TABLE game_events ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES app_users(id) ON DELETE SET NULL")
     .then(() => pool.query("ALTER TABLE room_members ADD COLUMN IF NOT EXISTS character_key TEXT"))
+    .then(() => pool.query(`CREATE TABLE IF NOT EXISTS room_messages (
+      id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      room_id UUID NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+      user_id UUID NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+      body TEXT NOT NULL CHECK (char_length(body) BETWEEN 1 AND 500),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )`))
+    .then(() => pool.query("CREATE INDEX IF NOT EXISTS room_messages_room_idx ON room_messages (room_id, id)"))
   : Promise.resolve();
 
 async function waitForDatabaseShape() {
@@ -344,6 +352,58 @@ export async function closeDatabaseRoom(roomId, profile = {}) {
     if (room.rows[0].host_user_id !== user.id) throw new RoomError("NOT_HOST", "Only the host can close the room");
     await client.query("UPDATE rooms SET status = 'closed', ended_at = COALESCE(ended_at, now()) WHERE id = $1", [roomId]);
     return getRoom(client, roomId, user.external_key);
+  });
+}
+
+function roomMessagePayload(row) {
+  return {
+    id: String(row.id),
+    displayName: row.display_name || "Night Watcher",
+    body: row.body,
+    createdAt: isoDate(row.created_at)
+  };
+}
+
+export async function getDatabaseRoomMessages(roomId, profile = {}, since = 0) {
+  if (!pool) return null;
+  await waitForDatabaseShape();
+  const cursor = /^\d+$/.test(String(since || "")) ? String(since) : "0";
+  const client = await pool.connect();
+  try {
+    await requireRoomMember(client, roomId, profile);
+    const result = await client.query(
+      `SELECT message.id, message.body, message.created_at, member_user.display_name
+         FROM room_messages message
+         JOIN app_users member_user ON member_user.id = message.user_id
+        WHERE message.room_id = $1 AND message.id > $2::bigint
+        ORDER BY message.id ASC
+        LIMIT 100`,
+      [roomId, cursor]
+    );
+    const messages = result.rows.map(roomMessagePayload);
+    return { messages, nextCursor: messages.at(-1)?.id || cursor };
+  } finally {
+    client.release();
+  }
+}
+
+export async function appendDatabaseRoomMessage(roomId, profile = {}, body = "") {
+  if (!pool) return null;
+  await waitForDatabaseShape();
+  const message = String(body || "").trim().slice(0, 500);
+  if (!message) throw new RoomError("EMPTY_MESSAGE", "Message cannot be empty");
+  return inTransaction(async (client) => {
+    const { user } = await requireRoomMember(client, roomId, profile);
+    const room = await client.query("SELECT status FROM rooms WHERE id = $1", [roomId]);
+    if (!room.rows[0]) throw new RoomError("ROOM_NOT_FOUND", "Room not found");
+    if (room.rows[0].status === "closed") throw new RoomError("ROOM_CLOSED", "Room is closed");
+    const result = await client.query(
+      `INSERT INTO room_messages (room_id, user_id, body)
+       VALUES ($1, $2, $3)
+       RETURNING id, body, created_at`,
+      [roomId, user.id, message]
+    );
+    return { message: roomMessagePayload({ ...result.rows[0], display_name: user.display_name }) };
   });
 }
 

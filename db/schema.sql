@@ -105,6 +105,14 @@ CREATE TABLE IF NOT EXISTS room_members (
 
 ALTER TABLE room_members ADD COLUMN IF NOT EXISTS character_key TEXT;
 
+CREATE TABLE IF NOT EXISTS room_messages (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  room_id UUID NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+  body TEXT NOT NULL CHECK (char_length(body) BETWEEN 1 AND 500),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS game_sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   script_id TEXT NOT NULL REFERENCES scripts(id) ON DELETE RESTRICT,
@@ -144,6 +152,7 @@ CREATE TABLE IF NOT EXISTS content_imports (
 CREATE INDEX IF NOT EXISTS scripts_published_updated_idx ON scripts (published, updated_at DESC);
 CREATE INDEX IF NOT EXISTS rooms_status_created_idx ON rooms (status, created_at DESC);
 CREATE INDEX IF NOT EXISTS room_members_user_idx ON room_members (user_id, joined_at DESC);
+CREATE INDEX IF NOT EXISTS room_messages_room_idx ON room_messages (room_id, id);
 CREATE INDEX IF NOT EXISTS sessions_user_started_idx ON game_sessions (user_id, started_at DESC);
 CREATE INDEX IF NOT EXISTS sessions_script_started_idx ON game_sessions (script_id, started_at DESC);
 CREATE INDEX IF NOT EXISTS game_events_session_created_idx ON game_events (session_id, created_at);
