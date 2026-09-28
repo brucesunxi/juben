@@ -759,7 +759,7 @@ export async function appendDatabaseRoomVoiceSignal(roomId, profile = {}, receiv
 }
 
 const gamePhases = new Set(["briefing", "evidence", "question", "vote", "result"]);
-const gameEventTypes = new Set(["phase_changed", "evidence_found", "question_asked", "vote_cast", "result_shown"]);
+const gameEventTypes = new Set(["phase_changed", "host_phase_changed", "evidence_found", "question_asked", "vote_cast", "result_shown"]);
 
 function isoDate(value) {
   return value instanceof Date ? value.toISOString() : value;
@@ -843,7 +843,7 @@ function reduceGameState(previous, eventType, payload) {
     votes: Array.isArray(previous?.votes) ? [...previous.votes] : [],
     questionCount: Number(previous?.questionCount || 0)
   };
-  if (eventType === "phase_changed" && gamePhases.has(payload.phase)) next.phase = payload.phase;
+  if ((eventType === "phase_changed" || eventType === "host_phase_changed") && gamePhases.has(payload.phase)) next.phase = payload.phase;
   if (eventType === "evidence_found" && payload.evidenceId) next.discovered = [...new Set([...next.discovered, String(payload.evidenceId)])];
   if (eventType === "question_asked" && payload.answerKey) {
     next.answers = [...new Set([...next.answers, String(payload.answerKey)])];
@@ -866,12 +866,13 @@ export async function appendDatabaseGameEvent(roomId, profile = {}, eventType, p
     const { user, role } = await requireRoomMember(client, roomId, profile);
     if (role === "spectator") throw new RoomError("ROLE_FORBIDDEN", "Spectators cannot change the game state");
     const session = await getLatestSession(client, roomId, true);
+    if (eventType === "host_phase_changed" && role !== "host") throw new RoomError("ROLE_FORBIDDEN", "Only the host can advance the story");
     if (eventType === "vote_cast" && session.phase !== "vote") throw new RoomError("INVALID_EVENT", "Votes are only accepted during the final accusation");
     if (eventType === "result_shown" && role !== "host") throw new RoomError("ROLE_FORBIDDEN", "Only the host can close the case");
     const currentState = session.state || {};
     const eventPayloadWithUser = { ...payload, userId: user.id };
     const nextState = reduceGameState(currentState, eventType, eventPayloadWithUser);
-    let phase = eventType === "phase_changed" && gamePhases.has(payload.phase) ? payload.phase : eventType === "result_shown" ? "result" : session.phase;
+    let phase = (eventType === "phase_changed" || eventType === "host_phase_changed") && gamePhases.has(payload.phase) ? payload.phase : eventType === "result_shown" ? "result" : session.phase;
     if (eventType === "vote_cast") {
       const playerCount = await client.query("SELECT count(*)::int AS players FROM room_members WHERE room_id = $1 AND left_at IS NULL AND member_role <> 'spectator'", [roomId]);
       const voters = new Set(nextState.votes.filter((vote) => vote.userId).map((vote) => vote.userId));

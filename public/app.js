@@ -177,6 +177,16 @@ translations.zh.notebookPinned = "已标记关键";
 translations.en.notebookPinned = "Pinned clue";
 translations.zh.notebookCount = "已标记 {count} 条线索";
 translations.en.notebookCount = "{count} clue(s) pinned";
+translations.zh.dmTitle = "主持人控场";
+translations.en.dmTitle = "DM control room";
+translations.zh.dmHint = "由房主推进剧情，所有玩家会在同步后看到变化。";
+translations.en.dmHint = "The host advances the story; every player sees the change after sync.";
+translations.zh.dmCurrent = "当前阶段";
+translations.en.dmCurrent = "Current phase";
+translations.zh.dmAdvance = "推进到 {phase}";
+translations.en.dmAdvance = "Advance to {phase}";
+translations.zh.dmAdvanced = "已推进到 {phase}";
+translations.en.dmAdvanced = "Advanced to {phase}";
 translations.en.achievementUnlocked = "Unlocked";
 translations.zh.achievementLocked = "未解锁";
 translations.en.achievementLocked = "Locked";
@@ -1092,7 +1102,7 @@ function renderRoomLobby({ show = true } = {}) {
     state.selectedScript = state.scripts.find((item) => item.id === room.scriptId) || fallbackScripts.find((item) => item.id === room.scriptId) || fallbackScripts[0];
     const roomId = room.id;
     closeRoomLobby({ preserveRoom: true });
-    startGame({ roomId, spectator: selfMember?.role === "spectator" });
+    startGame({ roomId, spectator: selfMember?.role === "spectator", host: selfMember?.role === "host" });
   });
   $("#roomLeave")?.addEventListener("click", () => roomAction(room.id, isHost ? "close" : "leave"));
 }
@@ -1241,7 +1251,7 @@ async function restoreActiveRoom() {
     if (data.room.status === "live") {
       state.selectedScript = state.scripts.find((script) => script.id === data.room.scriptId) || fallbackScripts.find((script) => script.id === data.room.scriptId) || fallbackScripts[0];
       closeRoomLobby({ preserveRoom: true });
-      startGame({ roomId: data.room.id, spectator: selfMember.role === "spectator", characterKey: selfMember.characterKey || "player" });
+      startGame({ roomId: data.room.id, spectator: selfMember.role === "spectator", host: selfMember.role === "host", characterKey: selfMember.characterKey || "player" });
       showToast(t("roomRestored"));
       return;
     }
@@ -1685,7 +1695,7 @@ function localizedCase(caseId) {
 }
 
 let activeCase = demoCase;
-const gameState = { phase: "briefing", discovered: new Set(), pinnedEvidence: new Set(), selectedEvidence: null, selectedSuspect: "shen", answers: new Set(), questionCount: 0, hintsUsed: 0, votedSuspect: null, roomVotes: [], startedAt: 0, timer: null, nextAction: null, roomId: null, sessionId: null, characterKey: "player", playerUserId: null, spectator: false, eventCursor: 0, roomPollTimer: null, lastEmittedPhase: null };
+const gameState = { phase: "briefing", discovered: new Set(), pinnedEvidence: new Set(), selectedEvidence: null, selectedSuspect: "shen", answers: new Set(), questionCount: 0, hintsUsed: 0, votedSuspect: null, roomVotes: [], startedAt: 0, timer: null, nextAction: null, roomId: null, sessionId: null, characterKey: "player", playerUserId: null, spectator: false, isHost: false, suppressPhaseEmit: false, eventCursor: 0, roomPollTimer: null, lastEmittedPhase: null };
 
 function currentRoleProfile() {
   const key = gameState.characterKey || "player";
@@ -1746,7 +1756,7 @@ function setGameNav(phase) {
   $$(".game-nav-item").forEach((item) => item.classList.toggle("active", item.dataset.gamePhase === phase));
   const labels = { briefing: t("phaseBriefing"), evidence: t("phaseEvidence"), question: t("phaseQuestion"), vote: t("phaseVote"), result: t("phaseResult") };
   $("#gamePhaseLabel").textContent = labels[phase];
-  if (gameState.roomId && gameState.sessionId && gameState.lastEmittedPhase !== phase) {
+  if (!gameState.suppressPhaseEmit && gameState.roomId && gameState.sessionId && gameState.lastEmittedPhase !== phase) {
     gameState.lastEmittedPhase = phase;
     void emitRoomEvent("phase_changed", { phase });
   }
@@ -1760,6 +1770,28 @@ function gameAction(content, hint, button, handler) {
     : "";
   $("#gameActionBar").innerHTML = `<div class="action-hint-wrap"><span class="action-hint">${actionHint}</span>${hintButton}</div>${!gameState.spectator && button ? `<button class="primary-button" id="gameNextAction">${button} <span>↗</span></button>` : ""}`;
   $("#gameHintAction")?.addEventListener("click", showEvidenceHint);
+  renderDmPanel();
+}
+
+function renderDmPanel() {
+  $(".dm-panel")?.remove();
+  if (!gameState.roomId || !gameState.isHost || gameState.spectator) return;
+  const phaseLabels = { briefing: t("phaseBriefing"), evidence: t("phaseEvidence"), question: t("phaseQuestion"), vote: t("phaseVote"), result: t("phaseResult") };
+  const phases = ["briefing", "evidence", "question", "vote", "result"];
+  const buttons = phases.filter((phase) => phase !== gameState.phase).map((phase) => `<button class="ghost-button dm-phase-button" type="button" data-dm-phase="${phase}">${t("dmAdvance", { phase: phaseLabels[phase] })} ↗</button>`).join("");
+  $("#gameActionBar").insertAdjacentHTML("afterend", `<section class="dm-panel" aria-label="${t("dmTitle")}"><div class="dm-panel-heading"><div><span class="game-kicker">${t("dmTitle")}</span><strong>${t("dmCurrent")}: ${phaseLabels[gameState.phase]}</strong></div><span class="dm-panel-mark">⌘</span></div><p>${t("dmHint")}</p><div class="dm-panel-actions">${buttons}</div></section>`);
+}
+
+function advanceHostPhase(phase) {
+  if (!gameState.isHost || !gameState.roomId || !gamePhasesForClient.has(phase) || phase === gameState.phase) return;
+  gameState.lastEmittedPhase = phase;
+  gameState.suppressPhaseEmit = true;
+  gameState.phase = phase;
+  renderCurrentGamePhase();
+  gameState.suppressPhaseEmit = false;
+  void emitRoomEvent("host_phase_changed", { phase });
+  const phaseLabels = { briefing: t("phaseBriefing"), evidence: t("phaseEvidence"), question: t("phaseQuestion"), vote: t("phaseVote"), result: t("phaseResult") };
+  showToast(t("dmAdvanced", { phase: phaseLabels[phase] }));
 }
 
 function stopRoomSessionSync() {
@@ -1781,7 +1813,7 @@ function renderCurrentGamePhase() {
 
 function applyRoomEvent(event) {
   const payload = event.payload || {};
-  if (event.type === "phase_changed" && gamePhasesForClient.has(payload.phase)) gameState.phase = payload.phase;
+  if ((event.type === "phase_changed" || event.type === "host_phase_changed") && gamePhasesForClient.has(payload.phase)) gameState.phase = payload.phase;
   if (event.type === "evidence_found" && payload.evidenceId) gameState.discovered.add(String(payload.evidenceId));
   if (event.type === "question_asked" && payload.answerKey && !gameState.answers.has(payload.answerKey)) {
     gameState.answers.add(payload.answerKey);
@@ -1821,7 +1853,11 @@ async function syncRoomSession() {
     gameState.eventCursor = Math.max(gameState.eventCursor, Number(data.nextSequence || 0));
     const remotePhase = data.session?.phase;
     if (remotePhase && remotePhase !== gameState.phase) gameState.phase = remotePhase;
-    if (data.session && document.querySelector("#gameView.active-view")) renderCurrentGamePhase();
+    if (data.session && document.querySelector("#gameView.active-view")) {
+      gameState.suppressPhaseEmit = true;
+      renderCurrentGamePhase();
+      gameState.suppressPhaseEmit = false;
+    }
   } catch {
     // The local case remains playable if the room service briefly disconnects.
   }
@@ -1850,7 +1886,9 @@ async function emitRoomEvent(type, payload = {}) {
     }
     if (data.session?.phase && data.session.phase !== gameState.phase && document.querySelector("#gameView.active-view")) {
       gameState.phase = data.session.phase;
+      gameState.suppressPhaseEmit = true;
       renderCurrentGamePhase();
+      gameState.suppressPhaseEmit = false;
     }
   } catch {
     // Keep local play responsive while a remote event retries on the next interaction.
@@ -2052,6 +2090,8 @@ function startGame(options = {}) {
   gameState.roomId = options.roomId || null;
   gameState.sessionId = null;
   gameState.spectator = options.spectator === true;
+  gameState.isHost = options.host === true;
+  gameState.suppressPhaseEmit = false;
   $("#gameRoomButton").hidden = !gameState.roomId;
   $("#gameRoomButton").textContent = t("roomLobbyTitle");
   gameState.playerUserId = null;
@@ -2113,6 +2153,8 @@ function bindEvents() {
     gameState.roomId = null;
     gameState.sessionId = null;
     gameState.spectator = false;
+    gameState.isHost = false;
+    $(".dm-panel")?.remove();
     $("#gameRoomButton").hidden = true;
     if (wasRoomGame) {
       setView("rooms");
@@ -2128,6 +2170,8 @@ function bindEvents() {
   document.addEventListener("click", (event) => {
     const actionButton = event.target.closest("#gameNextAction");
     if (actionButton && gameState.nextAction) gameState.nextAction();
+    const dmButton = event.target.closest("[data-dm-phase]");
+    if (dmButton) advanceHostPhase(dmButton.dataset.dmPhase);
     if (!event.target.closest("#notificationPopover") && !event.target.closest(".icon-button")) closeNotifications();
   });
   const dropzone = $("#dropzone");
