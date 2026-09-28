@@ -389,6 +389,8 @@ const server = http.createServer(async (request, response) => {
       INVALID_EVENT: 400,
       EMPTY_MESSAGE: 400,
       INVALID_VOICE_SIGNAL: 400,
+      ROLE_NOT_FOUND: 404,
+      ROLE_TAKEN: 409,
       REPORT_NOT_FOUND: 404,
       REPORT_DUPLICATE: 409,
       INVALID_BLOCK: 400,
