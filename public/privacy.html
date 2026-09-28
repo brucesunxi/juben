@@ -3,12 +3,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Nocturne · 隐私政策</title>
+    <title>Nocturne · Privacy</title>
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="ui-fixes.css" />
   </head>
   <body>
     <main class="legal-page">
+      <div class="legal-switcher" role="group" aria-label="Language"><button type="button" data-legal-locale="zh">中</button><span>/</span><button type="button" data-legal-locale="en">EN</button></div>
+      <section data-legal-lang="zh">
       <p class="eyebrow">NOCTURNE / PRIVACY</p>
       <h1>隐私政策</h1>
       <p>生效日期：2026-09-28</p>
@@ -23,6 +25,24 @@
       <h2>联系信息</h2>
       <p>正式商店提交前，发布方必须在此处补充真实运营主体、客服邮箱、数据保存期限和适用法律信息。当前项目反馈入口为 <a href="https://github.com/brucesunxi/juben/issues">GitHub Issues</a>。</p>
       <p><a href="index.html">返回 Nocturne</a></p>
+      </section>
+      <section data-legal-lang="en" hidden>
+      <p class="eyebrow">NOCTURNE / PRIVACY</p>
+      <h1>Privacy policy</h1>
+      <p>Effective date: 2026-09-28</p>
+      <h2>What we collect</h2>
+      <p>Nocturne's core solo trial does not require registration and does not request camera, microphone, contacts, location or SMS permissions. The app stores language preference, guest display name, completed cases and an anonymous guest identifier on this device to restore your interface and room experience.</p>
+      <h2>Multiplayer room data</h2>
+      <p>When you create or join a room, the anonymous guest identifier, display name, locale, membership relationship and game events you actively create—phase changes, evidence, questions and votes—are sent to the Nocturne service to synchronize the same room. Script content is not deleted when guest data is removed.</p>
+      <h2>Service providers and country detection</h2>
+      <p>The production service is hosted on Vercel, while room and script data are stored in Neon PostgreSQL. On first launch, the app may read a country code supplied by the deployment edge so mainland China defaults to Chinese and other regions default to English. The app does not send your IP to a separate geolocation vendor. There are currently no ads or behavior-analytics SDKs.</p>
+      <h2>Your choices and deletion</h2>
+      <p>You can edit your display name in the profile panel, or use “Delete guest data” to remove local records and request deletion of the matching guest profile, membership records and game-event associations on the server. Rooms you created that have not ended will be closed. If the device is offline, local data is still removed first.</p>
+      <h2>Contact</h2>
+      <p>Before a store submission, the publisher must add the real operating entity, support email, retention period and governing-law details. The current project feedback channel is <a href="https://github.com/brucesunxi/juben/issues">GitHub Issues</a>.</p>
+      <p><a href="index.html">Back to Nocturne</a></p>
+      </section>
     </main>
+    <script src="legal.js"></script>
   </body>
 </html>

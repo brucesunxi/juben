@@ -3,12 +3,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Nocturne · 用户协议</title>
+    <title>Nocturne · Terms</title>
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="ui-fixes.css" />
   </head>
   <body>
     <main class="legal-page">
+      <div class="legal-switcher" role="group" aria-label="Language"><button type="button" data-legal-locale="zh">中</button><span>/</span><button type="button" data-legal-locale="en">EN</button></div>
+      <section data-legal-lang="zh">
       <p class="eyebrow">NOCTURNE / TERMS</p>
       <h1>用户协议</h1>
       <p>生效日期：2026-09-28</p>
@@ -23,6 +25,24 @@
       <h2>联系信息</h2>
       <p>正式商店提交前，发布方必须补充真实运营主体、客服邮箱和争议处理信息。当前项目反馈入口为 <a href="https://github.com/brucesunxi/juben/issues">GitHub Issues</a>。</p>
       <p><a href="index.html">返回 Nocturne</a></p>
+      </section>
+      <section data-legal-lang="en" hidden>
+      <p class="eyebrow">NOCTURNE / TERMS</p>
+      <h1>Terms of service</h1>
+      <p>Effective date: 2026-09-28</p>
+      <h2>Service</h2>
+      <p>Nocturne provides script discovery, solo case trials, room creation and joining, and synchronized game state inside rooms. Some services require a network connection; built-in solo cases remain playable offline.</p>
+      <h2>User content</h2>
+      <p>Only upload scripts, images and text that you own or are authorized to use. Do not upload unlawful, infringing, fraudulent, harassing, hateful, sexual, malicious or child-endangering content. The publisher may remove violating content or close related rooms.</p>
+      <h2>Room conduct</h2>
+      <p>Respect other players. Do not impersonate a host, disrupt a game, attack the service through its interfaces or share another person's private information. The current release uses anonymous guests; account security, reporting, blocking, age-safety and moderation rules must be added before accounts, voice, payments or user-generated content are introduced.</p>
+      <h2>Service limitations</h2>
+      <p>Network interruptions, maintenance or third-party infrastructure failures may make rooms temporarily unavailable. Script and room data may change as the product evolves.</p>
+      <h2>Contact</h2>
+      <p>Before a store submission, the publisher must add the real operating entity, support email and dispute process. The current project feedback channel is <a href="https://github.com/brucesunxi/juben/issues">GitHub Issues</a>.</p>
+      <p><a href="index.html">Back to Nocturne</a></p>
+      </section>
     </main>
+    <script src="legal.js"></script>
   </body>
 </html>
