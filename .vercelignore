@@ -1,0 +1,8 @@
+android/
+ios/
+node_modules/
+incoming/
+*.apk
+*.aab
+*.jks
+*.keystore
