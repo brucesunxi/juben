@@ -19,6 +19,8 @@ import {
   getDatabaseRoomSession,
   getDatabaseRoomVoiceSignals,
   appendDatabaseRoomVoiceSignal,
+  getDatabaseLeaderboard,
+  recordDatabaseCompletion,
   setDatabaseRoomReady,
   setDatabaseRoomRole,
   joinDatabaseRoom,
@@ -222,6 +224,16 @@ const server = http.createServer(async (request, response) => {
     if (url.pathname === "/api/health" && request.method === "GET") {
       return sendJson(response, 200, { ok: true, ...(await databaseHealth()) });
     }
+    if (url.pathname === "/api/leaderboard" && request.method === "GET") {
+      const viewerExternalKey = url.searchParams.get("externalKey") || "";
+      return sendJson(response, 200, (await getDatabaseLeaderboard(url.searchParams.get("limit") || 20, viewerExternalKey)) || { leaderboard: [], database: false });
+    }
+    if (url.pathname === "/api/progression" && request.method === "POST") {
+      if (!databaseEnabled) return sendJson(response, 503, { error: "Progression requires DATABASE_URL to be configured." });
+      const payload = JSON.parse(await readBody(request));
+      const result = await recordDatabaseCompletion(payload.user || payload.profile, payload);
+      return sendJson(response, 201, result);
+    }
     if (url.pathname === "/api/profile" && request.method === "DELETE") {
       const payload = JSON.parse(await readBody(request));
       const result = await deleteDatabaseUser(payload.user || payload.profile || {});
@@ -395,6 +407,7 @@ const server = http.createServer(async (request, response) => {
       REPORT_NOT_FOUND: 404,
       REPORT_DUPLICATE: 409,
       INVALID_BLOCK: 400,
+      INVALID_PROGRESS: 400,
       BLOCK_NOT_FOUND: 404
     }[error.code];
     const status = roomStatus || (error.code === "ENOENT" ? 404 : 500);
