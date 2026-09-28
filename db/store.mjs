@@ -276,6 +276,7 @@ export async function joinDatabaseRoom(roomId, profile = {}, memberRole = "playe
     const room = roomResult.rows[0];
     if (!room) throw new RoomError("ROOM_NOT_FOUND", "Room not found");
     if (room.status === "closed") throw new RoomError("ROOM_CLOSED", "Room is closed");
+    if (room.status === "live") throw new RoomError("ROOM_LIVE", "This room has already started");
     const user = await ensureUser(client, profile);
     const existing = await client.query("SELECT member_role FROM room_members WHERE room_id = $1 AND user_id = $2", [roomId, user.id]);
     if (!existing.rows[0] || existing.rows[0].member_role !== "host") {

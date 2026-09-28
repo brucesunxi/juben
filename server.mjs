@@ -304,6 +304,7 @@ const server = http.createServer(async (request, response) => {
       SCRIPT_NOT_FOUND: 404,
       ROOM_FULL: 409,
       ROOM_CLOSED: 409,
+      ROOM_LIVE: 409,
       NOT_HOST: 403,
       NOT_MEMBER: 403,
       SESSION_NOT_FOUND: 409,
