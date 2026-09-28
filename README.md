@@ -5,6 +5,7 @@ Nocturne 是一个高质感线上剧本推理社交 MVP，包含：
 - 剧本发现、分类筛选和详情弹窗
 - 房间入口预览与单人试玩
 - Neon 房间大厅：创建、加入、退出、房主开局与关闭
+- 快速组局：按剧本寻找可加入的等待房间，没有合适房间时自动创建
 - 房间准备状态与开局前校验
 - 房间语音：基于 WebRTC 的麦克风语音、静音和成员连接状态；Neon 仅负责安全转发信令
 - 房间大厅支持准备状态、角色预选与自动补位；《轨道之外》支持 7 人房间
@@ -45,6 +46,7 @@ npm run dev
 GET https://juben-lyart.vercel.app/api/health
 GET https://juben-lyart.vercel.app/api/scripts
 GET https://juben-lyart.vercel.app/api/rooms?status=waiting
+POST https://juben-lyart.vercel.app/api/rooms/match
 ```
 
 ## Android / iOS 打包
