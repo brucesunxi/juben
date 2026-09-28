@@ -203,9 +203,7 @@ function setLocale(locale, { persist = true, source = "manual" } = {}) {
     activeCase = localizedCase(activeCase?.id || state.selectedScript?.id || "moon-trial");
     if (!activeCase.suspects.some((entry) => entry.id === gameState.selectedSuspect)) gameState.selectedSuspect = activeCase.suspects[0]?.id;
     $("#gameCaseLabel").textContent = activeCase.caseLabel || "CASE 014 / MOONLIGHT";
-    $("#playerRole").textContent = activeCase.player;
-    $("#playerAvatarImage").src = activeCase.playerAvatar || "assets/characters/lin-che.jpg";
-    $("#playerAvatarImage").alt = activeCase.player;
+    applyCurrentRole();
     $("#caseNoteText").textContent = activeCase.intro;
     ({ briefing: renderBriefing, evidence: renderEvidence, question: renderQuestion, vote: renderVote, result: renderResult }[gameState.phase] || renderBriefing)();
   }
@@ -791,7 +789,23 @@ function localizedCase(caseId) {
 }
 
 let activeCase = demoCase;
-const gameState = { phase: "briefing", discovered: new Set(), selectedEvidence: null, selectedSuspect: "shen", answers: new Set(), questionCount: 0, startedAt: 0, timer: null, nextAction: null, roomId: null, sessionId: null, eventCursor: 0, roomPollTimer: null, lastEmittedPhase: null };
+const gameState = { phase: "briefing", discovered: new Set(), selectedEvidence: null, selectedSuspect: "shen", answers: new Set(), questionCount: 0, startedAt: 0, timer: null, nextAction: null, roomId: null, sessionId: null, characterKey: "player", eventCursor: 0, roomPollTimer: null, lastEmittedPhase: null };
+
+function currentRoleProfile() {
+  const key = gameState.characterKey || "player";
+  if (key !== "player") {
+    const suspect = activeCase.suspects.find((entry) => entry.id === key);
+    if (suspect) return { label: `${suspect.name} · ${suspect.role}`, avatar: suspect.avatar };
+  }
+  return { label: activeCase.player, avatar: activeCase.playerAvatar || "assets/characters/lin-che.jpg" };
+}
+
+function applyCurrentRole() {
+  const role = currentRoleProfile();
+  $("#playerRole").textContent = role.label;
+  $("#playerAvatarImage").src = role.avatar;
+  $("#playerAvatarImage").alt = role.label;
+}
 
 function setGameNav(phase) {
   gameState.phase = phase;
@@ -847,6 +861,10 @@ async function syncRoomSession() {
     const data = await response.json();
     if (gameState.sessionId && data.session?.id !== gameState.sessionId) gameState.eventCursor = 0;
     gameState.sessionId = data.session?.id || gameState.sessionId;
+    if (data.player?.characterKey) {
+      gameState.characterKey = data.player.characterKey;
+      applyCurrentRole();
+    }
     const remoteState = data.session?.state || {};
     if (Array.isArray(remoteState.discovered)) remoteState.discovered.forEach((id) => gameState.discovered.add(String(id)));
     if (Array.isArray(remoteState.answers)) remoteState.answers.forEach((answer) => gameState.answers.add(String(answer)));
@@ -888,7 +906,8 @@ function renderBriefing() {
   setGameNav("briefing");
   $("#gameEyebrow").textContent = `PROLOGUE / ${activeCase.openingStamp}`;
   $("#gameTitle").textContent = activeCase.title;
-  const playerCopy = state.locale === "zh" ? `你是 <strong>${activeCase.player}</strong>。今晚的在场者都知道一部分真相，却没有人知道全部。你的目标不是马上找到答案，而是先确认：谁有机会，谁有动机，谁在说一个无法被证据支持的故事。` : `You are <strong>${activeCase.player}</strong>. Everyone here knows part of the truth, but no one knows all of it. Do not rush to an answer; first work out who had the chance, who had the motive and whose story the evidence cannot support.`;
+  const role = currentRoleProfile();
+  const playerCopy = state.locale === "zh" ? `你是 <strong>${role.label}</strong>。今晚的在场者都知道一部分真相，却没有人知道全部。你的目标不是马上找到答案，而是先确认：谁有机会，谁有动机，谁在说一个无法被证据支持的故事。` : `You are <strong>${role.label}</strong>. Everyone here knows part of the truth, but no one knows all of it. Do not rush to an answer; first work out who had the chance, who had the motive and whose story the evidence cannot support.`;
   $("#gameContent").innerHTML = `<span class="game-kicker">${activeCase.sceneKicker}</span><div class="game-scene"><img src="${activeCase.sceneImage}" alt="${activeCase.title}" /></div><p class="game-lede">${activeCase.intro}</p><p class="game-copy">${playerCopy}</p><div class="scene-line"></div><div class="event-log">${activeCase.timeline.slice(0, 3).map(([time, text]) => `<div class="event-log-item"><b>${time}</b><span>${text}</span></div>`).join("")}</div>`;
   gameAction(null, t("evidenceHint"), t("startEvidence"), renderEvidence);
 }
@@ -986,10 +1005,9 @@ function startGame(options = {}) {
   gameState.answers = new Set();
   gameState.questionCount = 0;
   gameState.selectedSuspect = activeCase.suspects[0].id;
+  gameState.characterKey = options.characterKey || "player";
   $("#gameCaseLabel").textContent = activeCase.caseLabel || "CASE 014 / MOONLIGHT";
-  $("#playerRole").textContent = activeCase.player;
-  $("#playerAvatarImage").src = activeCase.playerAvatar || "assets/characters/lin-che.jpg";
-  $("#playerAvatarImage").alt = activeCase.player;
+  applyCurrentRole();
   $("#caseNoteText").textContent = activeCase.intro;
   gameState.startedAt = Date.now();
   setView("game");

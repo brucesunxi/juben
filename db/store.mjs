@@ -16,6 +16,7 @@ const pool = databaseEnabled
 
 const databaseShapeReady = databaseEnabled
   ? pool.query("ALTER TABLE game_events ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES app_users(id) ON DELETE SET NULL")
+    .then(() => pool.query("ALTER TABLE room_members ADD COLUMN IF NOT EXISTS character_key TEXT"))
   : Promise.resolve();
 
 async function waitForDatabaseShape() {
@@ -158,6 +159,7 @@ const roomSelect = `
            'userId', member.user_id,
            'displayName', member_user.display_name,
            'role', member.member_role,
+           'characterKey', member.character_key,
            'joinedAt', member.joined_at
          ) ORDER BY member.joined_at) FROM room_members member JOIN app_users member_user ON member_user.id = member.user_id WHERE member.room_id = r.id AND member.left_at IS NULL), '[]'::json) AS members
     FROM rooms r
@@ -258,7 +260,7 @@ export async function createDatabaseRoom(scriptId, profile = {}, maxPlayers = 6)
     const user = await ensureUser(client, profile);
     const room = await client.query(
       `INSERT INTO rooms (script_id, host_user_id, max_players) VALUES ($1, $2, $3) RETURNING id`,
-      [scriptId, user.id, Math.min(Math.max(Number(maxPlayers) || 6, 2), 12)]
+      [scriptId, user.id, Math.min(Math.max(Number(maxPlayers) || 6, 2), 6)]
     );
     await client.query("INSERT INTO room_members (room_id, user_id, member_role) VALUES ($1, $2, 'host')", [room.rows[0].id, user.id]);
     return getRoom(client, room.rows[0].id, user.external_key);
@@ -306,6 +308,21 @@ export async function startDatabaseRoom(roomId, profile = {}) {
     if (host.rows[0].host_user_id !== user.id) throw new RoomError("NOT_HOST", "Only the host can start the room");
     if (host.rows[0].status === "closed") throw new RoomError("ROOM_CLOSED", "Room is closed");
     if (host.rows[0].status === "live") return getRoom(client, roomId, user.external_key);
+    const rolePools = {
+      "moon-trial": ["player", "shen", "gu", "he", "su", "luo"],
+      "last-letter": ["player", "ye", "tang", "jiang", "wan", "qiao"],
+      "old-port-letter": ["player", "ye", "tang", "jiang", "wan", "qiao"],
+      "orbit-7": ["player", "mu", "qiao", "rui", "yan", "lin"],
+      "velvet-room": ["player", "yin", "bo", "xue", "qi", "meng"]
+    };
+    const roleKeys = rolePools[host.rows[0].script_id] || rolePools["moon-trial"];
+    const members = await client.query(
+      `SELECT user_id FROM room_members WHERE room_id = $1 AND left_at IS NULL AND member_role <> 'spectator' ORDER BY joined_at ASC FOR UPDATE`,
+      [roomId]
+    );
+    for (const [index, member] of members.rows.entries()) {
+      await client.query("UPDATE room_members SET character_key = $2 WHERE room_id = $1 AND user_id = $3", [roomId, roleKeys[index] || roleKeys[index % roleKeys.length], member.user_id]);
+    }
     await client.query("UPDATE rooms SET status = 'live', started_at = COALESCE(started_at, now()) WHERE id = $1", [roomId]);
     await client.query(
       "INSERT INTO game_sessions (script_id, room_id, mode, locale, phase, state) VALUES ($1, $2, 'room', $3, 'briefing', $4::jsonb)",
@@ -361,11 +378,11 @@ function eventPayload(row) {
 async function requireRoomMember(client, roomId, profile = {}) {
   const user = await ensureUser(client, profile);
   const member = await client.query(
-    `SELECT member_role FROM room_members WHERE room_id = $1 AND user_id = $2 AND left_at IS NULL`,
+    `SELECT member_role, character_key FROM room_members WHERE room_id = $1 AND user_id = $2 AND left_at IS NULL`,
     [roomId, user.id]
   );
   if (!member.rows[0]) throw new RoomError("NOT_MEMBER", "Join the room before playing");
-  return { user, role: member.rows[0].member_role };
+  return { user, role: member.rows[0].member_role, characterKey: member.rows[0].character_key };
 }
 
 async function getLatestSession(client, roomId, lock = false) {
@@ -388,7 +405,7 @@ export async function getDatabaseRoomSession(roomId, profile = {}, since = 0) {
   try {
     const room = await client.query("SELECT status FROM rooms WHERE id = $1", [roomId]);
     if (!room.rows[0]) throw new RoomError("ROOM_NOT_FOUND", "Room not found");
-    await requireRoomMember(client, roomId, profile);
+    const membership = await requireRoomMember(client, roomId, profile);
     const session = await getLatestSession(client, roomId);
     const events = await client.query(
       `SELECT sequence_no, event_type, payload, created_at, user_id
@@ -398,7 +415,7 @@ export async function getDatabaseRoomSession(roomId, profile = {}, since = 0) {
         LIMIT 100`,
       [session.id, Math.max(0, Number(since) || 0)]
     );
-    return { session: sessionPayload(session), events: events.rows.map(eventPayload), nextSequence: events.rows.at(-1)?.sequence_no || Number(since) || 0 };
+    return { session: sessionPayload(session), player: { characterKey: membership.characterKey || "player" }, events: events.rows.map(eventPayload), nextSequence: events.rows.at(-1)?.sequence_no || Number(since) || 0 };
   } finally {
     client.release();
   }
