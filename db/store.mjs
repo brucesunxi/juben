@@ -36,6 +36,17 @@ const databaseShapeReady = databaseEnabled
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )`))
     .then(() => pool.query("CREATE INDEX IF NOT EXISTS room_voice_signals_receiver_idx ON room_voice_signals (room_id, receiver_user_id, id)"))
+    .then(() => pool.query(`CREATE TABLE IF NOT EXISTS room_message_reports (
+      id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      room_id UUID NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+      message_id BIGINT NOT NULL REFERENCES room_messages(id) ON DELETE CASCADE,
+      reporter_user_id UUID NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+      reason TEXT NOT NULL DEFAULT 'other' CHECK (char_length(reason) BETWEEN 1 AND 120),
+      status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'reviewed', 'dismissed')),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE (message_id, reporter_user_id)
+    )`))
+    .then(() => pool.query("CREATE INDEX IF NOT EXISTS room_message_reports_status_idx ON room_message_reports (status, created_at DESC)"))
   : Promise.resolve();
 
 async function waitForDatabaseShape() {
@@ -388,6 +399,7 @@ export async function setDatabaseRoomReady(roomId, profile = {}, ready = true) {
 function roomMessagePayload(row) {
   return {
     id: String(row.id),
+    userId: row.user_id || null,
     displayName: row.display_name || "Night Watcher",
     body: row.body,
     createdAt: isoDate(row.created_at)
@@ -402,7 +414,7 @@ export async function getDatabaseRoomMessages(roomId, profile = {}, since = 0) {
   try {
     await requireRoomMember(client, roomId, profile);
     const result = await client.query(
-      `SELECT message.id, message.body, message.created_at, member_user.display_name
+      `SELECT message.id, message.user_id, message.body, message.created_at, member_user.display_name
          FROM room_messages message
          JOIN app_users member_user ON member_user.id = message.user_id
         WHERE message.room_id = $1 AND message.id > $2::bigint
@@ -433,7 +445,27 @@ export async function appendDatabaseRoomMessage(roomId, profile = {}, body = "")
        RETURNING id, body, created_at`,
       [roomId, user.id, message]
     );
-    return { message: roomMessagePayload({ ...result.rows[0], display_name: user.display_name }) };
+    return { message: roomMessagePayload({ ...result.rows[0], user_id: user.id, display_name: user.display_name }) };
+  });
+}
+
+export async function reportDatabaseRoomMessage(roomId, messageId, profile = {}, reason = "other") {
+  if (!pool) return null;
+  await waitForDatabaseShape();
+  const safeReason = String(reason || "other").trim().slice(0, 120) || "other";
+  return inTransaction(async (client) => {
+    const { user } = await requireRoomMember(client, roomId, profile);
+    const message = await client.query("SELECT id FROM room_messages WHERE id = $1 AND room_id = $2", [messageId, roomId]);
+    if (!message.rows[0]) throw new RoomError("REPORT_NOT_FOUND", "Message not found");
+    const report = await client.query(
+      `INSERT INTO room_message_reports (room_id, message_id, reporter_user_id, reason)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (message_id, reporter_user_id) DO NOTHING
+       RETURNING id, created_at`,
+      [roomId, messageId, user.id, safeReason]
+    );
+    if (!report.rows[0]) throw new RoomError("REPORT_DUPLICATE", "Message already reported");
+    return { reported: true, reportId: String(report.rows[0].id), createdAt: isoDate(report.rows[0].created_at) };
   });
 }
 

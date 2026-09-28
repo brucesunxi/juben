@@ -125,6 +125,17 @@ CREATE TABLE IF NOT EXISTS room_voice_signals (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS room_message_reports (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  room_id UUID NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+  message_id BIGINT NOT NULL REFERENCES room_messages(id) ON DELETE CASCADE,
+  reporter_user_id UUID NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+  reason TEXT NOT NULL DEFAULT 'other' CHECK (char_length(reason) BETWEEN 1 AND 120),
+  status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'reviewed', 'dismissed')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (message_id, reporter_user_id)
+);
+
 CREATE TABLE IF NOT EXISTS game_sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   script_id TEXT NOT NULL REFERENCES scripts(id) ON DELETE RESTRICT,
@@ -166,6 +177,7 @@ CREATE INDEX IF NOT EXISTS rooms_status_created_idx ON rooms (status, created_at
 CREATE INDEX IF NOT EXISTS room_members_user_idx ON room_members (user_id, joined_at DESC);
 CREATE INDEX IF NOT EXISTS room_messages_room_idx ON room_messages (room_id, id);
 CREATE INDEX IF NOT EXISTS room_voice_signals_receiver_idx ON room_voice_signals (room_id, receiver_user_id, id);
+CREATE INDEX IF NOT EXISTS room_message_reports_status_idx ON room_message_reports (status, created_at DESC);
 CREATE INDEX IF NOT EXISTS sessions_user_started_idx ON game_sessions (user_id, started_at DESC);
 CREATE INDEX IF NOT EXISTS sessions_script_started_idx ON game_sessions (script_id, started_at DESC);
 CREATE INDEX IF NOT EXISTS game_events_session_created_idx ON game_events (session_id, created_at);
