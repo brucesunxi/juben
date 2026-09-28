@@ -20,6 +20,7 @@ import {
   getDatabaseRoomVoiceSignals,
   appendDatabaseRoomVoiceSignal,
   getDatabaseLeaderboard,
+  matchDatabaseRoom,
   recordDatabaseCompletion,
   setDatabaseRoomReady,
   setDatabaseRoomRole,
@@ -247,6 +248,12 @@ const server = http.createServer(async (request, response) => {
       const payload = JSON.parse(await readBody(request));
       const room = await createDatabaseRoom(payload.scriptId || payload.script_id, payload.user || payload.profile, payload.maxPlayers);
       return sendJson(response, 201, { room });
+    }
+    if (url.pathname === "/api/rooms/match" && request.method === "POST") {
+      if (!databaseEnabled) return sendJson(response, 503, { error: "Room matching requires DATABASE_URL to be configured." });
+      const payload = JSON.parse(await readBody(request));
+      const result = await matchDatabaseRoom(payload.scriptId || payload.script_id, payload.user || payload.profile, payload.maxPlayers);
+      return sendJson(response, 200, result);
     }
     const roomAction = url.pathname.match(/^\/api\/rooms\/([^/]+)\/(join|leave|start|close|ready|role)$/);
     if (roomAction && request.method === "POST") {

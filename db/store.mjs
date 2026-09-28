@@ -439,6 +439,56 @@ export async function createDatabaseRoom(scriptId, profile = {}, maxPlayers = 6)
   });
 }
 
+export async function matchDatabaseRoom(scriptId, profile = {}, maxPlayers = 6) {
+  if (!pool) return null;
+  await waitForDatabaseShape();
+  return inTransaction(async (client) => {
+    const script = await client.query("SELECT id, player_count FROM scripts WHERE id = $1 AND published = TRUE", [scriptId]);
+    if (!script.rows[0]) throw new RoomError("SCRIPT_NOT_FOUND", "Script not found");
+    const user = await ensureUser(client, profile);
+    const scriptPlayerCount = Number(script.rows[0].player_count) || 6;
+    const requestedPlayers = Number(maxPlayers) || scriptPlayerCount;
+    const roomMaxPlayers = Math.min(Math.max(requestedPlayers, 2), Math.min(Math.max(scriptPlayerCount, 2), 8));
+    const candidates = await client.query(
+      `SELECT r.id, r.max_players
+         FROM rooms r
+        WHERE r.script_id = $1
+          AND r.status = 'waiting'
+          AND r.created_at > now() - interval '24 hours'
+        ORDER BY r.created_at ASC
+        FOR UPDATE SKIP LOCKED`,
+      [scriptId]
+    );
+    for (const candidate of candidates.rows) {
+      const existing = await client.query(
+        `SELECT member_role FROM room_members
+          WHERE room_id = $1 AND user_id = $2 AND left_at IS NULL`,
+        [candidate.id, user.id]
+      );
+      if (existing.rows[0]) return { room: await getRoom(client, candidate.id, user.external_key), matched: true, created: false };
+      const count = await client.query(
+        `SELECT count(*)::int AS players FROM room_members
+          WHERE room_id = $1 AND left_at IS NULL AND member_role <> 'spectator'`,
+        [candidate.id]
+      );
+      if (count.rows[0].players >= candidate.max_players) continue;
+      await client.query(
+        `INSERT INTO room_members (room_id, user_id, member_role, left_at)
+         VALUES ($1, $2, 'player', NULL)
+         ON CONFLICT (room_id, user_id) DO UPDATE SET member_role = 'player', joined_at = now(), left_at = NULL, ready = FALSE, character_key = NULL`,
+        [candidate.id, user.id]
+      );
+      return { room: await getRoom(client, candidate.id, user.external_key), matched: true, created: false };
+    }
+    const room = await client.query(
+      `INSERT INTO rooms (script_id, host_user_id, max_players) VALUES ($1, $2, $3) RETURNING id`,
+      [scriptId, user.id, roomMaxPlayers]
+    );
+    await client.query("INSERT INTO room_members (room_id, user_id, member_role) VALUES ($1, $2, 'host')", [room.rows[0].id, user.id]);
+    return { room: await getRoom(client, room.rows[0].id, user.external_key), matched: false, created: true };
+  });
+}
+
 export async function joinDatabaseRoom(roomId, profile = {}, memberRole = "player") {
   if (!pool) return null;
   return inTransaction(async (client) => {
