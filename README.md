@@ -14,6 +14,7 @@ Nocturne 是一个高质感线上剧本推理社交 MVP，包含：
 - 创作后台与剧本文件导入
 - `incoming/` 文件夹自动扫描并写入 `data/scripts/`
 - JSON / Markdown 剧本解析
+- 导入剧本可直接生成可玩的通用案件流程；如果 JSON 提供 `content.suspects`、`content.evidence`、`content.timeline` 和 `content.solution`，会优先使用自定义角色、线索、时间线与真相
 - 四套写实场景封面素材（玻璃水滴、旧港雨窗、轨道观景舱、剧院后台）与立体玻璃质感 UI
 - 游戏内写实场景与证物素材：白厅、安保控制台、指纹修复线、湿纸条、侧厅群像
 - 《月影审判》角色肖像：林澈、沈鸢、顾砚、贺云川、苏弥、罗序

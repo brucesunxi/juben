@@ -1389,8 +1389,85 @@ const caseChineseTranslations = {
   "velvet-room": { caseLabel: "案件 044 / 绒幕", sceneKicker: "绒幕舞台 / 谢幕后" }
 };
 
+function gameAsset(value, fallback) {
+  const candidate = String(value || "").trim();
+  return /^(?:https?:\/\/|\/|assets\/)/i.test(candidate) ? candidate : fallback;
+}
+
+function contentText(value, fallback = "") {
+  if (typeof value === "string") return value.trim() || fallback;
+  if (Array.isArray(value)) return value.filter(Boolean).join(" ") || fallback;
+  return fallback;
+}
+
+function buildImportedCase(script) {
+  const localized = localizedScript(script) || script || {};
+  const template = localizedCase("moon-trial");
+  const content = localized.content && typeof localized.content === "object" ? localized.content : {};
+  const zhNames = ["沈默的馆长", "失约的收藏家", "夜班修复师", "记录者", "最后的守门人"];
+  const enNames = ["The Curator", "The Collector", "The Restorer", "The Recorder", "The Gatekeeper"];
+  const names = state.locale === "zh" ? zhNames : enNames;
+  const defaultRoles = state.locale === "zh" ? ["现场负责人", "私人收藏家", "技术顾问", "调查记者", "安保负责人"] : ["Venue curator", "Private collector", "Technical consultant", "Investigative reporter", "Security lead"];
+  const rawSuspects = Array.isArray(content.suspects) && content.suspects.length >= 2 ? content.suspects : names.map((name, index) => ({ name, role: defaultRoles[index] }));
+  const suspects = rawSuspects.slice(0, 8).map((suspect, index) => {
+    const id = String(suspect.id || `suspect-${index + 1}`);
+    const name = contentText(suspect[state.locale === "zh" ? "name_zh" : "name_en"], contentText(suspect.name, names[index] || `${state.locale === "zh" ? "嫌疑人" : "Suspect"} ${index + 1}`));
+    const answers = suspect.answers && typeof suspect.answers === "object" ? suspect.answers : {};
+    return {
+      id,
+      name,
+      role: contentText(suspect[state.locale === "zh" ? "role_zh" : "role_en"], contentText(suspect.role, defaultRoles[index] || (state.locale === "zh" ? "在场者" : "Witness"))),
+      avatar: gameAsset(suspect.avatar || suspect.avatarUrl, template.suspects[index % template.suspects.length].avatar),
+      line: contentText(suspect.line, state.locale === "zh" ? "我知道的并不比你多。" : "I know no more than you do."),
+      answers: {
+        time: contentText(answers.time || suspect.time, state.locale === "zh" ? "我会在行动记录里说明自己的去向。" : "My movements are in the activity record."),
+        motive: contentText(answers.motive || suspect.motive, state.locale === "zh" ? "每个人都有理由，但理由不等于证据。" : "Everyone has a reason, but a reason is not proof."),
+        key: contentText(answers.key || suspect.key, state.locale === "zh" ? "真正的线索藏在物证之间。" : "The real clue is hidden between the pieces of evidence.")
+      }
+    };
+  });
+  const solutionId = String(content.solution || content.solutionId || suspects[0].id);
+  const solutionSuspect = suspects.find((suspect) => suspect.id === solutionId) || suspects[0];
+  const rawEvidence = Array.isArray(content.evidence) && content.evidence.length >= 3 ? content.evidence : template.evidence;
+  const evidence = rawEvidence.slice(0, 8).map((item, index) => ({
+    id: String(item.id || item.key || `evidence-${index + 1}`),
+    symbol: item.symbol || template.evidence[index % template.evidence.length].symbol,
+    name: contentText(item[state.locale === "zh" ? "name_zh" : "name_en"], contentText(item.name, state.locale === "zh" ? `关键物证 ${index + 1}` : `Key evidence ${index + 1}`)),
+    type: contentText(item[state.locale === "zh" ? "type_zh" : "type_en"], contentText(item.type, state.locale === "zh" ? "案件物证" : "Case evidence")),
+    image: gameAsset(item.image || item.imageUrl, template.evidence[index % template.evidence.length].image),
+    detail: contentText(item[state.locale === "zh" ? "detail_zh" : "detail_en"], contentText(item.detail, state.locale === "zh" ? "这件物证可能改变你对案件的判断。" : "This piece of evidence may change your read of the case."))
+  }));
+  const timeline = Array.isArray(content.timeline) && content.timeline.length
+    ? content.timeline.map((entry, index) => Array.isArray(entry) ? [String(entry[0] || `${index + 1}`), String(entry[1] || "")] : [String(entry.time || `${index + 1}`), contentText(entry.text, "")]).filter((entry) => entry[1])
+    : template.timeline;
+  const caseCode = String(script.id || "imported").slice(0, 12).toUpperCase();
+  return {
+    ...template,
+    id: script.id,
+    title: localized.title || script.title || template.title,
+    player: localized.player || (state.locale === "zh" ? "调查者 · 案件记录员" : "Investigator · Case recorder"),
+    caseLabel: `CASE / ${caseCode}`,
+    sceneKicker: state.locale === "zh" ? "新案件 / 私人调查" : "NEW CASE / PRIVATE INVESTIGATION",
+    sceneImage: gameAsset(localized.sceneImage || content.sceneImage, coverAsset(localized)),
+    intro: contentText(content.opening || content.briefing, localized.description || template.intro),
+    evidenceLead: contentText(content.evidenceLead, state.locale === "zh" ? "现场仍然保持着事件发生时的样子。" : "The scene remains exactly as it was when the incident happened."),
+    evidenceCopy: contentText(content.evidenceCopy, state.locale === "zh" ? "逐一检查物证，已经发现的线索会保留在你的案件笔记中。" : "Inspect each item. Discovered clues stay in your case notes."),
+    questionCopy: contentText(content.questionCopy, state.locale === "zh" ? "选择一名在场者，追问他的时间线、动机和关键线索。" : "Choose someone in the room and question their timeline, motive and key clue."),
+    voteLead: contentText(content.voteLead, state.locale === "zh" ? "所有说法都已摆在你面前。现在做出最终指认。" : "Every version is on the table. Make your final accusation."),
+    voteCopy: contentText(content.voteCopy, state.locale === "zh" ? "正确答案必须能够解释现场留下的关键证据。" : "The right answer must explain the key evidence left at the scene."),
+    resultTitle: contentText(content.resultTitle, state.locale === "zh" ? "真相浮出水面" : "The truth comes to light"),
+    resultText: contentText(content.resultText, state.locale === "zh" ? `最终证据指向${solutionSuspect.name}。重新检查时间线，看看真相如何被隐藏。` : `The final evidence points to ${solutionSuspect.name}. Revisit the timeline to see how the truth was hidden.`),
+    solution: solutionSuspect.id,
+    solutionName: solutionSuspect.name,
+    suspects,
+    evidence,
+    timeline
+  };
+}
+
 function localizedCase(caseId) {
-  const base = caseLibrary[caseId] || demoCase;
+  const script = state.scripts.find((entry) => entry.id === caseId) || fallbackScripts.find((entry) => entry.id === caseId);
+  const base = caseLibrary[caseId] || (script ? buildImportedCase(script) : demoCase);
   const override = state.locale === "en" ? (caseTranslations[caseId] || {}) : (caseChineseTranslations[caseId] || {});
   const baseEvidence = new Map((base.evidence || []).map((item) => [item.id, item]));
   const evidence = override.evidence
