@@ -442,12 +442,8 @@ function setLocale(locale, { persist = true, source = "manual" } = {}) {
     // Always rebuild the visible game from the new locale, even when another view
     // was not mounted yet or a non-critical static label is missing.
     if ($("#gameView")?.classList.contains("active-view")) {
-    activeCase = localizedCase(activeCase?.id || state.selectedScript?.id || "moon-trial");
-    if (!activeCase.suspects.some((entry) => entry.id === gameState.selectedSuspect)) gameState.selectedSuspect = activeCase.suspects[0]?.id;
-    $("#gameCaseLabel").textContent = activeCase.caseLabel || "CASE 014 / MOONLIGHT";
-    applyCurrentRole();
-    $("#caseNoteText").textContent = activeCase.intro;
-    ({ briefing: renderBriefing, evidence: renderEvidence, question: renderQuestion, vote: renderVote, result: renderResult }[gameState.phase] || renderBriefing)();
+      syncActiveCaseLocale();
+      ({ briefing: renderBriefing, evidence: renderEvidence, question: renderQuestion, vote: renderVote, result: renderResult }[gameState.phase] || renderBriefing)();
     }
   }
 }
@@ -1753,7 +1749,21 @@ function localizedCase(caseId) {
 }
 
 let activeCase = demoCase;
+let activeCaseLocale = state.locale;
 const gameState = { phase: "briefing", discovered: new Set(), pinnedEvidence: new Set(), boardSelection: new Set(), evidenceLinks: [], selectedEvidence: null, selectedSuspect: "shen", answers: new Set(), questionCount: 0, hintsUsed: 0, votedSuspect: null, roomVotes: [], startedAt: 0, timer: null, nextAction: null, roomId: null, sessionId: null, characterKey: "player", playerUserId: null, spectator: false, isHost: false, suppressPhaseEmit: false, eventCursor: 0, roomPollTimer: null, lastEmittedPhase: null };
+
+function syncActiveCaseLocale() {
+  const caseId = activeCase?.id || state.selectedScript?.id || "moon-trial";
+  if (activeCaseLocale !== state.locale || activeCase?.id !== caseId) {
+    activeCase = localizedCase(caseId);
+    activeCaseLocale = state.locale;
+    if (!activeCase.suspects.some((entry) => entry.id === gameState.selectedSuspect)) gameState.selectedSuspect = activeCase.suspects[0]?.id;
+    applyCurrentRole();
+    $("#gameCaseLabel").textContent = activeCase.caseLabel || "CASE 014 / MOONLIGHT";
+    $("#caseNoteText").textContent = activeCase.intro;
+  }
+  return activeCase;
+}
 
 function currentRoleProfile() {
   const key = gameState.characterKey || "player";
@@ -1866,6 +1876,7 @@ function roomSessionQuery() {
 const gamePhasesForClient = new Set(["briefing", "evidence", "question", "vote", "result"]);
 
 function renderCurrentGamePhase() {
+  syncActiveCaseLocale();
   ({ briefing: renderBriefing, evidence: renderEvidence, question: renderQuestion, vote: renderVote, result: renderResult }[gameState.phase] || renderBriefing)();
 }
 
@@ -2208,6 +2219,7 @@ function startGame(options = {}) {
   gameState.eventCursor = 0;
   gameState.lastEmittedPhase = null;
   activeCase = localizedCase(state.selectedScript?.id || "moon-trial");
+  activeCaseLocale = state.locale;
   gameState.discovered = new Set();
   gameState.pinnedEvidence = new Set();
   gameState.boardSelection = new Set();
