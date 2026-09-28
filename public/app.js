@@ -187,6 +187,7 @@ function applyStaticLocale() {
   $("#modalCover .card-kicker").textContent = t("privateCase");
   $("#modalSubtitle").textContent = t("defaultSubtitle");
   $("#modalStart").innerHTML = `${t("detailStart")} <span>↗</span>`;
+  $("#modalRoom").innerHTML = `${state.locale === "zh" ? "创建房间" : "Create room"} <span>↗</span>`;
   $(".player-card span").textContent = t("yourRole");
   $(".back-button").textContent = t("backToLibrary");
   $(".case-note .eyebrow").textContent = t("caseNote");
@@ -494,6 +495,7 @@ async function joinRoom(roomId) {
 }
 
 async function createRoom(scriptId = "moon-trial") {
+  closeModal();
   try {
     const response = await apiFetch("/api/rooms", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ scriptId, user: currentUserProfile(), maxPlayers: 6 }) });
     const data = await response.json();
@@ -830,6 +832,42 @@ function applyCurrentRole() {
   $("#playerAvatarImage").alt = role.label;
 }
 
+function roleCopy(key) {
+  const copy = {
+    zh: {
+      dossier: "角色剧本",
+      identity: "公开身份",
+      objective: "个人目标",
+      clue: "你掌握的线索",
+      detectiveObjective: "厘清自己的行动线，并找出真正的凶手。",
+      culpritObjective: "保护自己的行动路线，不要让证据把你与真相连在一起。",
+      playerClue: "你可以询问所有人，但不要急着相信第一个听起来合理的解释。"
+    },
+    en: {
+      dossier: "Role dossier",
+      identity: "Public identity",
+      objective: "Personal objective",
+      clue: "A clue you hold",
+      detectiveObjective: "Protect your own timeline and identify the real culprit.",
+      culpritObjective: "Protect your route and keep the evidence from linking you to the truth.",
+      playerClue: "You may question everyone, but do not trust the first explanation that sounds reasonable."
+    }
+  };
+  return copy[state.locale]?.[key] || copy.en[key];
+}
+
+function currentRoleDossier() {
+  const key = gameState.characterKey || "player";
+  const suspect = key === "player" ? null : activeCase.suspects.find((entry) => entry.id === key);
+  const isCulprit = key !== "player" && key === activeCase.solution;
+  return {
+    name: suspect?.name || activeCase.player,
+    role: suspect?.role || (state.locale === "zh" ? "调查者" : "Investigator"),
+    objective: isCulprit ? roleCopy("culpritObjective") : roleCopy("detectiveObjective"),
+    clue: suspect?.answers?.key || roleCopy("playerClue")
+  };
+}
+
 function setGameNav(phase) {
   gameState.phase = phase;
   const phases = { briefing: 1, evidence: 2, question: 3, vote: 4, result: 4 };
@@ -931,7 +969,8 @@ function renderBriefing() {
   $("#gameTitle").textContent = activeCase.title;
   const role = currentRoleProfile();
   const playerCopy = state.locale === "zh" ? `你是 <strong>${role.label}</strong>。今晚的在场者都知道一部分真相，却没有人知道全部。你的目标不是马上找到答案，而是先确认：谁有机会，谁有动机，谁在说一个无法被证据支持的故事。` : `You are <strong>${role.label}</strong>. Everyone here knows part of the truth, but no one knows all of it. Do not rush to an answer; first work out who had the chance, who had the motive and whose story the evidence cannot support.`;
-  $("#gameContent").innerHTML = `<span class="game-kicker">${activeCase.sceneKicker}</span><div class="game-scene"><img src="${activeCase.sceneImage}" alt="${activeCase.title}" /></div><p class="game-lede">${activeCase.intro}</p><p class="game-copy">${playerCopy}</p><div class="scene-line"></div><div class="event-log">${activeCase.timeline.slice(0, 3).map(([time, text]) => `<div class="event-log-item"><b>${time}</b><span>${text}</span></div>`).join("")}</div>`;
+  const dossier = currentRoleDossier();
+  $("#gameContent").innerHTML = `<span class="game-kicker">${activeCase.sceneKicker}</span><div class="game-scene"><img src="${activeCase.sceneImage}" alt="${activeCase.title}" /></div><p class="game-lede">${activeCase.intro}</p><p class="game-copy">${playerCopy}</p><section class="role-dossier"><div class="role-dossier-heading"><span class="game-kicker">${roleCopy("dossier")}</span><strong>${dossier.name}</strong><small>${dossier.role}</small></div><div class="role-dossier-grid"><div><span>${roleCopy("identity")}</span><p>${dossier.role}</p></div><div><span>${roleCopy("objective")}</span><p>${dossier.objective}</p></div><div><span>${roleCopy("clue")}</span><p>${dossier.clue}</p></div></div></section><div class="scene-line"></div><div class="event-log">${activeCase.timeline.slice(0, 3).map(([time, text]) => `<div class="event-log-item"><b>${time}</b><span>${text}</span></div>`).join("")}</div>`;
   gameAction(null, t("evidenceHint"), t("startEvidence"), renderEvidence);
 }
 
@@ -1058,6 +1097,7 @@ function bindEvents() {
   $("#modalClose").addEventListener("click", closeModal);
   $("#modalBackdrop").addEventListener("click", (event) => { if (event.target.id === "modalBackdrop") closeModal(); });
   $("#modalStart").addEventListener("click", startGame);
+  $("#modalRoom").addEventListener("click", () => createRoom(state.selectedScript?.id || "moon-trial"));
   $("#exitGame").addEventListener("click", () => { clearInterval(gameState.timer); stopRoomSessionSync(); gameState.roomId = null; gameState.sessionId = null; setView("discover"); });
   $("#scanNow").addEventListener("click", async () => { try { await apiFetch("/api/scripts/scan", { method: "POST" }); await loadScripts(); await refreshSync(); showToast(t("scanComplete")); } catch { showToast(t("scanOffline")); } });
   document.addEventListener("keydown", (event) => { if (event.key === "Escape") { closeModal(); closeProfileModal(); } });
