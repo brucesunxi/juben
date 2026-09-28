@@ -38,13 +38,22 @@ function readProfileName() {
   }
 }
 
+function readNotifications() {
+  try {
+    const saved = JSON.parse(localStorage.getItem("nocturne-notifications") || "[]");
+    return Array.isArray(saved) ? saved.filter((entry) => entry && entry.id && entry.title).slice(0, 30) : [];
+  } catch {
+    return [];
+  }
+}
+
 const savedLocale = readLocalePreference();
-const state = { scripts: [], archive: readArchive(), favorites: readFavorites(), profileName: readProfileName(), activeFilter: "all", selectedScript: null, locale: savedLocale || browserFallbackLocale(), localeSource: savedLocale ? "manual" : "auto", liveRooms: [], activeRoom: null, roomMember: false, roomPollTimer: null, roomChatTimer: null, roomVoiceTimer: null, roomChatRoomId: null, roomChatCursor: "0", roomMessages: [], blockedUsers: new Set(), voiceRoomId: null, voiceCursor: "0", voiceSelfId: null, voiceJoined: false, voiceMuted: false, voiceStream: null, voicePeers: new Map(), voicePendingCandidates: new Map() };
+const state = { scripts: [], archive: readArchive(), favorites: readFavorites(), notifications: readNotifications(), profileName: readProfileName(), activeFilter: "all", selectedScript: null, locale: savedLocale || browserFallbackLocale(), localeSource: savedLocale ? "manual" : "auto", liveRooms: [], activeRoom: null, roomMember: false, roomPollTimer: null, roomChatTimer: null, roomVoiceTimer: null, roomChatRoomId: null, roomChatCursor: "0", roomMessages: [], blockedUsers: new Set(), voiceRoomId: null, voiceCursor: "0", voiceSelfId: null, voiceJoined: false, voiceMuted: false, voiceStream: null, voicePeers: new Map(), voicePendingCandidates: new Map() };
 const API_BASE = String(window.NOCTURNE_API_BASE || "").replace(/\/$/, "");
 const apiFetch = (path, options) => fetch(`${API_BASE}${path}`, options);
 const translations = {
   zh: {
-    appTitle: "Nocturne · 剧本推理社交", brandCaption: "剧本推理 / 社交玩法", mobileCaption: "剧本探索社", navDiscover: "发现剧本", navRooms: "房间预览", navLibrary: "我的收藏", navStudio: "创作后台", mainNav: "主导航", mobileNav: "移动端主导航", mobileHome: "首页", mobileRooms: "房间", mobileLibrary: "收藏", mobileStudio: "创作", localPlay: "本地试玩", offlineCases: "4 个案件可离线试玩", profileAvatar: "凌", profileName: "凌 · 夜航员", profileLevel: "探索者 Lv.12", notification: "通知", heroCaseTitle: "月影审判", heroCaseKicker: "案件 014 / 未封存", heroCaseSubtitle: "月影审判", heroNoteTop: "记忆<br /><b>也是犯罪现场</b>", schemaExampleTitle: "月影审判", privacy: "隐私政策", terms: "用户协议", discover: "发现剧本", rooms: "房间预览", library: "我的收藏", studio: "创作后台",
+    appTitle: "Nocturne · 剧本推理社交", brandCaption: "剧本推理 / 社交玩法", mobileCaption: "剧本探索社", navDiscover: "发现剧本", navRooms: "房间预览", navLibrary: "我的收藏", navStudio: "创作后台", mainNav: "主导航", mobileNav: "移动端主导航", mobileHome: "首页", mobileRooms: "房间", mobileLibrary: "收藏", mobileStudio: "创作", localPlay: "本地试玩", offlineCases: "4 个案件可离线试玩", profileAvatar: "凌", profileName: "凌 · 夜航员", profileLevel: "探索者 Lv.12", notification: "通知", notificationTitle: "消息中心", notificationEmpty: "暂时没有新消息", notificationClear: "清空已读", notificationRoomCreated: "房间已创建", notificationRoomJoined: "已加入房间", notificationRoleUpdated: "角色选择已更新", notificationRoomStarted: "剧本已开始", notificationRoomCreatedBody: "可以复制邀请链接，邀请朋友加入。", notificationRoomJoinedBody: "你现在可以在大厅准备、选角并加入语音。", notificationRoleUpdatedBody: "你的角色已锁定，准备后等待房主开局。", notificationRoomStartedBody: "案件已经开始，进入房间即可继续推理。", heroCaseTitle: "月影审判", heroCaseKicker: "案件 014 / 未封存", heroCaseSubtitle: "月影审判", heroNoteTop: "记忆<br /><b>也是犯罪现场</b>", schemaExampleTitle: "月影审判", privacy: "隐私政策", terms: "用户协议", discover: "发现剧本", rooms: "房间预览", library: "我的收藏", studio: "创作后台",
     heroEyebrow: "今晚，进入另一个人生", heroTitleA: "真相藏在", heroTitleB: "每个人的沉默里。", heroDescription: "选择一段命运，和陌生人共同完成一场只发生一次的推理。", startTrial: "开始一局试玩", browseRooms: "浏览房间预览", curatedCases: "精选案件", picksForYou: "为你挑选的剧本", all: "全部", mystery: "悬疑", emotion: "情感", sciFi: "科幻",
     roomKicker: "房间预览", roomTitle: "故事房间", roomDescription: "创建或加入一个真实房间，等待成员到齐后由房主开始剧本。", viewTrialEntry: "创建房间", roomJoin: "加入房间", roomWatch: "查看房间", roomMissing: "还差 {count} 人", roomFull: "已满员", roomRequest: "{room}：已进入房间", roomLobbyTitle: "房间大厅", roomLobbyPlayers: "房间成员", roomLobbyWaiting: "等待房主开始游戏", roomLobbyLive: "剧本已经开始", roomStart: "开始剧本", roomLeave: "离开房间", roomClose: "关闭房间", roomCreateSuccess: "房间已创建", roomJoinSuccess: "已加入房间", roomLeaveSuccess: "已离开房间", roomStartSuccess: "剧本已开始", roomReady: "准备就绪", roomUnready: "取消准备", roomReadySuccess: "准备状态已更新", roomReadyCount: "已准备 {ready} / {total}", roomNotReady: "还有玩家未准备，全部准备后才能开始", roomYou: "你", roomOffline: "服务端暂不可用，已切换为单人试玩", roomNoRooms: "当前还没有公开房间，创建一个吧。", roomHost: "房主", roomPlayer: "玩家", roomSpectator: "观战", roomRoleTitle: "选择你的角色", roomRoleAuto: "由房主自动分配", roomRoleHint: "选好角色后再点击准备；每个角色只能被一人选择。", roomRoleUpdated: "角色选择已更新", roomRoleTaken: "这个角色已被其他玩家选择", roomRoleUnavailable: "角色暂不可用", roomChatTitle: "房间聊天", roomChatOnline: "实时同步", roomChatEmpty: "还没有消息，先打个招呼吧。", roomChatPlaceholder: "输入消息…", roomChatSend: "发送", roomChatReport: "举报", roomChatReported: "已提交举报", roomChatAlreadyReported: "你已经举报过这条消息", roomChatBlock: "拉黑", roomChatBlocked: "已拉黑该用户", roomChatAlreadyBlocked: "该用户已被拉黑", roomChatUnavailable: "聊天服务暂不可用", roomVoiceTitle: "房间语音", roomVoiceJoin: "加入语音", roomVoiceLeave: "退出语音", roomVoiceMute: "静音", roomVoiceUnmute: "取消静音", roomVoiceReady: "语音已连接", roomVoiceConnecting: "正在连接语音…", roomVoiceOff: "未加入语音", roomVoiceUnsupported: "当前设备不支持语音通话", roomVoicePermission: "请允许麦克风权限后加入语音", roomVoiceEmpty: "加入后可与房间成员语音交流",
     archiveKicker: "我的档案", archiveTitle: "收藏与足迹", archiveDescription: "保存那些值得二刷的故事，也记录你曾经成为谁。", archiveEmptyTitle: "你的档案还很安静", archiveEmptyDescription: "收藏或完成一局试玩后，案件会自动归档到这里。", archiveCompleted: "已完成", archiveReplay: "重新开始", exploreScripts: "去探索剧本", favoriteAdd: "收藏剧本", favoriteRemove: "取消收藏", favoriteSaved: "已收藏", favoriteRemoved: "已取消收藏", profileEdit: "编辑资料", profileSave: "保存资料", profileNameLabel: "显示名称", profileNamePlaceholder: "输入你在房间里显示的名称", profileGuestNote: "当前为匿名访客身份；名称仅用于房间成员展示。", profileSaved: "资料已保存", profileDelete: "删除访客资料", profileDeleteConfirm: "确定删除本设备的访客资料和房间记录吗？", profileDeleted: "访客资料已删除", studioKicker: "创作后台 / 内容管理", studioTitle: "创作后台", studioDescription: "剧本文件进入指定目录后，Nocturne 会自动识别、整理并发布到剧本库。", syncEnabled: "自动同步已开启", synced: "已同步 {count} 个剧本", autoIngestion: "自动入库", ingestionTitle: "剧本自动入库", live: "● 在线", dropTitle: "拖入剧本文件", dropDescription: "支持 .json / .md · 上传后自动解析并发布为草稿", chooseFile: "选择文件", listening: "后台文件夹监听中", incomingFolder: "将文件放入 /incoming，每 4 秒自动同步", waiting: "等待数据", activity: "动态记录", recentActivity: "最近动态", scanNow: "立即扫描 ↗", schemaTitle: "内容格式提示", schemaDescription: "JSON 文件可直接提供 title、genre、players、duration、tags、description 和 content 字段；Markdown 文件会自动读取一级标题作为剧本名。",
@@ -52,7 +61,7 @@ const translations = {
     gamePlaying: "正在游玩", backToLibrary: "← 返回剧本库", livePlay: "剧情演绎中", yourRole: "你的角色", caseNote: "案件笔记", phaseBriefing: "序章 · 入场", phaseEvidence: "第一幕 · 搜证", phaseQuestion: "第二幕 · 质询", phaseVote: "终局 · 指认", phaseResult: "终局 · 复盘", gameTitleEvidence: "搜寻线索", gameTitleQuestion: "公开质询", gameTitleVote: "最终指认", gameTitleResult: "真相浮出水面", gamePrologue: "序章", gameEvidenceKicker: "第一幕 / 搜证", gameEvidenceModalKicker: "案件笔记 / 线索 {count}", gameQuestionKicker: "第二幕 / 公开质询", gameQuestionRoleplay: "角色演绎 / 回应", gameVoteKicker: "终局 / 最终指认", gameVoteSubkicker: "一次指认 / 一个真相", gameClosedKicker: "案件结束", startEvidence: "开始搜证", continueEvidence: "继续搜证", continueQuestion: "继续质询", enterQuestion: "进入公开质询", enterVote: "进入最终指认", finalVote: "最终指认", closed: "案件已归档", replay: "再玩一次", evidenceHint: "先搜集至少 3 条线索，再进入质询。", evidenceCount: "已发现 {count} / 3 条关键线索", questionHint: "{count} 次质询记录 · 线索越多，判断越接近真相", voteHint: "你只有一次正式指认机会。", inspectEvidence: "选择物证 · 点击查看细节", recordEvidence: "记入案件笔记", noEnoughEvidence: "至少查看三件物证，才能进入下一幕", noEnoughQuestions: "至少完成三次质询，再做最终指认", questionTime: "你在关键时间段在哪里？", questionMotive: "谁最有动机？", questionKey: "你见过关键物证吗？", accuse: "指认 TA ↗", correct: "真相浮出水面", wrong: "这个答案无法解释全部证据，再想想", localResponse: "{name} 已回应", recorded: "已记录", close: "关闭", sceneAlt: "案件现场", roomTrialPrompt: "请选择一个案件开始试玩", scanComplete: "扫描完成，剧本库已更新", scanOffline: "当前为离线试玩模式，无法扫描服务端文件夹",
   },
   en: {
-    appTitle: "Nocturne · Script Mystery Social", brandCaption: "SCRIPT MYSTERY / SOCIAL PLAY", mobileCaption: "Script mystery social", navDiscover: "Discover", navRooms: "Rooms", navLibrary: "My Archive", navStudio: "Studio", mainNav: "Main navigation", mobileNav: "Mobile navigation", mobileHome: "Home", mobileRooms: "Rooms", mobileLibrary: "Archive", mobileStudio: "Studio", localPlay: "LOCAL PLAY", offlineCases: "4 cases ready offline", profileAvatar: "L", profileName: "Ling · Night Watcher", profileLevel: "Explorer Lv.12", notification: "Notifications", heroCaseTitle: "The Trial of Moonlight", heroCaseKicker: "CASE 014 / UNSEALED", heroCaseSubtitle: "THE TRIAL OF MOONLIGHT", heroNoteTop: "MEMORY<br /><b>IS A CRIME SCENE</b>", schemaExampleTitle: "The Trial of Moonlight", privacy: "Privacy", terms: "Terms", discover: "Discover", rooms: "Rooms", library: "My Archive", studio: "Studio",
+    appTitle: "Nocturne · Script Mystery Social", brandCaption: "SCRIPT MYSTERY / SOCIAL PLAY", mobileCaption: "Script mystery social", navDiscover: "Discover", navRooms: "Rooms", navLibrary: "My Archive", navStudio: "Studio", mainNav: "Main navigation", mobileNav: "Mobile navigation", mobileHome: "Home", mobileRooms: "Rooms", mobileLibrary: "Archive", mobileStudio: "Studio", localPlay: "LOCAL PLAY", offlineCases: "4 cases ready offline", profileAvatar: "L", profileName: "Ling · Night Watcher", profileLevel: "Explorer Lv.12", notification: "Notifications", notificationTitle: "Notifications", notificationEmpty: "Nothing new yet", notificationClear: "Clear read", notificationRoomCreated: "Room created", notificationRoomJoined: "Joined room", notificationRoleUpdated: "Character selected", notificationRoomStarted: "Case started", notificationRoomCreatedBody: "Copy the invite link to bring friends into the room.", notificationRoomJoinedBody: "You can now ready up, choose a character and join voice.", notificationRoleUpdatedBody: "Your character is reserved; ready up and wait for the host.", notificationRoomStartedBody: "The case is live. Enter the room to continue the mystery.", heroCaseTitle: "The Trial of Moonlight", heroCaseKicker: "CASE 014 / UNSEALED", heroCaseSubtitle: "THE TRIAL OF MOONLIGHT", heroNoteTop: "MEMORY<br /><b>IS A CRIME SCENE</b>", schemaExampleTitle: "The Trial of Moonlight", privacy: "Privacy", terms: "Terms", discover: "Discover", rooms: "Rooms", library: "My Archive", studio: "Studio",
     heroEyebrow: "TONIGHT, ENTER ANOTHER LIFE", heroTitleA: "Truth hides", heroTitleB: "inside every silence.", heroDescription: "Choose a fate and solve a one-night mystery with people you have never met.", startTrial: "Start a trial", browseRooms: "Browse rooms", curatedCases: "CURATED CASES", picksForYou: "Curated for you", all: "All", mystery: "Mystery", emotion: "Drama", sciFi: "Sci-fi",
     roomKicker: "ROOM PREVIEW", roomTitle: "Story rooms", roomDescription: "Create or join a live room, then let the host start the case when everyone is ready.", viewTrialEntry: "Create room", roomJoin: "Join room", roomWatch: "View room", roomMissing: "{count} spot(s) left", roomFull: "Full", roomRequest: "{room}: you are in", roomLobbyTitle: "Room lobby", roomLobbyPlayers: "Room members", roomLobbyWaiting: "Waiting for the host to start", roomLobbyLive: "The case is live", roomStart: "Start case", roomLeave: "Leave room", roomClose: "Close room", roomCreateSuccess: "Room created", roomJoinSuccess: "You joined the room", roomLeaveSuccess: "You left the room", roomStartSuccess: "The case has started", roomReady: "Ready", roomUnready: "Not ready", roomReadySuccess: "Ready status updated", roomReadyCount: "{ready} / {total} ready", roomNotReady: "Some players are not ready yet", roomYou: "You", roomOffline: "The service is unavailable; opening a solo trial instead", roomNoRooms: "No public rooms yet. Create the first one.", roomHost: "Host", roomPlayer: "Player", roomSpectator: "Spectator", roomRoleTitle: "Choose your character", roomRoleAuto: "Assign automatically", roomRoleHint: "Choose a character before marking ready. Each character can be selected by one player only.", roomRoleUpdated: "Character selection updated", roomRoleTaken: "That character is already taken", roomRoleUnavailable: "Character selection is unavailable", roomChatTitle: "Room chat", roomChatOnline: "Live sync", roomChatEmpty: "No messages yet. Say hello.", roomChatPlaceholder: "Type a message…", roomChatSend: "Send", roomChatReport: "Report", roomChatReported: "Report submitted", roomChatAlreadyReported: "You already reported this message", roomChatBlock: "Block", roomChatBlocked: "User blocked", roomChatAlreadyBlocked: "User already blocked", roomChatUnavailable: "Chat is temporarily unavailable", roomVoiceTitle: "Room voice", roomVoiceJoin: "Join voice", roomVoiceLeave: "Leave voice", roomVoiceMute: "Mute", roomVoiceUnmute: "Unmute", roomVoiceReady: "Voice connected", roomVoiceConnecting: "Connecting voice…", roomVoiceOff: "Voice not joined", roomVoiceUnsupported: "Voice calls are not supported on this device", roomVoicePermission: "Allow microphone access to join voice", roomVoiceEmpty: "Join to talk with room members",
     archiveKicker: "YOUR ARCHIVE", archiveTitle: "Saved stories", archiveDescription: "Keep the stories worth replaying and remember who you became.", archiveEmptyTitle: "Your archive is quiet", archiveEmptyDescription: "Favorite or complete a trial and it will appear here.", archiveCompleted: "Completed", archiveReplay: "Replay", exploreScripts: "Explore scripts", favoriteAdd: "Save script", favoriteRemove: "Remove saved script", favoriteSaved: "Saved", favoriteRemoved: "Removed from archive", profileEdit: "Edit profile", profileSave: "Save profile", profileNameLabel: "Display name", profileNamePlaceholder: "Name shown to room members", profileGuestNote: "You are using an anonymous guest identity; this name is only shown in rooms.", profileSaved: "Profile saved", profileDelete: "Delete guest data", profileDeleteConfirm: "Delete this device's guest profile and room records?", profileDeleted: "Guest data deleted", studioKicker: "STUDIO / CONTENT OPS", studioTitle: "Creator studio", studioDescription: "Drop script files into the watched folder and Nocturne will parse, organize and publish them as drafts.", syncEnabled: "Auto-sync enabled", synced: "{count} scripts synced", autoIngestion: "AUTO INGESTION", ingestionTitle: "Script ingestion", live: "● LIVE", dropTitle: "Drop script files here", dropDescription: "Supports .json / .md · files are parsed into drafts automatically", chooseFile: "Choose file", listening: "Watching the incoming folder", incomingFolder: "Put files in /incoming; scan runs every 4 seconds", waiting: "Waiting for data", activity: "ACTIVITY FEED", recentActivity: "Recent activity", scanNow: "Scan now ↗", schemaTitle: "Content format", schemaDescription: "JSON may provide title, genre, players, duration, tags, description and content; Markdown uses its first-level heading as the script title.",
@@ -144,6 +153,7 @@ function applyStaticLocale() {
   $(".top-avatar").textContent = displayName.slice(0, 1);
   $(".top-avatar").setAttribute("aria-label", t("profileEdit"));
   $(".icon-button").title = t("notification");
+  renderNotifications();
   $(".legal-links a[href='privacy.html']").textContent = t("privacy");
   $(".legal-links a[href='terms.html']").textContent = t("terms");
   $(".hero-copy .eyebrow").textContent = t("heroEyebrow");
@@ -331,6 +341,62 @@ function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]);
 }
 
+function saveNotifications() {
+  try { localStorage.setItem("nocturne-notifications", JSON.stringify(state.notifications.slice(0, 30))); } catch { /* storage can be unavailable in private webviews */ }
+}
+
+function addNotification(titleKey, bodyKey, detail = "") {
+  const item = { id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, title: t(titleKey), body: detail || t(bodyKey), createdAt: new Date().toISOString(), read: false };
+  state.notifications = [item, ...state.notifications].slice(0, 30);
+  saveNotifications();
+  renderNotifications();
+}
+
+function formatNotificationTime(value) {
+  if (!value) return t("waiting");
+  return new Intl.DateTimeFormat(state.locale === "zh" ? "zh-CN" : "en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
+}
+
+function ensureNotificationCenter() {
+  if ($("#notificationPopover")) return;
+  document.body.insertAdjacentHTML("beforeend", `<section class="notification-popover" id="notificationPopover" aria-hidden="true" aria-labelledby="notificationPopoverTitle"><div class="notification-popover-head"><div><span class="eyebrow" id="notificationPopoverKicker">NOCTURNE / INBOX</span><h2 id="notificationPopoverTitle">${t("notificationTitle")}</h2></div><button class="modal-close" id="notificationClose" type="button" aria-label="${t("close")}">×</button></div><div class="notification-list" id="notificationList"></div><button class="notification-clear" id="notificationClear" type="button">${t("notificationClear")}</button></section>`);
+  $("#notificationClose").addEventListener("click", closeNotifications);
+  $("#notificationClear").addEventListener("click", () => {
+    state.notifications = state.notifications.filter((entry) => !entry.read);
+    saveNotifications();
+    renderNotifications();
+  });
+  renderNotifications();
+}
+
+function renderNotifications() {
+  const panel = $("#notificationPopover");
+  const list = $("#notificationList");
+  if (!panel || !list) return;
+  const unread = state.notifications.filter((entry) => !entry.read).length;
+  $(".notification-dot")?.classList.toggle("hidden", unread === 0);
+  $(".icon-button")?.setAttribute("aria-label", `${t("notification")} · ${unread}`);
+  $("#notificationPopoverTitle").textContent = t("notificationTitle");
+  $("#notificationClear").textContent = t("notificationClear");
+  list.innerHTML = state.notifications.length
+    ? state.notifications.map((entry) => `<article class="notification-item${entry.read ? " read" : ""}"><i></i><div><strong>${escapeHtml(entry.title)}</strong><p>${escapeHtml(entry.body)}</p><small>${escapeHtml(formatNotificationTime(entry.createdAt))}</small></div></article>`).join("")
+    : `<div class="notification-empty">${t("notificationEmpty")}</div>`;
+}
+
+function openNotifications() {
+  ensureNotificationCenter();
+  state.notifications = state.notifications.map((entry) => ({ ...entry, read: true }));
+  saveNotifications();
+  renderNotifications();
+  $("#notificationPopover").classList.add("open");
+  $("#notificationPopover").setAttribute("aria-hidden", "false");
+}
+
+function closeNotifications() {
+  $("#notificationPopover")?.classList.remove("open");
+  $("#notificationPopover")?.setAttribute("aria-hidden", "true");
+}
+
 function renderRooms() {
   const roomScriptIds = { "月影审判": "moon-trial", "轨道之外": "orbit-7", "旧港来信": "last-letter", "绒幕之后": "velvet-room" };
   const liveCards = state.liveRooms.map((room) => {
@@ -409,10 +475,12 @@ async function deleteProfile() {
     localStorage.removeItem("nocturne-profile-name");
     localStorage.removeItem("nocturne-archive");
     localStorage.removeItem("nocturne-favorites");
+    localStorage.removeItem("nocturne-notifications");
   } catch { /* storage can be unavailable in private webviews */ }
   state.profileName = "";
   state.archive = [];
   state.favorites = [];
+  state.notifications = [];
   closeProfileModal();
   applyStaticLocale();
   renderLibrary();
@@ -855,6 +923,8 @@ async function roomAction(roomId, action, ready = true) {
     } else {
       state.activeRoom = data.room;
       renderRoomLobby();
+      if (action === "role") addNotification("notificationRoleUpdated", "notificationRoleUpdatedBody");
+      if (action === "start") addNotification("notificationRoomStarted", "notificationRoomStartedBody", data.room?.title || "");
       showToast(t(action === "ready" ? "roomReadySuccess" : action === "role" ? "roomRoleUpdated" : "roomStartSuccess"));
     }
     await loadRooms();
@@ -863,12 +933,13 @@ async function roomAction(roomId, action, ready = true) {
   }
 }
 
-async function joinRoom(roomId) {
+async function joinRoom(roomId, memberRole = "player") {
   try {
-    const response = await apiFetch(`/api/rooms/${encodeURIComponent(roomId)}/join`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ user: currentUserProfile(), memberRole: "player" }) });
+    const response = await apiFetch(`/api/rooms/${encodeURIComponent(roomId)}/join`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ user: currentUserProfile(), memberRole }) });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "Unable to join room");
     state.roomMember = true;
+    addNotification("notificationRoomJoined", "notificationRoomJoinedBody", data.room?.title || "");
     showToast(t("roomJoinSuccess"));
     await openRoomLobby(data.room);
     await loadRooms();
@@ -893,6 +964,7 @@ async function createRoom(scriptId = "moon-trial") {
     if (!response.ok) throw new Error(data.error || "Unable to create room");
     state.roomMember = true;
     state.activeRoom = data.room;
+    addNotification("notificationRoomCreated", "notificationRoomCreatedBody", data.room?.title || "");
     showToast(t("roomCreateSuccess"));
     await openRoomLobby(data.room);
     await loadRooms();
@@ -1517,6 +1589,7 @@ function bindEvents() {
   $(".profile-chip").addEventListener("click", openProfileModal);
   $(".profile-chip").addEventListener("keydown", (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openProfileModal(); } });
   $(".top-avatar").addEventListener("click", openProfileModal);
+  $(".icon-button").addEventListener("click", openNotifications);
   $("#createRoom").addEventListener("click", () => createRoom("moon-trial"));
   $("#modalClose").addEventListener("click", closeModal);
   $("#modalBackdrop").addEventListener("click", (event) => { if (event.target.id === "modalBackdrop") closeModal(); });
@@ -1525,12 +1598,13 @@ function bindEvents() {
   $("#modalFavorite").addEventListener("click", () => toggleFavorite(state.selectedScript?.id || ""));
   $("#exitGame").addEventListener("click", () => { clearInterval(gameState.timer); stopRoomSessionSync(); gameState.roomId = null; gameState.sessionId = null; setView("discover"); });
   $("#scanNow").addEventListener("click", async () => { try { await apiFetch("/api/scripts/scan", { method: "POST" }); await loadScripts(); await refreshSync(); showToast(t("scanComplete")); } catch { showToast(t("scanOffline")); } });
-  document.addEventListener("keydown", (event) => { if (event.key === "Escape") { closeModal(); closeProfileModal(); } });
+  document.addEventListener("keydown", (event) => { if (event.key === "Escape") { closeModal(); closeProfileModal(); closeNotifications(); } });
   $("#chooseFile").addEventListener("click", () => $("#fileInput").click());
   $("#fileInput").addEventListener("change", async (event) => { const file = event.target.files[0]; if (file) { try { await importFile(file); } catch (error) { showToast(error.message); } event.target.value = ""; } });
   document.addEventListener("click", (event) => {
     const actionButton = event.target.closest("#gameNextAction");
     if (actionButton && gameState.nextAction) gameState.nextAction();
+    if (!event.target.closest("#notificationPopover") && !event.target.closest(".icon-button")) closeNotifications();
   });
   const dropzone = $("#dropzone");
   ["dragenter", "dragover"].forEach((eventName) => dropzone.addEventListener(eventName, (event) => { event.preventDefault(); dropzone.classList.add("dragging"); }));
@@ -1538,6 +1612,7 @@ function bindEvents() {
   dropzone.addEventListener("drop", async (event) => { const file = event.dataTransfer.files[0]; if (file) { try { await importFile(file); } catch (error) { showToast(error.message); } } });
 }
 
+ensureNotificationCenter();
 bindEvents();
 applyStaticLocale();
 ensureRoomLobby();
