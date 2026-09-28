@@ -134,6 +134,28 @@ translations.zh.statsClues = "发现线索";
 translations.en.statsClues = "Clues found";
 translations.zh.statsQuestions = "公开质询";
 translations.en.statsQuestions = "Questions asked";
+translations.zh.achievementsTitle = "探索成就";
+translations.en.achievementsTitle = "Explorer achievements";
+translations.zh.achievementFirstCase = "初次入案";
+translations.en.achievementFirstCase = "First case";
+translations.zh.achievementFirstCaseDesc = "完成一局案件，建立你的第一条推理记录。";
+translations.en.achievementFirstCaseDesc = "Complete one case and start your investigation record.";
+translations.zh.achievementTruthSeeker = "真相追踪者";
+translations.en.achievementTruthSeeker = "Truth seeker";
+translations.zh.achievementTruthSeekerDesc = "成功完成一次最终指认。";
+translations.en.achievementTruthSeekerDesc = "Make one correct final accusation.";
+translations.zh.achievementEvidence = "证物收藏家";
+translations.en.achievementEvidence = "Evidence collector";
+translations.zh.achievementEvidenceDesc = "累计发现 12 条线索。";
+translations.en.achievementEvidenceDesc = "Discover 12 clues across your cases.";
+translations.zh.achievementQuestioner = "公开质询官";
+translations.en.achievementQuestioner = "Open questioner";
+translations.zh.achievementQuestionerDesc = "累计完成 6 次公开质询。";
+translations.en.achievementQuestionerDesc = "Ask six questions across your cases.";
+translations.zh.achievementUnlocked = "已解锁";
+translations.en.achievementUnlocked = "Unlocked";
+translations.zh.achievementLocked = "未解锁";
+translations.en.achievementLocked = "Locked";
 translations.zh.resultAward = "本局记录";
 translations.en.resultAward = "This case";
 translations.zh.resultAwardFirst = "首次完成案件，档案已建立";
@@ -561,7 +583,7 @@ function renderRooms() {
 
 function ensureProfileModal() {
   if ($("#profileModalBackdrop")) return;
-  document.body.insertAdjacentHTML("beforeend", `<div class="room-lobby-backdrop" id="profileModalBackdrop" aria-hidden="true"><section class="room-lobby-card profile-modal-card" role="dialog" aria-modal="true" aria-labelledby="profileModalTitle"><button class="modal-close" id="profileModalClose">×</button><p class="eyebrow">NOCTURNE / PROFILE</p><h2 id="profileModalTitle">${t("profileEdit")}</h2><label class="profile-field"><span id="profileNameLabel">${t("profileNameLabel")}</span><input id="profileNameInput" maxlength="80" autocomplete="nickname" /></label><p class="profile-note" id="profileGuestNote">${t("profileGuestNote")}</p><section class="profile-stats" aria-labelledby="profileStatsTitle"><span class="eyebrow" id="profileStatsTitle">${t("profileStatsTitle")}</span><div id="profileStats"></div></section><div class="room-lobby-actions"><button class="primary-button" id="profileModalSave">${t("profileSave")}</button><button class="ghost-button" id="profileModalCancel">${t("close")}</button></div><button class="profile-delete-button" id="profileDeleteButton">${t("profileDelete")}</button></section></div>`);
+  document.body.insertAdjacentHTML("beforeend", `<div class="room-lobby-backdrop" id="profileModalBackdrop" aria-hidden="true"><section class="room-lobby-card profile-modal-card" role="dialog" aria-modal="true" aria-labelledby="profileModalTitle"><button class="modal-close" id="profileModalClose">×</button><p class="eyebrow">NOCTURNE / PROFILE</p><h2 id="profileModalTitle">${t("profileEdit")}</h2><label class="profile-field"><span id="profileNameLabel">${t("profileNameLabel")}</span><input id="profileNameInput" maxlength="80" autocomplete="nickname" /></label><p class="profile-note" id="profileGuestNote">${t("profileGuestNote")}</p><section class="profile-stats" aria-labelledby="profileStatsTitle"><span class="eyebrow" id="profileStatsTitle">${t("profileStatsTitle")}</span><div id="profileStats"></div></section><section class="profile-achievements" aria-labelledby="profileAchievementsTitle"><span class="eyebrow" id="profileAchievementsTitle">${t("achievementsTitle")}</span><div id="profileAchievements"></div></section><div class="room-lobby-actions"><button class="primary-button" id="profileModalSave">${t("profileSave")}</button><button class="ghost-button" id="profileModalCancel">${t("close")}</button></div><button class="profile-delete-button" id="profileDeleteButton">${t("profileDelete")}</button></section></div>`);
   $("#profileModalClose").addEventListener("click", closeProfileModal);
   $("#profileModalCancel").addEventListener("click", closeProfileModal);
   $("#profileModalBackdrop").addEventListener("click", (event) => { if (event.target.id === "profileModalBackdrop") closeProfileModal(); });
@@ -577,6 +599,18 @@ function renderProfileModal() {
   $("#profileGuestNote").textContent = t("profileGuestNote");
   $("#profileStatsTitle").textContent = t("profileStatsTitle");
   $("#profileStats").innerHTML = [[t("statsPlayed"), state.stats.played], [t("statsSolved"), state.stats.solved], [t("statsClues"), state.stats.clues], [t("statsQuestions"), state.stats.questions]].map(([label, value]) => `<div class="profile-stat"><strong>${value}</strong><span>${label}</span></div>`).join("");
+  const missions = [
+    ["achievementFirstCase", "achievementFirstCaseDesc", state.stats.played, 1],
+    ["achievementTruthSeeker", "achievementTruthSeekerDesc", state.stats.solved, 1],
+    ["achievementEvidence", "achievementEvidenceDesc", state.stats.clues, 12],
+    ["achievementQuestioner", "achievementQuestionerDesc", state.stats.questions, 6]
+  ];
+  $("#profileAchievementsTitle").textContent = t("achievementsTitle");
+  $("#profileAchievements").innerHTML = missions.map(([titleKey, descriptionKey, current, target]) => {
+    const value = Math.min(Number(current) || 0, target);
+    const unlocked = value >= target;
+    return `<article class="achievement-card${unlocked ? " unlocked" : ""}"><div class="achievement-mark">${unlocked ? "✦" : "○"}</div><div class="achievement-copy"><strong>${t(titleKey)}</strong><small>${t(descriptionKey)}</small><div class="achievement-progress"><span style="width:${Math.round((value / target) * 100)}%"></span></div></div><em>${unlocked ? t("achievementUnlocked") : `${value}/${target}`}</em></article>`;
+  }).join("");
   $("#profileModalSave").textContent = t("profileSave");
   $("#profileModalCancel").textContent = t("close");
   $("#profileDeleteButton").textContent = t("profileDelete");
