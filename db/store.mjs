@@ -279,8 +279,19 @@ async function inTransaction(callback) {
   }
 }
 
+async function expireStaleRooms() {
+  if (!pool) return;
+  await pool.query(
+    `UPDATE rooms
+        SET status = 'closed', ended_at = COALESCE(ended_at, now())
+      WHERE status IN ('waiting', 'live')
+        AND created_at < now() - interval '24 hours'`
+  );
+}
+
 export async function listDatabaseRooms(status = "waiting", viewerExternalKey = "") {
   if (!pool) return null;
+  await expireStaleRooms();
   const values = status && ["waiting", "live", "closed"].includes(status) ? [status] : [];
   const result = await pool.query(`${roomSelect}${values.length ? " WHERE r.status = $1" : ""} ORDER BY r.created_at DESC LIMIT 50`, values);
   return result.rows.map((row) => rowToRoom(row, viewerExternalKey));
@@ -288,6 +299,7 @@ export async function listDatabaseRooms(status = "waiting", viewerExternalKey = 
 
 export async function getDatabaseRoom(roomId, profile = {}) {
   if (!pool) return null;
+  await expireStaleRooms();
   const client = await pool.connect();
   try {
     const room = await getRoom(client, roomId, String(profile.externalKey || ""));
