@@ -11,6 +11,7 @@
     "db:migrate": "node scripts/migrate-neon.mjs",
     "assets:generate": "node scripts/generate-icon.mjs",
     "mobile:sync": "npm run check && npx cap sync",
+    "mobile:preflight": "node scripts/mobile-preflight.mjs",
     "mobile:add:android": "npx cap add android",
     "mobile:add:ios": "npx cap add ios",
     "mobile:open:android": "npx cap open android",

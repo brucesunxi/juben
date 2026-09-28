@@ -20,7 +20,10 @@ npm run mobile:add:ios
 npm run mobile:sync
 npm run mobile:open:android
 npm run mobile:open:ios
+npm run mobile:preflight
 ```
+
+`mobile:preflight` 只做本地环境和发布文件检查，不会替代签名或商店后台校验。Android 需要可用的 JDK；iOS 需要 Xcode、Team、证书和 Provisioning Profile。本项目已验证 iOS Simulator Debug 构建，未将该结果误当成可提交的 App Store Archive。
 
 当前 `public/runtime-config.js` 已指向 `https://juben-lyart.vercel.app`；正式换域名时必须同步修改 API 地址，并在服务端设置 `CORS_ORIGINS`（至少包含 `capacitor://localhost` 和 `http://localhost`）。
 
