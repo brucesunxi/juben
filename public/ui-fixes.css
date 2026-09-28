@@ -129,4 +129,6 @@ body:before{
 @media(max-width:760px){.room-lobby-backdrop{padding:14px}.room-lobby-card{padding:28px 20px 20px;border-radius:18px}.room-lobby-card h2{font-size:27px}.room-lobby-actions{flex-direction:column}.room-lobby-actions button{width:100%}.room-chat-form{flex-direction:column}.room-chat-form button{width:100%}}
 @media(max-width:760px){.notification-popover{top:76px;right:14px;width:calc(100vw - 28px)}}
 .game-view .vote-card.selected{border-color:#b47732;box-shadow:0 0 0 1px rgba(180,119,50,.25),0 8px 18px rgba(116,70,35,.14)}.game-view .vote-card button:disabled{cursor:not-allowed;opacity:.7}
+.game-topline-actions{display:flex;align-items:center;gap:12px}.game-room-button{padding:8px 11px;border-color:rgba(244,199,110,.32);font:10px var(--mono);white-space:nowrap}.game-room-button:hover{border-color:var(--accent);background:rgba(244,199,110,.08)}
 @media(max-width:760px){.language-switcher{font-size:10px;margin-right:0}.language-switcher button{padding:5px 6px}.top-actions{gap:7px}}
+@media(max-width:760px){.game-topline-actions{gap:8px}.game-room-button{padding:7px 8px;font-size:9px}}

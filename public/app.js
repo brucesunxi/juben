@@ -161,6 +161,7 @@ function applyStaticLocale() {
   $(".hero-description").textContent = t("heroDescription");
   $("#quickStart").innerHTML = `${t("startTrial")} <span>↗</span>`;
   $(".hero-actions .ghost-button").textContent = t("browseRooms");
+  if ($("#gameRoomButton")) $("#gameRoomButton").textContent = t("roomLobbyTitle");
   $(".art-card .card-kicker").textContent = t("heroCaseKicker");
   $(".art-card strong").textContent = t("heroCaseTitle");
   $(".art-card small").textContent = t("heroCaseSubtitle");
@@ -505,19 +506,23 @@ function ensureRoomLobby() {
   $("#roomVoiceMute").addEventListener("click", toggleRoomVoiceMute);
 }
 
-function closeRoomLobby() {
-  clearInterval(state.roomPollTimer);
-  clearInterval(state.roomChatTimer);
-  clearInterval(state.roomVoiceTimer);
-  leaveRoomVoice();
-  state.roomPollTimer = null;
-  state.roomChatTimer = null;
-  state.activeRoom = null;
-  state.roomMember = false;
-  state.roomChatRoomId = null;
-  state.roomChatCursor = "0";
-  state.roomMessages = [];
-  state.blockedUsers = new Set();
+function closeRoomLobby({ preserveRoom = false } = {}) {
+  const keepRoom = preserveRoom || (typeof gameState !== "undefined" && Boolean(gameState.roomId));
+  if (!keepRoom) {
+    clearInterval(state.roomPollTimer);
+    clearInterval(state.roomChatTimer);
+    clearInterval(state.roomVoiceTimer);
+    leaveRoomVoice();
+    state.roomPollTimer = null;
+    state.roomChatTimer = null;
+    state.roomVoiceTimer = null;
+    state.activeRoom = null;
+    state.roomMember = false;
+    state.roomChatRoomId = null;
+    state.roomChatCursor = "0";
+    state.roomMessages = [];
+    state.blockedUsers = new Set();
+  }
   $("#roomLobbyBackdrop")?.classList.remove("open");
   $("#roomLobbyBackdrop")?.setAttribute("aria-hidden", "true");
 }
@@ -827,7 +832,7 @@ function roomRoleOptions(room, selectedKey = "") {
   return roles.map((role) => `<option value="${escapeHtml(role.key)}"${role.key === selectedKey ? " selected" : ""}>${escapeHtml(role.name)} · ${escapeHtml(role.role)}</option>`).join("");
 }
 
-function renderRoomLobby() {
+function renderRoomLobby({ show = true } = {}) {
   if (!state.activeRoom) return;
   ensureRoomLobby();
   const room = state.activeRoom;
@@ -868,8 +873,10 @@ function renderRoomLobby() {
   $("#roomChatSend").textContent = t("roomChatSend");
   renderRoomChat();
   renderRoomVoice();
-  $("#roomLobbyBackdrop").classList.add("open");
-  $("#roomLobbyBackdrop").setAttribute("aria-hidden", "false");
+  if (show) {
+    $("#roomLobbyBackdrop").classList.add("open");
+    $("#roomLobbyBackdrop").setAttribute("aria-hidden", "false");
+  }
   $("#roomInvite")?.addEventListener("click", async () => {
     const invite = new URL(window.location.href);
     invite.search = `?room=${encodeURIComponent(room.id)}`;
@@ -889,7 +896,7 @@ function renderRoomLobby() {
   $("#roomEnterGame")?.addEventListener("click", () => {
     state.selectedScript = state.scripts.find((item) => item.id === room.scriptId) || fallbackScripts.find((item) => item.id === room.scriptId) || fallbackScripts[0];
     const roomId = room.id;
-    closeRoomLobby();
+    closeRoomLobby({ preserveRoom: true });
     startGame({ roomId, spectator: selfMember?.role === "spectator" });
   });
   $("#roomLeave")?.addEventListener("click", () => roomAction(room.id, isHost ? "close" : "leave"));
@@ -903,17 +910,19 @@ async function openRoomLobby(room) {
   renderRoomLobby();
   clearInterval(state.roomPollTimer);
   clearInterval(state.roomChatTimer);
+  clearInterval(state.roomVoiceTimer);
   const roomId = room.id;
   state.roomPollTimer = setInterval(async () => {
     try {
       const profile = currentUserProfile();
       const response = await apiFetch(`/api/rooms/${encodeURIComponent(roomId)}?externalKey=${encodeURIComponent(profile.externalKey)}`);
       if (!response.ok) throw new Error("room closed");
+      const lobbyIsOpen = Boolean($("#roomLobbyBackdrop")?.classList.contains("open"));
       state.activeRoom = (await response.json()).room;
-      renderRoomLobby();
+      renderRoomLobby({ show: lobbyIsOpen });
       renderRooms();
     } catch {
-      closeRoomLobby();
+      closeRoomLobby({ preserveRoom: false });
       await loadRooms();
     }
   }, 2500);
@@ -930,7 +939,7 @@ async function roomAction(roomId, action, ready = true) {
     const data = await response.json();
     if (!response.ok) { const error = new Error(data.error || "Room action failed"); error.code = data.code; throw error; }
     if (action === "leave" || action === "close") {
-      closeRoomLobby();
+      closeRoomLobby({ preserveRoom: false });
       showToast(t(action === "close" ? "roomClose" : "roomLeaveSuccess"));
     } else {
       state.activeRoom = data.room;
@@ -1588,6 +1597,8 @@ function startGame(options = {}) {
   gameState.roomId = options.roomId || null;
   gameState.sessionId = null;
   gameState.spectator = options.spectator === true;
+  $("#gameRoomButton").hidden = !gameState.roomId;
+  $("#gameRoomButton").textContent = t("roomLobbyTitle");
   gameState.playerUserId = null;
   gameState.eventCursor = 0;
   gameState.lastEmittedPhase = null;
@@ -1631,7 +1642,23 @@ function bindEvents() {
   $("#modalStart").addEventListener("click", startGame);
   $("#modalRoom").addEventListener("click", () => createRoom(state.selectedScript?.id || "moon-trial"));
   $("#modalFavorite").addEventListener("click", () => toggleFavorite(state.selectedScript?.id || ""));
-  $("#exitGame").addEventListener("click", () => { clearInterval(gameState.timer); stopRoomSessionSync(); gameState.roomId = null; gameState.sessionId = null; setView("discover"); });
+  $("#gameRoomButton").addEventListener("click", () => { if (state.activeRoom) openRoomLobby(state.activeRoom); });
+  $("#exitGame").addEventListener("click", () => {
+    clearInterval(gameState.timer);
+    const room = state.activeRoom;
+    const wasRoomGame = Boolean(gameState.roomId && room);
+    stopRoomSessionSync();
+    gameState.roomId = null;
+    gameState.sessionId = null;
+    gameState.spectator = false;
+    $("#gameRoomButton").hidden = true;
+    if (wasRoomGame) {
+      setView("rooms");
+      openRoomLobby(room);
+    } else {
+      setView("discover");
+    }
+  });
   $("#scanNow").addEventListener("click", async () => { try { await apiFetch("/api/scripts/scan", { method: "POST" }); await loadScripts(); await refreshSync(); showToast(t("scanComplete")); } catch { showToast(t("scanOffline")); } });
   document.addEventListener("keydown", (event) => { if (event.key === "Escape") { closeModal(); closeProfileModal(); closeNotifications(); } });
   $("#chooseFile").addEventListener("click", () => $("#fileInput").click());
