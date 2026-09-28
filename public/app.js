@@ -36,7 +36,7 @@ const apiFetch = (path, options) => fetch(`${API_BASE}${path}`, options);
 const translations = {
   zh: {
     appTitle: "Nocturne · 剧本推理社交", brandCaption: "剧本推理 / 社交玩法", mobileCaption: "剧本探索社", navDiscover: "发现剧本", navRooms: "房间预览", navLibrary: "我的收藏", navStudio: "创作后台", mainNav: "主导航", mobileNav: "移动端主导航", mobileHome: "首页", mobileRooms: "房间", mobileLibrary: "收藏", mobileStudio: "创作", localPlay: "本地试玩", offlineCases: "4 个案件可离线试玩", profileAvatar: "凌", profileName: "凌 · 夜航员", profileLevel: "探索者 Lv.12", notification: "通知", heroCaseTitle: "月影审判", heroCaseKicker: "案件 014 / 未封存", heroCaseSubtitle: "月影审判", heroNoteTop: "记忆<br /><b>也是犯罪现场</b>", schemaExampleTitle: "月影审判", privacy: "隐私政策", terms: "用户协议", discover: "发现剧本", rooms: "房间预览", library: "我的收藏", studio: "创作后台",
-    heroEyebrow: "今晚，进入另一个人生", heroTitleA: "真相藏在", heroTitleB: "每个人的沉默里。", heroDescription: "选择一段命运，和陌生人共同完成一场只发生一次的推理。", startTrial: "开始一局试玩", browseRooms: "浏览房间预览", curatedCases: "CURATED CASES", picksForYou: "为你挑选的剧本", all: "全部", mystery: "悬疑", emotion: "情感", sciFi: "科幻",
+    heroEyebrow: "今晚，进入另一个人生", heroTitleA: "真相藏在", heroTitleB: "每个人的沉默里。", heroDescription: "选择一段命运，和陌生人共同完成一场只发生一次的推理。", startTrial: "开始一局试玩", browseRooms: "浏览房间预览", curatedCases: "精选案件", picksForYou: "为你挑选的剧本", all: "全部", mystery: "悬疑", emotion: "情感", sciFi: "科幻",
     roomKicker: "房间预览", roomTitle: "故事房间", roomDescription: "创建或加入一个真实房间，等待成员到齐后由房主开始剧本。", viewTrialEntry: "创建房间", roomJoin: "加入房间", roomWatch: "查看房间", roomMissing: "还差 {count} 人", roomFull: "已满员", roomRequest: "{room}：已进入房间", roomLobbyTitle: "房间大厅", roomLobbyPlayers: "房间成员", roomLobbyWaiting: "等待房主开始游戏", roomLobbyLive: "剧本已经开始", roomStart: "开始剧本", roomLeave: "离开房间", roomClose: "关闭房间", roomCreateSuccess: "房间已创建", roomJoinSuccess: "已加入房间", roomLeaveSuccess: "已离开房间", roomStartSuccess: "剧本已开始", roomOffline: "服务端暂不可用，已切换为单人试玩", roomNoRooms: "当前还没有公开房间，创建一个吧。", roomHost: "房主", roomPlayer: "玩家", roomSpectator: "观战",
     archiveKicker: "我的档案", archiveTitle: "收藏与足迹", archiveDescription: "保存那些值得二刷的故事，也记录你曾经成为谁。", archiveEmptyTitle: "你的档案还很安静", archiveEmptyDescription: "完成一局试玩后，案件会自动归档到这里。", archiveCompleted: "已完成", archiveReplay: "重新开始", exploreScripts: "去探索剧本", profileEdit: "编辑资料", profileSave: "保存资料", profileNameLabel: "显示名称", profileNamePlaceholder: "输入你在房间里显示的名称", profileGuestNote: "当前为匿名访客身份；名称仅用于房间成员展示。", profileSaved: "资料已保存", profileDelete: "删除访客资料", profileDeleteConfirm: "确定删除本设备的访客资料和房间记录吗？", profileDeleted: "访客资料已删除", studioKicker: "创作后台 / 内容管理", studioTitle: "创作后台", studioDescription: "剧本文件进入指定目录后，Nocturne 会自动识别、整理并发布到剧本库。", syncEnabled: "自动同步已开启", synced: "已同步 {count} 个剧本", autoIngestion: "自动入库", ingestionTitle: "剧本自动入库", live: "● 在线", dropTitle: "拖入剧本文件", dropDescription: "支持 .json / .md · 上传后自动解析并发布为草稿", chooseFile: "选择文件", listening: "后台文件夹监听中", incomingFolder: "将文件放入 /incoming，每 4 秒自动同步", waiting: "等待数据", activity: "动态记录", recentActivity: "最近动态", scanNow: "立即扫描 ↗", schemaTitle: "内容格式提示", schemaDescription: "JSON 文件可直接提供 title、genre、players、duration、tags、description 和 content 字段；Markdown 文件会自动读取一级标题作为剧本名。",
     emptyFilterTitle: "还没有这个类型的剧本", emptyFilterDescription: "换一个筛选，或者去创作后台导入新剧本。", caseFile: "案件档案", privateCase: "私人案件", players: "人数", duration: "时长", level: "难度", defaultGenre: "叙事推理", defaultSubtitle: "一场关于真相、秘密与选择的沉浸式推理", defaultDescription: "一份新剧本已经抵达。请在所有人说出真话之前，找到唯一无法被伪造的证据。", detailStart: "开始试玩", cardStart: "查看详情 / 开始试玩",
@@ -70,11 +70,11 @@ const scriptTranslations = {
   "velvet-room": { title: "Behind the Velvet", subtitle: "BEHIND THE VELVET", genre: "Drama · Performance", duration: "80 min", difficulty: "Advanced", tags: ["Strong roles", "Voice acting"], description: "After the curtain falls, the real play begins. Everyone is fighting for the last role.", status: "New" }
 };
 const scriptChineseTranslations = {
-  "moon-trial": { subtitle: "月影审判" },
-  "old-port-letter": { subtitle: "旧港来信" },
-  "last-letter": { subtitle: "旧港来信" },
-  "orbit-7": { subtitle: "轨道之外" },
-  "velvet-room": { subtitle: "绒幕之后" }
+  "moon-trial": { subtitle: "月影审判", duration: "90 分钟" },
+  "old-port-letter": { subtitle: "旧港来信", duration: "75 分钟" },
+  "last-letter": { subtitle: "旧港来信", duration: "75 分钟" },
+  "orbit-7": { subtitle: "轨道之外", duration: "110 分钟" },
+  "velvet-room": { subtitle: "绒幕之后", duration: "80 分钟" }
 };
 
 function localizedScript(script) {
@@ -195,10 +195,8 @@ function applyStaticLocale() {
   const gameNavLabels = { briefing: "phaseBriefing", evidence: "phaseEvidence", question: "phaseQuestion", vote: "phaseVote" };
   $$(".game-nav-item").forEach((item) => { const number = item.querySelector("span")?.textContent || ""; item.innerHTML = `<span>${number}</span>${t(gameNavLabels[item.dataset.gamePhase])}`; });
   $$("[data-locale]").forEach((button) => button.classList.toggle("active", button.dataset.locale === state.locale));
-  if (!$("#gameView").classList.contains("active-view")) {
-    const currentView = $(".sidebar .nav-item.active")?.dataset.view || "discover";
-    $("#viewLabel").textContent = t(currentView);
-  }
+  const activeView = $(".view.active-view")?.id.replace(/View$/, "") || $(".sidebar .nav-item.active")?.dataset.view || "discover";
+  $("#viewLabel").textContent = activeView === "game" ? t("gamePlaying") : t(activeView);
 }
 
 function setLocale(locale, { persist = true, source = "manual" } = {}) {
