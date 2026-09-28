@@ -65,6 +65,18 @@ function durationLabel(minutes) {
   return minutes ? `${minutes} min` : null;
 }
 
+const rolePools = {
+  "moon-trial": ["player", "shen", "gu", "he", "su", "luo"],
+  "last-letter": ["player", "ye", "tang", "jiang", "wan", "qiao"],
+  "old-port-letter": ["player", "ye", "tang", "jiang", "wan", "qiao"],
+  "orbit-7": ["player", "mu", "qiao", "rui", "yan", "lin"],
+  "velvet-room": ["player", "yin", "bo", "xue", "qi", "meng"]
+};
+
+function roomRolePool(scriptId) {
+  return rolePools[scriptId] || rolePools["moon-trial"];
+}
+
 function rowToScript(row) {
   return {
     id: row.id,
@@ -240,7 +252,8 @@ function rowToRoom(row, viewerExternalKey = "") {
     // authenticated room-session endpoint, never by public room metadata.
     members: (row.members || []).map((member) => {
       const { externalKey, ...safeMember } = member;
-      return { ...safeMember, characterKey: null, isSelf: Boolean(viewerExternalKey && externalKey === viewerExternalKey) };
+      const isSelf = Boolean(viewerExternalKey && externalKey === viewerExternalKey);
+      return { ...safeMember, characterKey: isSelf ? (member.characterKey || null) : null, isSelf };
     })
   };
 }
@@ -300,12 +313,15 @@ export async function deleteDatabaseUser(profile = {}) {
 export async function createDatabaseRoom(scriptId, profile = {}, maxPlayers = 6) {
   if (!pool) return null;
   return inTransaction(async (client) => {
-    const script = await client.query("SELECT id FROM scripts WHERE id = $1 AND published = TRUE", [scriptId]);
+    const script = await client.query("SELECT id, player_count FROM scripts WHERE id = $1 AND published = TRUE", [scriptId]);
     if (!script.rows[0]) throw new RoomError("SCRIPT_NOT_FOUND", "Script not found");
     const user = await ensureUser(client, profile);
+    const scriptPlayerCount = Number(script.rows[0].player_count) || 6;
+    const requestedPlayers = Number(maxPlayers) || scriptPlayerCount;
+    const roomMaxPlayers = Math.min(Math.max(requestedPlayers, 2), Math.min(Math.max(scriptPlayerCount, 2), 8));
     const room = await client.query(
       `INSERT INTO rooms (script_id, host_user_id, max_players) VALUES ($1, $2, $3) RETURNING id`,
-      [scriptId, user.id, Math.min(Math.max(Number(maxPlayers) || 6, 2), 6)]
+      [scriptId, user.id, roomMaxPlayers]
     );
     await client.query("INSERT INTO room_members (room_id, user_id, member_role) VALUES ($1, $2, 'host')", [room.rows[0].id, user.id]);
     return getRoom(client, room.rows[0].id, user.external_key);
@@ -329,7 +345,7 @@ export async function joinDatabaseRoom(roomId, profile = {}, memberRole = "playe
     await client.query(
       `INSERT INTO room_members (room_id, user_id, member_role, left_at)
        VALUES ($1, $2, $3, NULL)
-       ON CONFLICT (room_id, user_id) DO UPDATE SET member_role = EXCLUDED.member_role, joined_at = now(), left_at = NULL, ready = FALSE`,
+       ON CONFLICT (room_id, user_id) DO UPDATE SET member_role = EXCLUDED.member_role, joined_at = now(), left_at = NULL, ready = FALSE, character_key = NULL`,
       [roomId, user.id, memberRole]
     );
     return getRoom(client, roomId, user.external_key);
@@ -354,21 +370,22 @@ export async function startDatabaseRoom(roomId, profile = {}) {
     if (host.rows[0].host_user_id !== user.id) throw new RoomError("NOT_HOST", "Only the host can start the room");
     if (host.rows[0].status === "closed") throw new RoomError("ROOM_CLOSED", "Room is closed");
     if (host.rows[0].status === "live") return getRoom(client, roomId, user.external_key);
-    const rolePools = {
-      "moon-trial": ["player", "shen", "gu", "he", "su", "luo"],
-      "last-letter": ["player", "ye", "tang", "jiang", "wan", "qiao"],
-      "old-port-letter": ["player", "ye", "tang", "jiang", "wan", "qiao"],
-      "orbit-7": ["player", "mu", "qiao", "rui", "yan", "lin"],
-      "velvet-room": ["player", "yin", "bo", "xue", "qi", "meng"]
-    };
-    const roleKeys = rolePools[host.rows[0].script_id] || rolePools["moon-trial"];
+    const roleKeys = roomRolePool(host.rows[0].script_id);
     const members = await client.query(
-      `SELECT user_id, ready FROM room_members WHERE room_id = $1 AND left_at IS NULL AND member_role <> 'spectator' ORDER BY joined_at ASC FOR UPDATE`,
+      `SELECT user_id, character_key, ready FROM room_members WHERE room_id = $1 AND left_at IS NULL AND member_role <> 'spectator' ORDER BY joined_at ASC FOR UPDATE`,
       [roomId]
     );
     if (members.rows.some((member) => member.ready !== true)) throw new RoomError("ROOM_NOT_READY", "All players must be ready before the host starts the room");
-    for (const [index, member] of members.rows.entries()) {
-      await client.query("UPDATE room_members SET character_key = $2 WHERE room_id = $1 AND user_id = $3", [roomId, roleKeys[index] || roleKeys[index % roleKeys.length], member.user_id]);
+    const selectedRoles = new Set();
+    for (const member of members.rows) {
+      if (member.character_key && roleKeys.includes(member.character_key) && !selectedRoles.has(member.character_key)) selectedRoles.add(member.character_key);
+    }
+    const availableRoles = roleKeys.filter((roleKey) => !selectedRoles.has(roleKey));
+    for (const member of members.rows) {
+      const assignedRole = member.character_key && roleKeys.includes(member.character_key)
+        ? member.character_key
+        : availableRoles.shift() || roleKeys[members.rows.indexOf(member) % roleKeys.length];
+      await client.query("UPDATE room_members SET character_key = $2 WHERE room_id = $1 AND user_id = $3", [roomId, assignedRole, member.user_id]);
     }
     await client.query("UPDATE rooms SET status = 'live', started_at = COALESCE(started_at, now()) WHERE id = $1", [roomId]);
     await client.query(
@@ -400,6 +417,30 @@ export async function setDatabaseRoomReady(roomId, profile = {}, ready = true) {
     if (!room.rows[0]) throw new RoomError("ROOM_NOT_FOUND", "Room not found");
     if (room.rows[0].status !== "waiting") throw new RoomError("ROOM_LIVE", "This room has already started");
     await client.query("UPDATE room_members SET ready = $3 WHERE room_id = $1 AND user_id = $2 AND left_at IS NULL", [roomId, user.id, Boolean(ready)]);
+    return getRoom(client, roomId, user.external_key);
+  });
+}
+
+export async function setDatabaseRoomRole(roomId, profile = {}, characterKey = "") {
+  if (!pool) return null;
+  await waitForDatabaseShape();
+  return inTransaction(async (client) => {
+    const { user } = await requireRoomMember(client, roomId, profile);
+    const room = await client.query("SELECT script_id, status FROM rooms WHERE id = $1", [roomId]);
+    if (!room.rows[0]) throw new RoomError("ROOM_NOT_FOUND", "Room not found");
+    if (room.rows[0].status !== "waiting") throw new RoomError("ROOM_LIVE", "This room has already started");
+    const normalizedKey = String(characterKey || "").trim();
+    if (!normalizedKey) {
+      await client.query("UPDATE room_members SET character_key = NULL, ready = FALSE WHERE room_id = $1 AND user_id = $2 AND left_at IS NULL", [roomId, user.id]);
+      return getRoom(client, roomId, user.external_key);
+    }
+    if (!roomRolePool(room.rows[0].script_id).includes(normalizedKey)) throw new RoomError("ROLE_NOT_FOUND", "Character is not available for this script");
+    const taken = await client.query(
+      "SELECT 1 FROM room_members WHERE room_id = $1 AND character_key = $2 AND user_id <> $3 AND left_at IS NULL LIMIT 1",
+      [roomId, normalizedKey, user.id]
+    );
+    if (taken.rows[0]) throw new RoomError("ROLE_TAKEN", "Character is already taken");
+    await client.query("UPDATE room_members SET character_key = $2, ready = FALSE WHERE room_id = $1 AND user_id = $3 AND left_at IS NULL", [roomId, normalizedKey, user.id]);
     return getRoom(client, roomId, user.external_key);
   });
 }
