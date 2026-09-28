@@ -153,6 +153,18 @@ translations.en.achievementQuestioner = "Open questioner";
 translations.zh.achievementQuestionerDesc = "累计完成 6 次公开质询。";
 translations.en.achievementQuestionerDesc = "Ask six questions across your cases.";
 translations.zh.achievementUnlocked = "已解锁";
+translations.zh.useHint = "查看提示";
+translations.en.useHint = "Use hint";
+translations.zh.hintUsed = "提示 {count}/2";
+translations.en.hintUsed = "Hint {count}/2";
+translations.zh.hintLimit = "本局提示已用完，请继续从物证中寻找答案。";
+translations.en.hintLimit = "You have used both hints. Keep reading the evidence for the answer.";
+translations.zh.hintFirst = "先按时间线检查最早出现的异常记录。";
+translations.en.hintFirst = "Start with the earliest anomaly in the timeline.";
+translations.zh.hintSecond = "把物证放在一起看：真正关键的是能同时解释机会与动机的细节。";
+translations.en.hintSecond = "Read the evidence together: the key detail should explain both opportunity and motive.";
+translations.zh.hintLabel = "案件提示";
+translations.en.hintLabel = "Case hint";
 translations.en.achievementUnlocked = "Unlocked";
 translations.zh.achievementLocked = "未解锁";
 translations.en.achievementLocked = "Locked";
@@ -1661,7 +1673,7 @@ function localizedCase(caseId) {
 }
 
 let activeCase = demoCase;
-const gameState = { phase: "briefing", discovered: new Set(), selectedEvidence: null, selectedSuspect: "shen", answers: new Set(), questionCount: 0, votedSuspect: null, roomVotes: [], startedAt: 0, timer: null, nextAction: null, roomId: null, sessionId: null, characterKey: "player", playerUserId: null, spectator: false, eventCursor: 0, roomPollTimer: null, lastEmittedPhase: null };
+const gameState = { phase: "briefing", discovered: new Set(), selectedEvidence: null, selectedSuspect: "shen", answers: new Set(), questionCount: 0, hintsUsed: 0, votedSuspect: null, roomVotes: [], startedAt: 0, timer: null, nextAction: null, roomId: null, sessionId: null, characterKey: "player", playerUserId: null, spectator: false, eventCursor: 0, roomPollTimer: null, lastEmittedPhase: null };
 
 function currentRoleProfile() {
   const key = gameState.characterKey || "player";
@@ -1731,7 +1743,11 @@ function setGameNav(phase) {
 function gameAction(content, hint, button, handler) {
   gameState.nextAction = gameState.spectator ? null : (handler || null);
   const actionHint = gameState.spectator ? `${t("roomSpectator")} · ${t("roomLobbyLive")}` : hint;
-  $("#gameActionBar").innerHTML = `<span class="action-hint">${actionHint}</span>${!gameState.spectator && button ? `<button class="primary-button" id="gameNextAction">${button} <span>↗</span></button>` : ""}`;
+  const hintButton = gameState.phase === "evidence" && !gameState.spectator
+    ? `<button class="ghost-button game-hint-button" id="gameHintAction" type="button">${t("useHint")} · ${gameState.hintsUsed}/2</button>`
+    : "";
+  $("#gameActionBar").innerHTML = `<div class="action-hint-wrap"><span class="action-hint">${actionHint}</span>${hintButton}</div>${!gameState.spectator && button ? `<button class="primary-button" id="gameNextAction">${button} <span>↗</span></button>` : ""}`;
+  $("#gameHintAction")?.addEventListener("click", showEvidenceHint);
 }
 
 function stopRoomSessionSync() {
@@ -1863,6 +1879,17 @@ function inspectEvidence(id) {
   showToast(state.locale === "zh" ? `已记录：${item.name}` : `${item.name}: ${t("recorded")}`);
 }
 
+function showEvidenceHint() {
+  if (gameState.hintsUsed >= 2) {
+    showToast(t("hintLimit"));
+    return;
+  }
+  const hintKey = gameState.hintsUsed === 0 ? "hintFirst" : "hintSecond";
+  gameState.hintsUsed += 1;
+  renderEvidence();
+  showToast(`${t("hintLabel")} · ${t(hintKey)}`);
+}
+
 function renderQuestion() {
   setGameNav("question");
   $("#gameEyebrow").textContent = t("gameQuestionKicker");
@@ -1987,7 +2014,7 @@ function renderResult() {
   $("#gameTitle").textContent = t("gameTitleResult");
   const awardText = completion.spectator ? t("resultAwardObserver") : completion.solved ? t("resultAwardSolved") : completion.first ? t("resultAwardFirst") : t("resultAward");
   $("#gameContent").innerHTML = `<div class="result-card"><div class="result-scene"><img src="${activeCase.sceneImage}" alt="${activeCase.title} ${t("sceneAlt")}" /></div><div class="result-symbol">✓</div><h2>${activeCase.resultTitle}</h2><p>${activeCase.resultText}</p>${renderRoomVoteSummary()}<section class="result-award"><span class="game-kicker">${t("resultAward")}</span><strong>${awardText}</strong><small>${t("profileLevel", { level: playerLevel() })} · ${t("statsSolved")}: ${state.stats.solved}</small></section><div class="timeline">${activeCase.timeline.map(([time, text]) => `<div class="timeline-item"><b>${time}</b><span>${text}</span></div>`).join("")}</div></div>`;
-  gameAction(null, `${t("closed")} · ${activeCase.badge}`, gameState.roomId ? null : t("replay"), () => { gameState.discovered = new Set(); gameState.selectedEvidence = null; gameState.answers = new Set(); gameState.questionCount = 0; gameState.votedSuspect = null; gameState.selectedSuspect = activeCase.suspects[0].id; renderBriefing(); });
+  gameAction(null, `${t("closed")} · ${activeCase.badge}`, gameState.roomId ? null : t("replay"), () => { gameState.discovered = new Set(); gameState.selectedEvidence = null; gameState.answers = new Set(); gameState.questionCount = 0; gameState.hintsUsed = 0; gameState.votedSuspect = null; gameState.selectedSuspect = activeCase.suspects[0].id; renderBriefing(); });
 }
 
 function startGame(options = {}) {
@@ -2006,6 +2033,7 @@ function startGame(options = {}) {
   gameState.selectedEvidence = null;
   gameState.answers = new Set();
   gameState.questionCount = 0;
+  gameState.hintsUsed = 0;
   gameState.votedSuspect = null;
   gameState.roomVotes = [];
   gameState.selectedSuspect = activeCase.suspects[0].id;
