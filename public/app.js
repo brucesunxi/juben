@@ -47,6 +47,23 @@ function readNotifications() {
   }
 }
 
+function readActiveRoom() {
+  try {
+    const saved = JSON.parse(localStorage.getItem("nocturne-active-room") || "null");
+    return saved && saved.id ? { id: String(saved.id), spectator: saved.spectator === true } : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveActiveRoom(roomId, spectator = false) {
+  try { localStorage.setItem("nocturne-active-room", JSON.stringify({ id: String(roomId), spectator: spectator === true })); } catch { /* storage can be unavailable in private webviews */ }
+}
+
+function clearActiveRoom() {
+  try { localStorage.removeItem("nocturne-active-room"); } catch { /* storage can be unavailable in private webviews */ }
+}
+
 const savedLocale = readLocalePreference();
 const state = { scripts: [], archive: readArchive(), favorites: readFavorites(), notifications: readNotifications(), profileName: readProfileName(), activeFilter: "all", selectedScript: null, locale: savedLocale || browserFallbackLocale(), localeSource: savedLocale ? "manual" : "auto", liveRooms: [], activeRoom: null, roomMember: false, roomPollTimer: null, roomChatTimer: null, roomVoiceTimer: null, roomChatRoomId: null, roomChatCursor: "0", roomMessages: [], blockedUsers: new Set(), voiceRoomId: null, voiceCursor: "0", voiceSelfId: null, voiceJoined: false, voiceMuted: false, voiceStream: null, voicePeers: new Map(), voicePendingCandidates: new Map() };
 const API_BASE = String(window.NOCTURNE_API_BASE || "").replace(/\/$/, "");
@@ -69,6 +86,9 @@ const translations = {
     gamePlaying: "Playing", backToLibrary: "← Back to archive", livePlay: "Story in progress", yourRole: "Your role", caseNote: "Case notes", phaseBriefing: "Prologue · Arrival", phaseEvidence: "Act I · Evidence", phaseQuestion: "Act II · Questions", phaseVote: "Final act · Accusation", phaseResult: "Final act · Review", gameTitleEvidence: "Evidence hunt", gameTitleQuestion: "Open questioning", gameTitleVote: "Final accusation", gameTitleResult: "The truth comes to light", gamePrologue: "PROLOGUE", gameEvidenceKicker: "ACT I / COLLECT EVIDENCE", gameEvidenceModalKicker: "CASE NOTE / EVIDENCE {count}", gameQuestionKicker: "ACT II / OPEN QUESTIONING", gameQuestionRoleplay: "SCRIPTED ROLEPLAY / RESPONSE", gameVoteKicker: "FINAL ACT / NAME THE CULPRIT", gameVoteSubkicker: "ONE ACCUSATION / ONE TRUTH", gameClosedKicker: "CASE CLOSED", startEvidence: "Start evidence hunt", continueEvidence: "Keep searching", continueQuestion: "Keep questioning", enterQuestion: "Open questioning", enterVote: "Make final accusation", finalVote: "Final accusation", closed: "Case archived", replay: "Play again", evidenceHint: "Collect at least 3 clues before questioning.", evidenceCount: "{count} / 3 key clues found", questionHint: "{count} questions asked · more clues, better judgment", voteHint: "You only get one formal accusation.", voteSubmitted: "Accusation submitted", voteWaiting: "Waiting for the other players to vote", inspectEvidence: "Select an item · tap to inspect", recordEvidence: "Record in case notes", noEnoughEvidence: "Inspect at least three items before the next act", noEnoughQuestions: "Ask at least three questions before the final accusation", questionTime: "Where were you during the critical window?", questionMotive: "Who has the strongest motive?", questionKey: "Have you seen the key evidence?", accuse: "Accuse ↗", correct: "The truth comes to light", wrong: "That answer cannot explain all the evidence", localResponse: "{name} has responded", recorded: "Recorded", close: "Close", sceneAlt: "case scene", roomTrialPrompt: "Choose a case to start a trial", scanComplete: "Scan complete; the script library is updated", scanOffline: "Offline trial mode cannot scan the server folder",
   }
 };
+
+translations.zh.roomRestored = "已恢复你的房间";
+translations.en.roomRestored = "Your room has been restored";
 
 function t(key, vars = {}) {
   let value = translations[state.locale]?.[key] ?? translations.zh[key] ?? key;
@@ -481,6 +501,7 @@ async function deleteProfile() {
   }
   try {
     localStorage.removeItem("nocturne-user-key");
+    localStorage.removeItem("nocturne-active-room");
     localStorage.removeItem("nocturne-profile-name");
     localStorage.removeItem("nocturne-archive");
     localStorage.removeItem("nocturne-favorites");
@@ -922,6 +943,7 @@ async function openRoomLobby(room) {
       renderRoomLobby({ show: lobbyIsOpen });
       renderRooms();
     } catch {
+      clearActiveRoom();
       closeRoomLobby({ preserveRoom: false });
       await loadRooms();
     }
@@ -939,6 +961,7 @@ async function roomAction(roomId, action, ready = true) {
     const data = await response.json();
     if (!response.ok) { const error = new Error(data.error || "Room action failed"); error.code = data.code; throw error; }
     if (action === "leave" || action === "close") {
+      clearActiveRoom();
       closeRoomLobby({ preserveRoom: false });
       showToast(t(action === "close" ? "roomClose" : "roomLeaveSuccess"));
     } else {
@@ -960,6 +983,7 @@ async function joinRoom(roomId, memberRole = "player") {
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "Unable to join room");
     state.roomMember = true;
+    saveActiveRoom(roomId, memberRole === "spectator");
     addNotification("notificationRoomJoined", "notificationRoomJoinedBody", data.room?.title || "");
     showToast(t("roomJoinSuccess"));
     await openRoomLobby(data.room);
@@ -985,6 +1009,7 @@ async function createRoom(scriptId = "moon-trial") {
     if (!response.ok) throw new Error(data.error || "Unable to create room");
     state.roomMember = true;
     state.activeRoom = data.room;
+    saveActiveRoom(data.room.id, false);
     addNotification("notificationRoomCreated", "notificationRoomCreatedBody", data.room?.title || "");
     showToast(t("roomCreateSuccess"));
     await openRoomLobby(data.room);
@@ -997,12 +1022,33 @@ async function createRoom(scriptId = "moon-trial") {
 
 async function handleRoomInvite() {
   const roomId = new URLSearchParams(window.location.search).get("room");
-  if (!roomId) return;
+  if (!roomId) return false;
   setView("rooms");
   await joinRoom(roomId);
   const cleanUrl = new URL(window.location.href);
   cleanUrl.searchParams.delete("room");
   window.history.replaceState({}, "", cleanUrl.toString());
+  return true;
+}
+
+async function restoreActiveRoom() {
+  const saved = readActiveRoom();
+  if (!saved) return;
+  try {
+    const profile = currentUserProfile();
+    const response = await apiFetch(`/api/rooms/${encodeURIComponent(saved.id)}?externalKey=${encodeURIComponent(profile.externalKey)}`);
+    if (!response.ok) throw new Error("saved room unavailable");
+    const data = await response.json();
+    const selfMember = data.room?.members?.find((member) => member.isSelf === true);
+    if (!selfMember || data.room.status === "closed") throw new Error("saved room membership expired");
+    state.roomMember = true;
+    state.activeRoom = data.room;
+    setView("rooms");
+    await openRoomLobby(data.room);
+    showToast(t("roomRestored"));
+  } catch {
+    clearActiveRoom();
+  }
 }
 
 function rememberArchive(scriptId) {
@@ -1683,5 +1729,5 @@ renderLibrary();
 loadScripts();
 loadRooms();
 detectLocale();
-handleRoomInvite();
+void handleRoomInvite().then((handled) => { if (!handled) return restoreActiveRoom(); });
 setInterval(refreshSync, 4500);
