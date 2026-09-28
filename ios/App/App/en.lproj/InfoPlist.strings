@@ -1,0 +1,3 @@
+/* Localized permission copy for App Store review and English devices. */
+"CFBundleDisplayName" = "Nocturne";
+"NSMicrophoneUsageDescription" = "Microphone access is used only when you join room voice chat.";

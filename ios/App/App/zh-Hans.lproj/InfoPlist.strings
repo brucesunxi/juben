@@ -1,0 +1,3 @@
+/* 面向中文设备的系统权限说明。麦克风只在用户主动加入房间语音时使用。 */
+"CFBundleDisplayName" = "Nocturne";
+"NSMicrophoneUsageDescription" = "麦克风仅在你主动加入房间语音时使用。";
