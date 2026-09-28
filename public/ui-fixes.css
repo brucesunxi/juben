@@ -1,4 +1,5 @@
 .card-start{display:flex;align-items:center;justify-content:space-between;width:100%;margin-top:16px;padding:10px 0 0;background:transparent;border-top:1px solid var(--line);color:var(--accent);font:10px var(--mono);text-align:left}.card-start span{font-size:15px;transition:transform .2s}.card-start:hover span{transform:translate(3px,-3px)}
+.archive-grid{margin-top:28px}
 
 /* Realistic art direction: photographic covers, soft glass, and physical depth. */
 body{background-color:#090b10;background-image:radial-gradient(circle at 76% 5%,rgba(92,126,190,.16),transparent 30rem),radial-gradient(circle at 12% 82%,rgba(214,154,78,.06),transparent 25rem)}
@@ -39,6 +40,13 @@ body{min-width:0;overscroll-behavior-x:none}
 .legal-page a{color:var(--accent)}
 @media(max-width:760px){.legal-links{display:none}.sidebar{padding-top:max(18px,env(safe-area-inset-top));padding-left:max(18px,env(safe-area-inset-left));padding-right:max(18px,env(safe-area-inset-right))}.main-area{padding-left:max(18px,env(safe-area-inset-left));padding-right:max(18px,env(safe-area-inset-right));padding-bottom:max(40px,env(safe-area-inset-bottom))}.topbar{padding-top:env(safe-area-inset-top)}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+
+@media(max-width:760px){
+  .main-area,.view,.game-view,.game-main,.game-content{min-width:0;max-width:100%;overflow-x:hidden}
+  .game-view .game-content{width:100%;box-sizing:border-box}
+  .game-view .game-action-bar{width:100%;box-sizing:border-box}
+  .game-view .game-action-bar .primary-button{max-width:100%;box-sizing:border-box}
+}
 
 /* Moonlit social-game direction: navy night, warm gold, paper panels. */
 :root{

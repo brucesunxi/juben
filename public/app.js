@@ -7,7 +7,16 @@ function readLocalePreference() {
   }
 }
 
-const state = { scripts: [], activeFilter: "all", selectedScript: null, locale: readLocalePreference() || "zh", localeSource: readLocalePreference() ? "manual" : "auto" };
+function readArchive() {
+  try {
+    const saved = JSON.parse(localStorage.getItem("nocturne-archive") || "[]");
+    return Array.isArray(saved) ? saved.filter((entry) => entry && entry.id) : [];
+  } catch {
+    return [];
+  }
+}
+
+const state = { scripts: [], archive: readArchive(), activeFilter: "all", selectedScript: null, locale: readLocalePreference() || "zh", localeSource: readLocalePreference() ? "manual" : "auto" };
 const API_BASE = String(window.NOCTURNE_API_BASE || "").replace(/\/$/, "");
 const apiFetch = (path, options) => fetch(`${API_BASE}${path}`, options);
 const translations = {
@@ -15,7 +24,7 @@ const translations = {
     appTitle: "Nocturne · 剧本推理社交", brandCaption: "SCRIPT MYSTERY / SOCIAL PLAY", mobileCaption: "剧本探索社", navDiscover: "发现剧本", navRooms: "房间预览", navLibrary: "我的收藏", navStudio: "创作后台", mainNav: "主导航", mobileNav: "移动端主导航", mobileHome: "首页", mobileRooms: "房间", mobileLibrary: "收藏", mobileStudio: "创作", localPlay: "LOCAL PLAY", offlineCases: "4 个案件可离线试玩", profileAvatar: "凌", profileName: "凌 · 夜航员", profileLevel: "探索者 Lv.12", notification: "通知", heroCaseTitle: "月影审判", schemaExampleTitle: "月影审判", privacy: "隐私政策", terms: "用户协议", discover: "发现剧本", rooms: "房间预览", library: "我的收藏", studio: "创作后台",
     heroEyebrow: "今晚，进入另一个人生", heroTitleA: "真相藏在", heroTitleB: "每个人的沉默里。", heroDescription: "选择一段命运，和陌生人共同完成一场只发生一次的推理。", startTrial: "开始一局试玩", browseRooms: "浏览房间预览", curatedCases: "CURATED CASES", picksForYou: "为你挑选的剧本", all: "全部", mystery: "悬疑", emotion: "情感", sciFi: "科幻",
     roomKicker: "ROOM PREVIEW", roomTitle: "故事房间预览", roomDescription: "当前版本提供单人案件试玩；多人匹配和语音房间将在服务端接入后开放。", viewTrialEntry: "查看试玩入口", roomJoin: "加入", roomWatch: "观战", roomMissing: "还差 {count} 人", roomFull: "已满员", roomRequest: "{room}：已发送入场请求",
-    archiveKicker: "YOUR ARCHIVE", archiveTitle: "收藏与足迹", archiveDescription: "保存那些值得二刷的故事，也记录你曾经成为谁。", archiveEmptyTitle: "你的档案还很安静", archiveEmptyDescription: "收藏剧本后，它们会出现在这里。", exploreScripts: "去探索剧本", studioKicker: "STUDIO / CONTENT OPS", studioTitle: "创作后台", studioDescription: "剧本文件进入指定目录后，Nocturne 会自动识别、整理并发布到剧本库。", syncEnabled: "自动同步已开启", synced: "已同步 {count} 个剧本", autoIngestion: "AUTO INGESTION", ingestionTitle: "剧本自动入库", live: "● LIVE", dropTitle: "拖入剧本文件", dropDescription: "支持 .json / .md · 上传后自动解析并发布为草稿", chooseFile: "选择文件", listening: "后台文件夹监听中", incomingFolder: "将文件放入 /incoming，每 4 秒自动同步", waiting: "等待数据", activity: "ACTIVITY FEED", recentActivity: "最近动态", scanNow: "立即扫描 ↗", schemaTitle: "内容格式提示", schemaDescription: "JSON 文件可直接提供 title、genre、players、duration、tags、description 和 content 字段；Markdown 文件会自动读取一级标题作为剧本名。",
+    archiveKicker: "YOUR ARCHIVE", archiveTitle: "收藏与足迹", archiveDescription: "保存那些值得二刷的故事，也记录你曾经成为谁。", archiveEmptyTitle: "你的档案还很安静", archiveEmptyDescription: "完成一局试玩后，案件会自动归档到这里。", archiveCompleted: "已完成", archiveReplay: "重新开始", exploreScripts: "去探索剧本", studioKicker: "STUDIO / CONTENT OPS", studioTitle: "创作后台", studioDescription: "剧本文件进入指定目录后，Nocturne 会自动识别、整理并发布到剧本库。", syncEnabled: "自动同步已开启", synced: "已同步 {count} 个剧本", autoIngestion: "AUTO INGESTION", ingestionTitle: "剧本自动入库", live: "● LIVE", dropTitle: "拖入剧本文件", dropDescription: "支持 .json / .md · 上传后自动解析并发布为草稿", chooseFile: "选择文件", listening: "后台文件夹监听中", incomingFolder: "将文件放入 /incoming，每 4 秒自动同步", waiting: "等待数据", activity: "ACTIVITY FEED", recentActivity: "最近动态", scanNow: "立即扫描 ↗", schemaTitle: "内容格式提示", schemaDescription: "JSON 文件可直接提供 title、genre、players、duration、tags、description 和 content 字段；Markdown 文件会自动读取一级标题作为剧本名。",
     emptyFilterTitle: "还没有这个类型的剧本", emptyFilterDescription: "换一个筛选，或者去创作后台导入新剧本。", caseFile: "CASE FILE", privateCase: "CASE FILE / PRIVATE", players: "PLAYERS", duration: "DURATION", level: "LEVEL", defaultSubtitle: "一场关于真相、秘密与选择的沉浸式推理", defaultDescription: "一份新剧本已经抵达。请在所有人说出真话之前，找到唯一无法被伪造的证据。", detailStart: "开始试玩", cardStart: "查看详情 / 开始试玩",
     gamePlaying: "正在游玩", backToLibrary: "← 返回剧本库", livePlay: "剧情演绎中", yourRole: "你的角色", caseNote: "案件笔记", phaseBriefing: "序章 · 入场", phaseEvidence: "第一幕 · 搜证", phaseQuestion: "第二幕 · 质询", phaseVote: "终局 · 指认", phaseResult: "终局 · 复盘", gameTitleEvidence: "搜寻线索", gameTitleQuestion: "公开质询", gameTitleVote: "最终指认", gameTitleResult: "真相浮出水面", startEvidence: "开始搜证", continueEvidence: "继续搜证", continueQuestion: "继续质询", enterQuestion: "进入公开质询", enterVote: "进入最终指认", finalVote: "最终指认", closed: "案件已归档", replay: "再玩一次", evidenceHint: "先搜集至少 3 条线索，再进入质询。", evidenceCount: "已发现 {count} / 3 条关键线索", questionHint: "{count} 次质询记录 · 线索越多，判断越接近真相", voteHint: "你只有一次正式指认机会。", inspectEvidence: "选择物证 · 点击查看细节", recordEvidence: "记入案件笔记", noEnoughEvidence: "至少查看三件物证，才能进入下一幕", noEnoughQuestions: "至少完成三次质询，再做最终指认", questionTime: "你在关键时间段在哪里？", questionMotive: "谁最有动机？", questionKey: "你见过关键物证吗？", accuse: "指认 TA ↗", correct: "真相浮出水面", wrong: "这个答案无法解释全部证据，再想想", localResponse: "{name} 已回应", recorded: "已记录", close: "关闭", sceneAlt: "案件现场", roomTrialPrompt: "请选择一个案件开始试玩", scanComplete: "扫描完成，剧本库已更新", scanOffline: "当前为离线试玩模式，无法扫描服务端文件夹",
   },
@@ -23,7 +32,7 @@ const translations = {
     appTitle: "Nocturne · Script Mystery Social", brandCaption: "SCRIPT MYSTERY / SOCIAL PLAY", mobileCaption: "Script mystery social", navDiscover: "Discover", navRooms: "Rooms", navLibrary: "My Archive", navStudio: "Studio", mainNav: "Main navigation", mobileNav: "Mobile navigation", mobileHome: "Home", mobileRooms: "Rooms", mobileLibrary: "Archive", mobileStudio: "Studio", localPlay: "LOCAL PLAY", offlineCases: "4 cases ready offline", profileAvatar: "L", profileName: "Ling · Night Watcher", profileLevel: "Explorer Lv.12", notification: "Notifications", heroCaseTitle: "The Trial of Moonlight", schemaExampleTitle: "The Trial of Moonlight", privacy: "Privacy", terms: "Terms", discover: "Discover", rooms: "Rooms", library: "My Archive", studio: "Studio",
     heroEyebrow: "TONIGHT, ENTER ANOTHER LIFE", heroTitleA: "Truth hides", heroTitleB: "inside every silence.", heroDescription: "Choose a fate and solve a one-night mystery with people you have never met.", startTrial: "Start a trial", browseRooms: "Browse rooms", curatedCases: "CURATED CASES", picksForYou: "Curated for you", all: "All", mystery: "Mystery", emotion: "Drama", sciFi: "Sci-fi",
     roomKicker: "ROOM PREVIEW", roomTitle: "Story rooms", roomDescription: "This version supports solo case trials. Multiplayer matching and voice rooms will open when the service layer is connected.", viewTrialEntry: "View trial entry", roomJoin: "Join", roomWatch: "Watch", roomMissing: "{count} spot(s) left", roomFull: "Full", roomRequest: "{room}: entry request sent",
-    archiveKicker: "YOUR ARCHIVE", archiveTitle: "Saved stories", archiveDescription: "Keep the stories worth replaying and remember who you became.", archiveEmptyTitle: "Your archive is quiet", archiveEmptyDescription: "Saved scripts will appear here.", exploreScripts: "Explore scripts", studioKicker: "STUDIO / CONTENT OPS", studioTitle: "Creator studio", studioDescription: "Drop script files into the watched folder and Nocturne will parse, organize and publish them as drafts.", syncEnabled: "Auto-sync enabled", synced: "{count} scripts synced", autoIngestion: "AUTO INGESTION", ingestionTitle: "Script ingestion", live: "● LIVE", dropTitle: "Drop script files here", dropDescription: "Supports .json / .md · files are parsed into drafts automatically", chooseFile: "Choose file", listening: "Watching the incoming folder", incomingFolder: "Put files in /incoming; scan runs every 4 seconds", waiting: "Waiting for data", activity: "ACTIVITY FEED", recentActivity: "Recent activity", scanNow: "Scan now ↗", schemaTitle: "Content format", schemaDescription: "JSON may provide title, genre, players, duration, tags, description and content; Markdown uses its first-level heading as the script title.",
+    archiveKicker: "YOUR ARCHIVE", archiveTitle: "Saved stories", archiveDescription: "Keep the stories worth replaying and remember who you became.", archiveEmptyTitle: "Your archive is quiet", archiveEmptyDescription: "Completed trials will appear here automatically.", archiveCompleted: "Completed", archiveReplay: "Replay", exploreScripts: "Explore scripts", studioKicker: "STUDIO / CONTENT OPS", studioTitle: "Creator studio", studioDescription: "Drop script files into the watched folder and Nocturne will parse, organize and publish them as drafts.", syncEnabled: "Auto-sync enabled", synced: "{count} scripts synced", autoIngestion: "AUTO INGESTION", ingestionTitle: "Script ingestion", live: "● LIVE", dropTitle: "Drop script files here", dropDescription: "Supports .json / .md · files are parsed into drafts automatically", chooseFile: "Choose file", listening: "Watching the incoming folder", incomingFolder: "Put files in /incoming; scan runs every 4 seconds", waiting: "Waiting for data", activity: "ACTIVITY FEED", recentActivity: "Recent activity", scanNow: "Scan now ↗", schemaTitle: "Content format", schemaDescription: "JSON may provide title, genre, players, duration, tags, description and content; Markdown uses its first-level heading as the script title.",
     emptyFilterTitle: "No scripts in this category", emptyFilterDescription: "Try another filter or import a new script from Studio.", caseFile: "CASE FILE", privateCase: "CASE FILE / PRIVATE", players: "PLAYERS", duration: "DURATION", level: "LEVEL", defaultSubtitle: "An immersive mystery about truth, secrets and choice", defaultDescription: "A new script has arrived. Find the one piece of evidence that cannot be forged before everyone tells you their version of the truth.", detailStart: "Start trial", cardStart: "View details / Start trial",
     gamePlaying: "Playing", backToLibrary: "← Back to archive", livePlay: "Story in progress", yourRole: "Your role", caseNote: "Case notes", phaseBriefing: "Prologue · Arrival", phaseEvidence: "Act I · Evidence", phaseQuestion: "Act II · Questions", phaseVote: "Final act · Accusation", phaseResult: "Final act · Review", gameTitleEvidence: "Evidence hunt", gameTitleQuestion: "Open questioning", gameTitleVote: "Final accusation", gameTitleResult: "The truth comes to light", startEvidence: "Start evidence hunt", continueEvidence: "Keep searching", continueQuestion: "Keep questioning", enterQuestion: "Open questioning", enterVote: "Make final accusation", finalVote: "Final accusation", closed: "Case archived", replay: "Play again", evidenceHint: "Collect at least 3 clues before questioning.", evidenceCount: "{count} / 3 key clues found", questionHint: "{count} questions asked · more clues, better judgment", voteHint: "You only get one formal accusation.", inspectEvidence: "Select an item · tap to inspect", recordEvidence: "Record in case notes", noEnoughEvidence: "Inspect at least three items before the next act", noEnoughQuestions: "Ask at least three questions before the final accusation", questionTime: "Where were you during the critical window?", questionMotive: "Who has the strongest motive?", questionKey: "Have you seen the key evidence?", accuse: "Accuse ↗", correct: "The truth comes to light", wrong: "That answer cannot explain all the evidence", localResponse: "{name} has responded", recorded: "Recorded", close: "Close", sceneAlt: "case scene", roomTrialPrompt: "Choose a case to start a trial", scanComplete: "Scan complete; the script library is updated", scanOffline: "Offline trial mode cannot scan the server folder",
   }
@@ -120,9 +129,12 @@ function applyStaticLocale() {
   $("#libraryView .page-intro .eyebrow").textContent = t("archiveKicker");
   $("#libraryView .page-intro h1").textContent = t("archiveTitle");
   $("#libraryView .page-intro p:last-child").textContent = t("archiveDescription");
-  $("#libraryView .empty-library h3").textContent = t("archiveEmptyTitle");
-  $("#libraryView .empty-library p").textContent = t("archiveEmptyDescription");
-  $("#libraryView .empty-library .ghost-button").textContent = t("exploreScripts");
+  const archiveEmptyTitle = $("#libraryView .empty-library h3");
+  const archiveEmptyDescription = $("#libraryView .empty-library p");
+  const archiveExploreButton = $("#libraryView .empty-library .ghost-button");
+  if (archiveEmptyTitle) archiveEmptyTitle.textContent = t("archiveEmptyTitle");
+  if (archiveEmptyDescription) archiveEmptyDescription.textContent = t("archiveEmptyDescription");
+  if (archiveExploreButton) archiveExploreButton.textContent = t("exploreScripts");
   $("#studioView .page-intro .eyebrow").textContent = t("studioKicker");
   $("#studioView .page-intro h1").textContent = t("studioTitle");
   $("#studioView .page-intro p:last-child").textContent = t("studioDescription");
@@ -164,15 +176,23 @@ function setLocale(locale, { persist = true, source = "manual" } = {}) {
   if (locale !== "zh" && locale !== "en") return;
   state.locale = locale;
   state.localeSource = source;
+  $("#toast")?.classList.remove("show");
   if (persist) {
     try { localStorage.setItem("nocturne-locale", locale); } catch { /* storage can be unavailable in private webviews */ }
   }
   applyStaticLocale();
   renderScripts();
   renderRooms();
+  renderLibrary();
   renderActivity();
   if ($("#gameView").classList.contains("active-view")) {
     activeCase = localizedCase(activeCase?.id || state.selectedScript?.id || "moon-trial");
+    if (!activeCase.suspects.some((entry) => entry.id === gameState.selectedSuspect)) gameState.selectedSuspect = activeCase.suspects[0]?.id;
+    $("#gameCaseLabel").textContent = activeCase.caseLabel || "CASE 014 / MOONLIGHT";
+    $("#playerRole").textContent = activeCase.player;
+    $("#playerAvatarImage").src = activeCase.playerAvatar || "assets/characters/lin-che.jpg";
+    $("#playerAvatarImage").alt = activeCase.player;
+    $("#caseNoteText").textContent = activeCase.intro;
     ({ briefing: renderBriefing, evidence: renderEvidence, question: renderQuestion, vote: renderVote, result: renderResult }[gameState.phase] || renderBriefing)();
   }
 }
@@ -242,6 +262,37 @@ function renderRooms() {
     state.selectedScript = state.scripts.find((script) => script.id === button.dataset.scriptId) || fallbackScripts.find((script) => script.id === button.dataset.scriptId) || fallbackScripts[0];
     startGame();
   }));
+}
+
+function rememberArchive(scriptId) {
+  const script = state.scripts.find((entry) => entry.id === scriptId) || fallbackScripts.find((entry) => entry.id === scriptId);
+  if (!script) return;
+  state.archive = [{ id: scriptId, completedAt: new Date().toISOString() }, ...state.archive.filter((entry) => entry.id !== scriptId)].slice(0, 20);
+  try { localStorage.setItem("nocturne-archive", JSON.stringify(state.archive)); } catch { /* storage can be unavailable in private webviews */ }
+}
+
+function renderLibrary() {
+  const container = $("#libraryView");
+  if (!container) return;
+  const existing = container.querySelector(".empty-library");
+  const completed = state.archive
+    .map((entry) => state.scripts.find((script) => script.id === entry.id) || fallbackScripts.find((script) => script.id === entry.id))
+    .filter(Boolean);
+  if (!completed.length) {
+    if (!existing) container.insertAdjacentHTML("beforeend", `<div class="empty-library"><div class="empty-orbit">✦</div><h3></h3><p></p><button class="ghost-button" data-view-target="discover"></button></div>`);
+    applyStaticLocale();
+    return;
+  }
+  if (existing) existing.remove();
+  let grid = container.querySelector(".archive-grid");
+  if (!grid) {
+    grid = document.createElement("div");
+    grid.className = "archive-grid script-grid";
+    container.appendChild(grid);
+  }
+  grid.innerHTML = completed.map((script) => scriptCard(localizedScript(script))).join("");
+  $$(".archive-grid .script-card").forEach((card) => card.addEventListener("click", () => openDetail(card.dataset.scriptId)));
+  $$(".archive-grid .card-start").forEach((button) => button.addEventListener("click", (event) => { event.stopPropagation(); openDetail(button.dataset.startScript); }));
 }
 
 function openDetail(id) {
@@ -508,7 +559,7 @@ function localizedCase(caseId) {
 }
 
 let activeCase = demoCase;
-const gameState = { phase: "briefing", discovered: new Set(), selectedEvidence: null, selectedSuspect: "shen", answers: new Set(), questionCount: 0, startedAt: 0, timer: null };
+const gameState = { phase: "briefing", discovered: new Set(), selectedEvidence: null, selectedSuspect: "shen", answers: new Set(), questionCount: 0, startedAt: 0, timer: null, nextAction: null };
 
 function setGameNav(phase) {
   gameState.phase = phase;
@@ -520,8 +571,8 @@ function setGameNav(phase) {
 }
 
 function gameAction(content, hint, button, handler) {
+  gameState.nextAction = handler || null;
   $("#gameActionBar").innerHTML = `<span class="action-hint">${hint}</span>${button ? `<button class="primary-button" id="gameNextAction">${button} <span>↗</span></button>` : ""}`;
-  if (handler) $("#gameNextAction").addEventListener("click", handler);
 }
 
 function renderBriefing() {
@@ -600,6 +651,8 @@ function castVote(id) {
 }
 
 function renderResult() {
+  rememberArchive(activeCase.id);
+  renderLibrary();
   setGameNav("result");
   $("#gameEyebrow").textContent = `CASE CLOSED / ${activeCase.closeStamp}`;
   $("#gameTitle").textContent = t("gameTitleResult");
@@ -647,6 +700,10 @@ function bindEvents() {
   document.addEventListener("keydown", (event) => { if (event.key === "Escape") closeModal(); });
   $("#chooseFile").addEventListener("click", () => $("#fileInput").click());
   $("#fileInput").addEventListener("change", async (event) => { const file = event.target.files[0]; if (file) { try { await importFile(file); } catch (error) { showToast(error.message); } event.target.value = ""; } });
+  document.addEventListener("click", (event) => {
+    const actionButton = event.target.closest("#gameNextAction");
+    if (actionButton && gameState.nextAction) gameState.nextAction();
+  });
   const dropzone = $("#dropzone");
   ["dragenter", "dragover"].forEach((eventName) => dropzone.addEventListener(eventName, (event) => { event.preventDefault(); dropzone.classList.add("dragging"); }));
   ["dragleave", "drop"].forEach((eventName) => dropzone.addEventListener(eventName, (event) => { event.preventDefault(); dropzone.classList.remove("dragging"); }));
@@ -656,6 +713,7 @@ function bindEvents() {
 bindEvents();
 applyStaticLocale();
 renderRooms();
+renderLibrary();
 loadScripts();
 detectLocale();
 setInterval(refreshSync, 4500);
