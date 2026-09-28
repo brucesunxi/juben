@@ -217,19 +217,26 @@ function setLocale(locale, { persist = true, source = "manual" } = {}) {
   if (persist) {
     try { localStorage.setItem("nocturne-locale", locale); } catch { /* storage can be unavailable in private webviews */ }
   }
-  applyStaticLocale();
-  renderScripts();
-  renderRooms();
-  renderRoomLobby();
-  renderLibrary();
-  renderActivity();
-  if ($("#gameView").classList.contains("active-view")) {
+  try {
+    applyStaticLocale();
+    renderScripts();
+    renderRooms();
+    renderRoomLobby();
+    renderLibrary();
+    renderActivity();
+  } catch {
+    // A partially mounted view must not leave the active game in the old language.
+  } finally {
+    // Always rebuild the visible game from the new locale, even when another view
+    // was not mounted yet or a non-critical static label is missing.
+    if ($("#gameView")?.classList.contains("active-view")) {
     activeCase = localizedCase(activeCase?.id || state.selectedScript?.id || "moon-trial");
     if (!activeCase.suspects.some((entry) => entry.id === gameState.selectedSuspect)) gameState.selectedSuspect = activeCase.suspects[0]?.id;
     $("#gameCaseLabel").textContent = activeCase.caseLabel || "CASE 014 / MOONLIGHT";
     applyCurrentRole();
     $("#caseNoteText").textContent = activeCase.intro;
     ({ briefing: renderBriefing, evidence: renderEvidence, question: renderQuestion, vote: renderVote, result: renderResult }[gameState.phase] || renderBriefing)();
+    }
   }
 }
 
