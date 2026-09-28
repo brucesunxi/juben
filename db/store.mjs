@@ -55,6 +55,27 @@ const databaseShapeReady = databaseEnabled
       CHECK (blocker_user_id <> blocked_user_id)
     )`))
     .then(() => pool.query("CREATE INDEX IF NOT EXISTS user_blocks_blocked_idx ON user_blocks (blocked_user_id)"))
+    .then(() => pool.query(`CREATE TABLE IF NOT EXISTS player_progress (
+      user_id UUID PRIMARY KEY REFERENCES app_users(id) ON DELETE CASCADE,
+      played INTEGER NOT NULL DEFAULT 0 CHECK (played >= 0),
+      solved INTEGER NOT NULL DEFAULT 0 CHECK (solved >= 0),
+      clues INTEGER NOT NULL DEFAULT 0 CHECK (clues >= 0),
+      questions INTEGER NOT NULL DEFAULT 0 CHECK (questions >= 0),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )`))
+    .then(() => pool.query(`CREATE TABLE IF NOT EXISTS player_completions (
+      user_id UUID NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+      completion_key TEXT NOT NULL,
+      script_id TEXT NOT NULL REFERENCES scripts(id) ON DELETE RESTRICT,
+      room_id UUID REFERENCES rooms(id) ON DELETE SET NULL,
+      solved BOOLEAN NOT NULL DEFAULT FALSE,
+      clues INTEGER NOT NULL DEFAULT 0 CHECK (clues >= 0),
+      questions INTEGER NOT NULL DEFAULT 0 CHECK (questions >= 0),
+      completed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      PRIMARY KEY (user_id, completion_key)
+    )`))
+    .then(() => pool.query("CREATE INDEX IF NOT EXISTS player_progress_rank_idx ON player_progress (solved DESC, played DESC, updated_at ASC)"))
+    .then(() => pool.query("CREATE INDEX IF NOT EXISTS player_completions_script_idx ON player_completions (script_id, completed_at DESC)"))
   : Promise.resolve();
 
 async function waitForDatabaseShape() {
@@ -168,6 +189,84 @@ export async function databaseHealth() {
   if (!pool) return { enabled: false };
   const result = await pool.query("SELECT count(*)::int AS script_count FROM scripts WHERE published = TRUE");
   return { enabled: true, scriptCount: result.rows[0].script_count };
+}
+
+function progressPayload(row) {
+  return {
+    played: Number(row?.played || 0),
+    solved: Number(row?.solved || 0),
+    clues: Number(row?.clues || 0),
+    questions: Number(row?.questions || 0)
+  };
+}
+
+export async function getDatabaseLeaderboard(limit = 20, viewerExternalKey = "") {
+  if (!pool) return null;
+  await waitForDatabaseShape();
+  const safeLimit = Math.min(Math.max(Number(limit) || 20, 1), 50);
+  const viewer = String(viewerExternalKey || "").trim();
+  const result = await pool.query(
+    `SELECT row_number() OVER (ORDER BY progress.solved DESC, progress.played DESC, progress.updated_at ASC) AS rank,
+            progress.user_id, users.external_key, users.display_name,
+            progress.played, progress.solved, progress.clues, progress.questions
+       FROM player_progress progress
+       JOIN app_users users ON users.id = progress.user_id
+      WHERE progress.played > 0
+      ORDER BY progress.solved DESC, progress.played DESC, progress.updated_at ASC
+      LIMIT $1`,
+    [safeLimit]
+  );
+  return {
+    leaderboard: result.rows.map((row) => ({
+      rank: Number(row.rank),
+      displayName: row.display_name || "Night Watcher",
+      played: Number(row.played || 0),
+      solved: Number(row.solved || 0),
+      clues: Number(row.clues || 0),
+      questions: Number(row.questions || 0),
+      isSelf: Boolean(viewer && row.external_key === viewer)
+    }))
+  };
+}
+
+export async function recordDatabaseCompletion(profile = {}, payload = {}) {
+  if (!pool) return null;
+  await waitForDatabaseShape();
+  const scriptId = String(payload.scriptId || payload.script_id || "").trim();
+  const completionKey = String(payload.completionKey || payload.completion_key || "").trim().slice(0, 200);
+  if (!scriptId || !completionKey) throw new RoomError("INVALID_PROGRESS", "A script and completion key are required");
+  const solved = payload.solved === true;
+  const clues = Math.min(Math.max(Number(payload.clues) || 0, 0), 100);
+  const questions = Math.min(Math.max(Number(payload.questions) || 0, 0), 100);
+  const roomId = /^[0-9a-f-]{36}$/i.test(String(payload.roomId || "")) ? String(payload.roomId) : null;
+  return inTransaction(async (client) => {
+    const user = await ensureUser(client, profile);
+    const inserted = await client.query(
+      `INSERT INTO player_completions (user_id, completion_key, script_id, room_id, solved, clues, questions)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       ON CONFLICT (user_id, completion_key) DO NOTHING
+       RETURNING user_id`,
+      [user.id, completionKey, scriptId, roomId, solved, clues, questions]
+    );
+    if (inserted.rows[0]) {
+      await client.query(
+        `INSERT INTO player_progress (user_id, played, solved, clues, questions)
+         VALUES ($1, 1, $2, $3, $4)
+         ON CONFLICT (user_id) DO UPDATE SET
+           played = player_progress.played + 1,
+           solved = player_progress.solved + EXCLUDED.solved,
+           clues = player_progress.clues + EXCLUDED.clues,
+           questions = player_progress.questions + EXCLUDED.questions,
+           updated_at = now()`,
+        [user.id, solved ? 1 : 0, clues, questions]
+      );
+    }
+    const progress = await client.query(
+      "SELECT played, solved, clues, questions FROM player_progress WHERE user_id = $1",
+      [user.id]
+    );
+    return { recorded: Boolean(inserted.rows[0]), progress: progressPayload(progress.rows[0]) };
+  });
 }
 
 class RoomError extends Error {

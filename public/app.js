@@ -82,7 +82,7 @@ function clearActiveRoom() {
 }
 
 const savedLocale = readLocalePreference();
-const state = { scripts: [], archive: readArchive(), favorites: readFavorites(), notifications: readNotifications(), stats: readPlayerStats(), profileName: readProfileName(), activeFilter: "all", selectedScript: null, locale: savedLocale || browserFallbackLocale(), localeSource: savedLocale ? "manual" : "auto", liveRooms: [], activeRoom: null, roomMember: false, roomPollTimer: null, roomChatTimer: null, roomVoiceTimer: null, roomChatRoomId: null, roomChatCursor: "0", roomMessages: [], blockedUsers: new Set(), voiceRoomId: null, voiceCursor: "0", voiceSelfId: null, voiceJoined: false, voiceMuted: false, voiceStream: null, voicePeers: new Map(), voicePendingCandidates: new Map() };
+const state = { scripts: [], archive: readArchive(), favorites: readFavorites(), notifications: readNotifications(), stats: readPlayerStats(), leaderboard: [], profileName: readProfileName(), activeFilter: "all", selectedScript: null, locale: savedLocale || browserFallbackLocale(), localeSource: savedLocale ? "manual" : "auto", liveRooms: [], activeRoom: null, roomMember: false, roomPollTimer: null, roomChatTimer: null, roomVoiceTimer: null, roomChatRoomId: null, roomChatCursor: "0", roomMessages: [], blockedUsers: new Set(), voiceRoomId: null, voiceCursor: "0", voiceSelfId: null, voiceJoined: false, voiceMuted: false, voiceStream: null, voicePeers: new Map(), voicePendingCandidates: new Map() };
 const API_BASE = String(window.NOCTURNE_API_BASE || "").replace(/\/$/, "");
 const apiFetch = (path, options) => fetch(`${API_BASE}${path}`, options);
 const translations = {
@@ -142,6 +142,42 @@ translations.zh.resultAwardSolved = "最终指认命中真相";
 translations.en.resultAwardSolved = "Final accusation matched the truth";
 translations.zh.resultAwardObserver = "你以观战身份见证了本局";
 translations.en.resultAwardObserver = "You witnessed this case as a spectator";
+translations.zh.navLeaderboard = "探索榜";
+translations.en.navLeaderboard = "Ranking";
+translations.zh.leaderboard = "探索榜";
+translations.en.leaderboard = "Ranking";
+translations.zh.mobileLeaderboard = "榜单";
+translations.en.mobileLeaderboard = "Rank";
+translations.zh.leaderboardKicker = "探索榜 / 社区记录";
+translations.en.leaderboardKicker = "EXPLORER RANKING";
+translations.zh.leaderboardTitle = "探索榜";
+translations.en.leaderboardTitle = "Explorer ranking";
+translations.zh.leaderboardDescription = "完成案件、找出真相，在探索记录里留下你的名字。";
+translations.en.leaderboardDescription = "Complete cases, find the truth and leave your name in the explorer record.";
+translations.zh.leaderboardRefresh = "刷新榜单 ↗";
+translations.en.leaderboardRefresh = "Refresh ranking ↗";
+translations.zh.leaderboardHeroKicker = "NOCTURNE / 社区记录";
+translations.en.leaderboardHeroKicker = "NOCTURNE / COMMUNITY";
+translations.zh.leaderboardHeroTitle = "谁在今晚更接近真相？";
+translations.en.leaderboardHeroTitle = "Who is closer to the truth tonight?";
+translations.zh.leaderboardHeroDescription = "榜单只展示公开昵称和案件完成记录，不展示邮箱或设备信息。";
+translations.en.leaderboardHeroDescription = "The ranking shows public names and case records only—not emails or device details.";
+translations.zh.leaderboardEmpty = "还没有公开探索记录。完成第一局案件后，你会出现在这里。";
+translations.en.leaderboardEmpty = "No public explorer records yet. Complete your first case to appear here.";
+translations.zh.leaderboardOffline = "暂时无法读取社区榜单，仍可继续离线游玩。";
+translations.en.leaderboardOffline = "The community ranking is temporarily unavailable; you can still play offline.";
+translations.zh.leaderboardYou = "你";
+translations.en.leaderboardYou = "You";
+translations.zh.leaderboardSolved = "命中真相";
+translations.en.leaderboardSolved = "Solved";
+translations.zh.leaderboardPlayed = "完成案件";
+translations.en.leaderboardPlayed = "Played";
+translations.zh.leaderboardClues = "发现线索";
+translations.en.leaderboardClues = "Clues";
+translations.zh.leaderboardQuestions = "质询次数";
+translations.en.leaderboardQuestions = "Questions";
+translations.zh.leaderboardLocal = "本设备记录";
+translations.en.leaderboardLocal = "This device";
 
 function t(key, vars = {}) {
   let value = translations[state.locale]?.[key] ?? translations.zh[key] ?? key;
@@ -209,12 +245,12 @@ function applyStaticLocale() {
   $(".mobile-page-mark small").textContent = t("mobileCaption");
   $(".sidebar .nav-list").setAttribute("aria-label", t("mainNav"));
   $(".mobile-bottom-nav").setAttribute("aria-label", t("mobileNav"));
-  const navLabels = { discover: "navDiscover", rooms: "navRooms", library: "navLibrary", studio: "navStudio" };
+  const navLabels = { discover: "navDiscover", rooms: "navRooms", library: "navLibrary", leaderboard: "navLeaderboard", studio: "navStudio" };
   $$(".sidebar .nav-item").forEach((item) => {
     const icon = item.querySelector(".nav-icon");
     item.innerHTML = `${icon ? icon.outerHTML : ""}${t(navLabels[item.dataset.view])}`;
   });
-  const mobileLabels = { discover: "mobileHome", rooms: "mobileRooms", library: "mobileLibrary", studio: "mobileStudio" };
+  const mobileLabels = { discover: "mobileHome", rooms: "mobileRooms", library: "mobileLibrary", leaderboard: "mobileLeaderboard", studio: "mobileStudio" };
   $$(".mobile-nav-item").forEach((item) => { item.querySelector("small").textContent = t(mobileLabels[item.dataset.view]); });
   $(".online-signal strong").textContent = t("localPlay");
   $(".online-signal small").textContent = t("offlineCases");
@@ -256,6 +292,14 @@ function applyStaticLocale() {
   if (archiveEmptyTitle) archiveEmptyTitle.textContent = t("archiveEmptyTitle");
   if (archiveEmptyDescription) archiveEmptyDescription.textContent = t("archiveEmptyDescription");
   if (archiveExploreButton) archiveExploreButton.textContent = t("exploreScripts");
+  $("#leaderboardView .page-intro .eyebrow").textContent = t("leaderboardKicker");
+  $("#leaderboardView .page-intro h1").textContent = t("leaderboardTitle");
+  $("#leaderboardView .page-intro p:last-child").textContent = t("leaderboardDescription");
+  $("#leaderboardRefresh").textContent = t("leaderboardRefresh");
+  $("#leaderboardHeroKicker").textContent = t("leaderboardHeroKicker");
+  $("#leaderboardHeroTitle").textContent = t("leaderboardHeroTitle");
+  $("#leaderboardHeroDescription").textContent = t("leaderboardHeroDescription");
+  renderLeaderboard();
   $("#studioView .page-intro .eyebrow").textContent = t("studioKicker");
   $("#studioView .page-intro h1").textContent = t("studioTitle");
   $("#studioView .page-intro p:last-child").textContent = t("studioDescription");
@@ -1167,6 +1211,35 @@ function renderLibrary() {
   $$(".archive-grid [data-favorite]").forEach((button) => button.addEventListener("click", (event) => { event.stopPropagation(); toggleFavorite(button.dataset.favorite); }));
 }
 
+function renderLeaderboard() {
+  const container = $("#leaderboardList");
+  if (!container) return;
+  const rows = Array.isArray(state.leaderboard) ? state.leaderboard : [];
+  const local = state.stats || readPlayerStats();
+  if (!rows.length) {
+    container.innerHTML = `<div class="leaderboard-empty"><div class="empty-orbit">✦</div><h3>${t("leaderboardEmpty")}</h3><p>${t("leaderboardLocal")} · ${local.played} ${t("leaderboardPlayed")} · ${local.solved} ${t("leaderboardSolved")}</p></div>`;
+    return;
+  }
+  container.innerHTML = rows.map((row) => {
+    const rank = Number(row.rank || 0);
+    const medal = rank === 1 ? "✦" : rank === 2 ? "◇" : rank === 3 ? "◈" : String(rank).padStart(2, "0");
+    return `<article class="leaderboard-row${row.isSelf ? " is-self" : ""}"><div class="leaderboard-rank"><span>${medal}</span><small>${String(rank).padStart(2, "0")}</small></div><div class="leaderboard-person"><div class="leaderboard-avatar">${escapeHtml(String(row.displayName || "?").slice(0, 1))}</div><div><strong>${escapeHtml(row.displayName || "Night Watcher")}${row.isSelf ? ` <em>${t("leaderboardYou")}</em>` : ""}</strong><small>${t("leaderboardPlayed")} ${Number(row.played || 0)} · ${t("leaderboardClues")} ${Number(row.clues || 0)}</small></div></div><div class="leaderboard-score"><strong>${Number(row.solved || 0)}</strong><small>${t("leaderboardSolved")}</small></div><div class="leaderboard-questions"><strong>${Number(row.questions || 0)}</strong><small>${t("leaderboardQuestions")}</small></div></article>`;
+  }).join("");
+}
+
+async function loadLeaderboard() {
+  try {
+    const profile = currentUserProfile();
+    const response = await apiFetch(`/api/leaderboard?limit=20&externalKey=${encodeURIComponent(profile.externalKey)}`);
+    if (!response.ok) throw new Error("leaderboard unavailable");
+    const data = await response.json();
+    state.leaderboard = Array.isArray(data.leaderboard) ? data.leaderboard : [];
+  } catch {
+    state.leaderboard = [];
+  }
+  renderLeaderboard();
+}
+
 function openDetail(id) {
   const script = localizedScript(state.scripts.find((item) => item.id === id) || fallbackScripts.find((item) => item.id === id));
   if (!script) return;
@@ -1190,6 +1263,7 @@ function setView(view) {
   $$(".nav-item").forEach((item) => item.classList.toggle("active", item.dataset.view === view));
   $$(".view").forEach((item) => item.classList.toggle("active-view", item.id === `${view}View`));
   $("#viewLabel").textContent = view === "game" ? t("gamePlaying") : t(view);
+  if (view === "leaderboard") void loadLeaderboard();
 }
 
 function showToast(message) { const toast = $("#toast"); toast.textContent = message; toast.classList.add("show"); setTimeout(() => toast.classList.remove("show"), 2600); }
@@ -1809,8 +1883,30 @@ function recordCaseCompletion() {
     completed: [...state.stats.completed, completionKey].slice(-50)
   };
   savePlayerStats();
+  void syncProgressCompletion({ completionKey, solved, scriptId: activeCase.id, roomId: gameState.roomId, clues: gameState.discovered.size, questions: gameState.questionCount });
   applyStaticLocale();
   return { solved, first, spectator: false };
+}
+
+async function syncProgressCompletion({ completionKey, solved, scriptId, roomId, clues, questions }) {
+  try {
+    await apiFetch("/api/progression", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        user: currentUserProfile(),
+        scriptId,
+        roomId,
+        completionKey,
+        solved,
+        clues,
+        questions
+      })
+    });
+    await loadLeaderboard();
+  } catch {
+    // Local progression remains the source of truth when the service is offline.
+  }
 }
 
 function renderResult() {
@@ -1872,6 +1968,7 @@ function bindEvents() {
   $(".top-avatar").addEventListener("click", openProfileModal);
   $(".icon-button").addEventListener("click", openNotifications);
   $("#createRoom").addEventListener("click", () => createRoom("moon-trial"));
+  $("#leaderboardRefresh").addEventListener("click", () => void loadLeaderboard());
   $("#modalClose").addEventListener("click", closeModal);
   $("#modalBackdrop").addEventListener("click", (event) => { if (event.target.id === "modalBackdrop") closeModal(); });
   $("#modalStart").addEventListener("click", startGame);
@@ -1917,6 +2014,7 @@ renderRooms();
 renderLibrary();
 loadScripts();
 loadRooms();
+loadLeaderboard();
 detectLocale();
 void handleRoomInvite().then((handled) => { if (!handled) return restoreActiveRoom(); });
 setInterval(refreshSync, 4500);

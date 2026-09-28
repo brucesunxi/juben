@@ -168,6 +168,27 @@ CREATE TABLE IF NOT EXISTS game_events (
   UNIQUE (session_id, sequence_no)
 );
 
+CREATE TABLE IF NOT EXISTS player_progress (
+  user_id UUID PRIMARY KEY REFERENCES app_users(id) ON DELETE CASCADE,
+  played INTEGER NOT NULL DEFAULT 0 CHECK (played >= 0),
+  solved INTEGER NOT NULL DEFAULT 0 CHECK (solved >= 0),
+  clues INTEGER NOT NULL DEFAULT 0 CHECK (clues >= 0),
+  questions INTEGER NOT NULL DEFAULT 0 CHECK (questions >= 0),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS player_completions (
+  user_id UUID NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+  completion_key TEXT NOT NULL,
+  script_id TEXT NOT NULL REFERENCES scripts(id) ON DELETE RESTRICT,
+  room_id UUID REFERENCES rooms(id) ON DELETE SET NULL,
+  solved BOOLEAN NOT NULL DEFAULT FALSE,
+  clues INTEGER NOT NULL DEFAULT 0 CHECK (clues >= 0),
+  questions INTEGER NOT NULL DEFAULT 0 CHECK (questions >= 0),
+  completed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, completion_key)
+);
+
 ALTER TABLE game_events ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES app_users(id) ON DELETE SET NULL;
 
 CREATE TABLE IF NOT EXISTS content_imports (
@@ -192,3 +213,5 @@ CREATE INDEX IF NOT EXISTS sessions_script_started_idx ON game_sessions (script_
 CREATE INDEX IF NOT EXISTS game_events_session_created_idx ON game_events (session_id, created_at);
 CREATE INDEX IF NOT EXISTS game_events_user_idx ON game_events (user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS content_imports_imported_idx ON content_imports (imported_at DESC);
+CREATE INDEX IF NOT EXISTS player_progress_rank_idx ON player_progress (solved DESC, played DESC, updated_at ASC);
+CREATE INDEX IF NOT EXISTS player_completions_script_idx ON player_completions (script_id, completed_at DESC);
