@@ -8,6 +8,8 @@
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
         <string>Nocturne</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Microphone access is used only when you join room voice chat.</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
