@@ -30,7 +30,7 @@ function readProfileName() {
 }
 
 const savedLocale = readLocalePreference();
-const state = { scripts: [], archive: readArchive(), profileName: readProfileName(), activeFilter: "all", selectedScript: null, locale: savedLocale || browserFallbackLocale(), localeSource: savedLocale ? "manual" : "auto", liveRooms: [], activeRoom: null, roomPollTimer: null };
+const state = { scripts: [], archive: readArchive(), profileName: readProfileName(), activeFilter: "all", selectedScript: null, locale: savedLocale || browserFallbackLocale(), localeSource: savedLocale ? "manual" : "auto", liveRooms: [], activeRoom: null, roomMember: false, roomPollTimer: null };
 const API_BASE = String(window.NOCTURNE_API_BASE || "").replace(/\/$/, "");
 const apiFetch = (path, options) => fetch(`${API_BASE}${path}`, options);
 const translations = {
@@ -400,7 +400,7 @@ async function deleteProfile() {
 
 function ensureRoomLobby() {
   if ($("#roomLobbyBackdrop")) return;
-  document.body.insertAdjacentHTML("beforeend", `<div class="room-lobby-backdrop" id="roomLobbyBackdrop" aria-hidden="true"><section class="room-lobby-card" role="dialog" aria-modal="true" aria-labelledby="roomLobbyTitle"><button class="modal-close" id="roomLobbyClose">×</button><p class="eyebrow">ROOM LOBBY</p><h2 id="roomLobbyTitle">${t("roomLobbyTitle")}</h2><p class="room-lobby-status" id="roomLobbyStatus"></p><div class="room-lobby-members" id="roomLobbyMembers"></div><div class="room-lobby-actions" id="roomLobbyActions"></div></section></div>`);
+  document.body.insertAdjacentHTML("beforeend", `<div class="room-lobby-backdrop" id="roomLobbyBackdrop" aria-hidden="true"><section class="room-lobby-card" role="dialog" aria-modal="true" aria-labelledby="roomLobbyTitle"><button class="modal-close" id="roomLobbyClose">×</button><p class="eyebrow">ROOM LOBBY</p><h2 id="roomLobbyTitle">${t("roomLobbyTitle")}</h2><p class="room-lobby-status" id="roomLobbyStatus"></p><div class="room-invite-meta" id="roomInviteMeta"></div><div class="room-lobby-members" id="roomLobbyMembers"></div><div class="room-lobby-actions" id="roomLobbyActions"></div></section></div>`);
   $("#roomLobbyClose").addEventListener("click", () => closeRoomLobby());
   $("#roomLobbyBackdrop").addEventListener("click", (event) => { if (event.target.id === "roomLobbyBackdrop") closeRoomLobby(); });
 }
@@ -409,6 +409,7 @@ function closeRoomLobby() {
   clearInterval(state.roomPollTimer);
   state.roomPollTimer = null;
   state.activeRoom = null;
+  state.roomMember = false;
   $("#roomLobbyBackdrop")?.classList.remove("open");
   $("#roomLobbyBackdrop")?.setAttribute("aria-hidden", "true");
 }
@@ -421,15 +422,31 @@ function renderRoomLobby() {
   const script = localizedScript(state.scripts.find((item) => item.id === room.scriptId) || fallbackScripts.find((item) => item.id === room.scriptId) || fallbackScripts[0]);
   $("#roomLobbyTitle").textContent = `${t("roomLobbyTitle")} · ${state.locale === "en" ? script.title : (room.title || script.title)}`;
   $("#roomLobbyStatus").textContent = room.status === "live" ? t("roomLobbyLive") : t("roomLobbyWaiting");
+  const shortCode = String(room.id).slice(0, 8).toUpperCase();
+  $("#roomInviteMeta").innerHTML = `<span>${state.locale === "zh" ? "房间码" : "ROOM CODE"} · ${shortCode}</span><button class="text-button" id="roomInvite">${state.locale === "zh" ? "复制邀请链接 ↗" : "Copy invite link ↗"}</button>`;
   $("#roomLobbyMembers").innerHTML = `<div class="room-lobby-count">${t("roomLobbyPlayers")} · ${room.players} / ${room.maxPlayers}</div>${(room.members || []).map((member) => `<div class="room-member"><span class="room-member-avatar">${escapeHtml(String(member.displayName || "?").slice(0, 1))}</span><strong>${escapeHtml(member.displayName)}</strong><small>${member.role === "host" ? t("roomHost") : t(member.role === "spectator" ? "roomSpectator" : "roomPlayer")}</small></div>`).join("")}`;
   const isHost = room.isHost === true;
+  const isMember = state.roomMember === true;
   const buttons = [];
-  if (room.status === "live") buttons.push(`<button class="primary-button" id="roomEnterGame">${t("startTrial")} ↗</button>`);
+  if (!isMember && room.status === "waiting" && Number(room.spotsLeft) > 0) buttons.push(`<button class="primary-button" id="roomJoinFromLobby">${t("roomJoin")} ↗</button>`);
+  else if (room.status === "live" && isMember) buttons.push(`<button class="primary-button" id="roomEnterGame">${t("startTrial")} ↗</button>`);
   else if (isHost) buttons.push(`<button class="primary-button" id="roomStartGame">${t("roomStart")} ↗</button>`);
-  buttons.push(`<button class="ghost-button" id="roomLeave">${isHost ? t("roomClose") : t("roomLeave")}</button>`);
+  if (isMember) buttons.push(`<button class="ghost-button" id="roomLeave">${isHost ? t("roomClose") : t("roomLeave")}</button>`);
   $("#roomLobbyActions").innerHTML = buttons.join("");
   $("#roomLobbyBackdrop").classList.add("open");
   $("#roomLobbyBackdrop").setAttribute("aria-hidden", "false");
+  $("#roomInvite")?.addEventListener("click", async () => {
+    const invite = new URL(window.location.href);
+    invite.search = `?room=${encodeURIComponent(room.id)}`;
+    invite.hash = "";
+    try {
+      await navigator.clipboard.writeText(invite.toString());
+      showToast(state.locale === "zh" ? "邀请链接已复制" : "Invite link copied");
+    } catch {
+      showToast(state.locale === "zh" ? "请复制当前房间链接" : "Copy the room link from the address bar");
+    }
+  });
+  $("#roomJoinFromLobby")?.addEventListener("click", () => joinRoom(room.id));
   $("#roomStartGame")?.addEventListener("click", () => roomAction(room.id, "start"));
   $("#roomEnterGame")?.addEventListener("click", () => {
     state.selectedScript = state.scripts.find((item) => item.id === room.scriptId) || fallbackScripts.find((item) => item.id === room.scriptId) || fallbackScripts[0];
@@ -481,16 +498,21 @@ async function roomAction(roomId, action) {
 
 async function joinRoom(roomId) {
   try {
-    const response = await apiFetch(`/api/rooms/${encodeURIComponent(roomId)}/join`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ user: currentUserProfile() }) });
+    const response = await apiFetch(`/api/rooms/${encodeURIComponent(roomId)}/join`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ user: currentUserProfile(), memberRole: "player" }) });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "Unable to join room");
+    state.roomMember = true;
     showToast(t("roomJoinSuccess"));
     await openRoomLobby(data.room);
     await loadRooms();
-  } catch {
-    state.selectedScript = state.scripts.find((script) => script.id === "moon-trial") || fallbackScripts[0];
-    showToast(t("roomOffline"));
-    startGame();
+  } catch (error) {
+    if (error instanceof TypeError || /service|network|fetch/i.test(error.message || "")) {
+      state.selectedScript = state.scripts.find((script) => script.id === "moon-trial") || fallbackScripts[0];
+      showToast(t("roomOffline"));
+      startGame();
+      return;
+    }
+    showToast(error.message || t("roomOffline"));
   }
 }
 
@@ -500,6 +522,7 @@ async function createRoom(scriptId = "moon-trial") {
     const response = await apiFetch("/api/rooms", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ scriptId, user: currentUserProfile(), maxPlayers: 6 }) });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "Unable to create room");
+    state.roomMember = true;
     state.activeRoom = data.room;
     showToast(t("roomCreateSuccess"));
     await openRoomLobby(data.room);
@@ -508,6 +531,16 @@ async function createRoom(scriptId = "moon-trial") {
     setView("discover");
     showToast(t("roomOffline"));
   }
+}
+
+async function handleRoomInvite() {
+  const roomId = new URLSearchParams(window.location.search).get("room");
+  if (!roomId) return;
+  setView("rooms");
+  await joinRoom(roomId);
+  const cleanUrl = new URL(window.location.href);
+  cleanUrl.searchParams.delete("room");
+  window.history.replaceState({}, "", cleanUrl.toString());
 }
 
 function rememberArchive(scriptId) {
@@ -1121,4 +1154,5 @@ renderLibrary();
 loadScripts();
 loadRooms();
 detectLocale();
+handleRoomInvite();
 setInterval(refreshSync, 4500);

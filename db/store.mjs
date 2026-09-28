@@ -196,7 +196,9 @@ function rowToRoom(row, viewerExternalKey = "") {
       startedAt: row.session_started_at instanceof Date ? row.session_started_at.toISOString() : row.session_started_at,
       endedAt: row.session_ended_at instanceof Date ? row.session_ended_at.toISOString() : row.session_ended_at
     } : null,
-    members: row.members || []
+    // Character assignments are private. They are returned only by the
+    // authenticated room-session endpoint, never by public room metadata.
+    members: (row.members || []).map((member) => ({ ...member, characterKey: null }))
   };
 }
 
