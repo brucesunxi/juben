@@ -177,6 +177,20 @@ translations.zh.notebookPinned = "已标记关键";
 translations.en.notebookPinned = "Pinned clue";
 translations.zh.notebookCount = "已标记 {count} 条线索";
 translations.en.notebookCount = "{count} clue(s) pinned";
+translations.zh.notebookSelect = "选择两条线索建立关联";
+translations.en.notebookSelect = "Select two clues to connect";
+translations.zh.notebookSelected = "已选 {count}/2";
+translations.en.notebookSelected = "{count}/2 selected";
+translations.zh.notebookConnect = "建立关联";
+translations.en.notebookConnect = "Connect clues";
+translations.zh.notebookConnections = "线索关联";
+translations.en.notebookConnections = "Clue connections";
+translations.zh.notebookNoConnections = "还没有建立关联。";
+translations.en.notebookNoConnections = "No connections yet.";
+translations.zh.notebookLinked = "已建立线索关联";
+translations.en.notebookLinked = "Clues connected";
+translations.zh.notebookUnlink = "解除关联";
+translations.en.notebookUnlink = "Remove connection";
 translations.zh.dmTitle = "主持人控场";
 translations.en.dmTitle = "DM control room";
 translations.zh.dmHint = "由房主推进剧情，所有玩家会在同步后看到变化。";
@@ -405,7 +419,9 @@ function setLocale(locale, { persist = true, source = "manual" } = {}) {
   if (locale !== "zh" && locale !== "en") return;
   state.locale = locale;
   state.localeSource = source;
-  $("#toast")?.classList.remove("show");
+  const toast = $("#toast");
+  toast?.classList.remove("show");
+  if (toast) toast.textContent = "";
   if (persist) {
     try { localStorage.setItem("nocturne-locale", locale); } catch { /* storage can be unavailable in private webviews */ }
   }
@@ -1369,7 +1385,16 @@ function setView(view) {
   if (view === "leaderboard") void loadLeaderboard();
 }
 
-function showToast(message) { const toast = $("#toast"); toast.textContent = message; toast.classList.add("show"); setTimeout(() => toast.classList.remove("show"), 2600); }
+function showToast(message) {
+  const toast = $("#toast");
+  if (!toast) return;
+  toast.textContent = message;
+  toast.classList.add("show");
+  setTimeout(() => {
+    toast.classList.remove("show");
+    toast.textContent = "";
+  }, 2600);
+}
 
 function formatTime(value) { if (!value) return t("waiting"); return new Intl.DateTimeFormat(state.locale === "zh" ? "zh-CN" : "en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date(value)); }
 
@@ -1695,7 +1720,7 @@ function localizedCase(caseId) {
 }
 
 let activeCase = demoCase;
-const gameState = { phase: "briefing", discovered: new Set(), pinnedEvidence: new Set(), selectedEvidence: null, selectedSuspect: "shen", answers: new Set(), questionCount: 0, hintsUsed: 0, votedSuspect: null, roomVotes: [], startedAt: 0, timer: null, nextAction: null, roomId: null, sessionId: null, characterKey: "player", playerUserId: null, spectator: false, isHost: false, suppressPhaseEmit: false, eventCursor: 0, roomPollTimer: null, lastEmittedPhase: null };
+const gameState = { phase: "briefing", discovered: new Set(), pinnedEvidence: new Set(), boardSelection: new Set(), evidenceLinks: [], selectedEvidence: null, selectedSuspect: "shen", answers: new Set(), questionCount: 0, hintsUsed: 0, votedSuspect: null, roomVotes: [], startedAt: 0, timer: null, nextAction: null, roomId: null, sessionId: null, characterKey: "player", playerUserId: null, spectator: false, isHost: false, suppressPhaseEmit: false, eventCursor: 0, roomPollTimer: null, lastEmittedPhase: null };
 
 function currentRoleProfile() {
   const key = gameState.characterKey || "player";
@@ -1906,19 +1931,41 @@ function renderBriefing() {
   gameAction(null, t("evidenceHint"), t("startEvidence"), renderEvidence);
 }
 
+function renderDeductionBoard() {
+  const pinnedItems = activeCase.evidence.filter((item) => gameState.pinnedEvidence.has(item.id));
+  const connections = gameState.evidenceLinks.map((link, index) => ({ index, first: activeCase.evidence.find((item) => item.id === link[0]), second: activeCase.evidence.find((item) => item.id === link[1]) })).filter((link) => link.first && link.second);
+  const boardItems = pinnedItems.length
+    ? `<div class="deduction-board-items">${pinnedItems.map((item) => `<article class="deduction-board-item${gameState.boardSelection.has(item.id) ? " selected" : ""}" data-note-select="${item.id}" role="button" tabindex="0" aria-pressed="${gameState.boardSelection.has(item.id) ? "true" : "false"}"><img src="${item.image}" alt="${item.name}" /><div><strong>${item.name}</strong><small>${item.type}</small></div>${!gameState.spectator ? `<button class="text-button" type="button" data-note-unpin="${item.id}" aria-label="${t("notebookUnpin")}">×</button>` : ""}</article>`).join("")}</div>`
+    : `<p class="deduction-board-empty">${t("notebookEmpty")}</p>`;
+  const connectControls = !gameState.spectator && pinnedItems.length >= 2 ? `<div class="deduction-board-connect"><div><span>${t("notebookSelect")}</span><small>${t("notebookSelected", { count: gameState.boardSelection.size })}</small></div><button class="ghost-button" type="button" data-note-connect${gameState.boardSelection.size === 2 ? "" : " disabled"}>${t("notebookConnect")} ↗</button></div>` : "";
+  const connectionList = connections.length
+    ? `<div class="deduction-connections"><div class="deduction-connections-heading"><span>${t("notebookConnections")}</span><small>${connections.length}</small></div>${connections.map(({ index, first, second }) => `<div class="deduction-connection"><span>${first.name}</span><i>↔</i><span>${second.name}</span>${!gameState.spectator ? `<button class="text-button" type="button" data-note-unlink="${index}" aria-label="${t("notebookUnlink")}">×</button>` : ""}</div>`).join("")}</div>`
+    : `<div class="deduction-connections empty"><div class="deduction-connections-heading"><span>${t("notebookConnections")}</span><small>0</small></div><p>${t("notebookNoConnections")}</p></div>`;
+  return `<section class="deduction-board" aria-label="${t("notebookTitle")}"><div class="deduction-board-heading"><div><span class="game-kicker">${t("notebookTitle")}</span><strong>${t("notebookCount", { count: pinnedItems.length })}</strong></div><span class="deduction-board-mark">✦</span></div>${boardItems}${connectControls}${connectionList}</section>`;
+}
+
 function renderEvidence() {
   setGameNav("evidence");
   $("#gameEyebrow").textContent = t("gameEvidenceKicker");
   $("#gameTitle").textContent = t("gameTitleEvidence");
   const selectedEvidence = activeCase.evidence.find((entry) => entry.id === gameState.selectedEvidence);
   const evidenceModal = selectedEvidence ? `<div class="evidence-modal open" id="evidenceModal" role="dialog" aria-modal="true" aria-label="${selectedEvidence.name}"><div class="evidence-modal-card"><button class="evidence-modal-close" data-evidence-close aria-label="${t("close")}">×</button><img class="evidence-modal-image" src="${selectedEvidence.image}" alt="${selectedEvidence.name}" /><div class="evidence-modal-body"><span class="game-kicker">${t("gameEvidenceModalKicker", { count: String(gameState.discovered.size).padStart(2, "0") })}</span><h3>${selectedEvidence.name}</h3><p class="evidence-modal-type">${selectedEvidence.type}</p><p>${selectedEvidence.detail}</p><div class="evidence-modal-actions">${!gameState.spectator ? `<button class="ghost-button" data-evidence-pin>${gameState.pinnedEvidence.has(selectedEvidence.id) ? t("notebookUnpin") : t("notebookPin")}</button>` : ""}<button class="primary-button evidence-modal-done" data-evidence-close>${t("recordEvidence")} <span>↗</span></button></div></div></div></div>` : "";
-  const pinnedItems = activeCase.evidence.filter((item) => gameState.pinnedEvidence.has(item.id));
-  const deductionBoard = `<section class="deduction-board" aria-label="${t("notebookTitle")}"><div class="deduction-board-heading"><div><span class="game-kicker">${t("notebookTitle")}</span><strong>${t("notebookCount", { count: pinnedItems.length })}</strong></div><span class="deduction-board-mark">✦</span></div>${pinnedItems.length ? `<div class="deduction-board-items">${pinnedItems.map((item) => `<article class="deduction-board-item"><img src="${item.image}" alt="${item.name}" /><div><strong>${item.name}</strong><small>${item.type}</small></div>${!gameState.spectator ? `<button class="text-button" type="button" data-note-unpin="${item.id}" aria-label="${t("notebookUnpin")}">×</button>` : ""}</article>`).join("")}</div>` : `<p class="deduction-board-empty">${t("notebookEmpty")}</p>`}</section>`;
+  const deductionBoard = renderDeductionBoard();
   $("#gameContent").innerHTML = `<span class="game-kicker">${t("inspectEvidence")}</span><div class="game-scene game-scene-evidence"><img src="${activeCase.sceneImage}" alt="${activeCase.title}" /></div><p class="game-lede">${activeCase.evidenceLead}</p><p class="game-copy">${activeCase.evidenceCopy}</p><div class="scene-line"></div><div class="evidence-grid">${activeCase.evidence.map((item) => `<button class="evidence-card ${gameState.discovered.has(item.id) ? "discovered" : ""}" data-evidence="${item.id}"><img class="evidence-thumb" src="${item.image}" alt="${item.name}" /><strong>${item.name}</strong><small>${item.type}</small><span class="discovered-badge">${t("recorded")}</span></button>`).join("")}</div>${deductionBoard}${evidenceModal}`;
   $$(".evidence-card").forEach((card) => card.addEventListener("click", () => inspectEvidence(card.dataset.evidence)));
   $$('[data-evidence-close]').forEach((button) => button.addEventListener("click", () => { gameState.selectedEvidence = null; renderEvidence(); }));
   $("[data-evidence-pin]")?.addEventListener("click", () => toggleEvidencePin(selectedEvidence.id));
   $$('[data-note-unpin]').forEach((button) => button.addEventListener("click", () => toggleEvidencePin(button.dataset.noteUnpin)));
+  $$('[data-note-select]').forEach((item) => {
+    item.addEventListener("click", (event) => { if (!event.target.closest("[data-note-unpin]")) toggleEvidenceSelection(item.dataset.noteSelect); });
+    item.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      toggleEvidenceSelection(item.dataset.noteSelect);
+    });
+  });
+  $$('[data-note-connect]').forEach((button) => button.addEventListener("click", connectSelectedEvidence));
+  $$('[data-note-unlink]').forEach((button) => button.addEventListener("click", () => unlinkEvidence(Number(button.dataset.noteUnlink))));
   const canContinue = gameState.discovered.size >= 3;
   gameAction(null, t("evidenceCount", { count: gameState.discovered.size }), canContinue ? t("enterQuestion") : t("continueEvidence"), canContinue ? renderQuestion : () => showToast(t("noEnoughEvidence")));
 }
@@ -1938,11 +1985,41 @@ function toggleEvidencePin(id) {
   if (!item) return;
   if (gameState.pinnedEvidence.has(id)) {
     gameState.pinnedEvidence.delete(id);
+    gameState.boardSelection.delete(id);
+    gameState.evidenceLinks = gameState.evidenceLinks.filter((link) => !link.includes(id));
     showToast(state.locale === "zh" ? `${item.name} 已移出推理桌` : `${item.name} removed from the board`);
   } else {
     gameState.pinnedEvidence.add(id);
     showToast(state.locale === "zh" ? `${item.name} 已加入推理桌` : `${item.name} pinned to the board`);
   }
+  renderEvidence();
+}
+
+function toggleEvidenceSelection(id) {
+  if (gameState.boardSelection.has(id)) gameState.boardSelection.delete(id);
+  else if (gameState.boardSelection.size < 2) gameState.boardSelection.add(id);
+  else {
+    showToast(t("notebookSelect"));
+    return;
+  }
+  renderEvidence();
+}
+
+function connectSelectedEvidence() {
+  if (gameState.boardSelection.size !== 2) return;
+  const link = [...gameState.boardSelection].sort();
+  const exists = gameState.evidenceLinks.some((entry) => entry[0] === link[0] && entry[1] === link[1]);
+  if (!exists) {
+    gameState.evidenceLinks.push(link);
+    showToast(t("notebookLinked"));
+  }
+  gameState.boardSelection = new Set();
+  renderEvidence();
+}
+
+function unlinkEvidence(index) {
+  if (!Number.isInteger(index) || !gameState.evidenceLinks[index]) return;
+  gameState.evidenceLinks.splice(index, 1);
   renderEvidence();
 }
 
@@ -2081,7 +2158,7 @@ function renderResult() {
   $("#gameTitle").textContent = t("gameTitleResult");
   const awardText = completion.spectator ? t("resultAwardObserver") : completion.solved ? t("resultAwardSolved") : completion.first ? t("resultAwardFirst") : t("resultAward");
   $("#gameContent").innerHTML = `<div class="result-card"><div class="result-scene"><img src="${activeCase.sceneImage}" alt="${activeCase.title} ${t("sceneAlt")}" /></div><div class="result-symbol">✓</div><h2>${activeCase.resultTitle}</h2><p>${activeCase.resultText}</p>${renderRoomVoteSummary()}<section class="result-award"><span class="game-kicker">${t("resultAward")}</span><strong>${awardText}</strong><small>${t("profileLevel", { level: playerLevel() })} · ${t("statsSolved")}: ${state.stats.solved}</small></section><div class="timeline">${activeCase.timeline.map(([time, text]) => `<div class="timeline-item"><b>${time}</b><span>${text}</span></div>`).join("")}</div></div>`;
-  gameAction(null, `${t("closed")} · ${activeCase.badge}`, gameState.roomId ? null : t("replay"), () => { gameState.discovered = new Set(); gameState.pinnedEvidence = new Set(); gameState.selectedEvidence = null; gameState.answers = new Set(); gameState.questionCount = 0; gameState.hintsUsed = 0; gameState.votedSuspect = null; gameState.selectedSuspect = activeCase.suspects[0].id; renderBriefing(); });
+  gameAction(null, `${t("closed")} · ${activeCase.badge}`, gameState.roomId ? null : t("replay"), () => { gameState.discovered = new Set(); gameState.pinnedEvidence = new Set(); gameState.boardSelection = new Set(); gameState.evidenceLinks = []; gameState.selectedEvidence = null; gameState.answers = new Set(); gameState.questionCount = 0; gameState.hintsUsed = 0; gameState.votedSuspect = null; gameState.selectedSuspect = activeCase.suspects[0].id; renderBriefing(); });
 }
 
 function startGame(options = {}) {
@@ -2100,6 +2177,8 @@ function startGame(options = {}) {
   activeCase = localizedCase(state.selectedScript?.id || "moon-trial");
   gameState.discovered = new Set();
   gameState.pinnedEvidence = new Set();
+  gameState.boardSelection = new Set();
+  gameState.evidenceLinks = [];
   gameState.selectedEvidence = null;
   gameState.answers = new Set();
   gameState.questionCount = 0;
