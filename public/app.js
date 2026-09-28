@@ -586,6 +586,15 @@ async function flushVoiceCandidates(userId, peer) {
   }
 }
 
+async function createVoiceOffer(member) {
+  if (!state.voiceSelfId || String(state.voiceSelfId) >= String(member.userId)) return;
+  const peer = createVoicePeer(member);
+  if (peer.pc.localDescription) return;
+  const offer = await peer.pc.createOffer();
+  await peer.pc.setLocalDescription(offer);
+  await sendVoiceSignal(member.userId, "offer", peer.pc.localDescription.toJSON ? peer.pc.localDescription.toJSON() : peer.pc.localDescription);
+}
+
 async function handleVoiceSignal(signal) {
   if (!state.voiceJoined || signal.senderUserId === state.voiceSelfId) return;
   const member = voiceMember(signal.senderUserId);
@@ -593,11 +602,7 @@ async function handleVoiceSignal(signal) {
   if (signal.type === "leave") { closeVoicePeer(signal.senderUserId); renderRoomVoice(); return; }
   const peer = createVoicePeer(member);
   if (signal.type === "hello") {
-    if (String(state.voiceSelfId) < String(signal.senderUserId) && !peer.pc.localDescription) {
-      const offer = await peer.pc.createOffer();
-      await peer.pc.setLocalDescription(offer);
-      await sendVoiceSignal(signal.senderUserId, "offer", peer.pc.localDescription.toJSON ? peer.pc.localDescription.toJSON() : peer.pc.localDescription);
-    }
+    await createVoiceOffer(member);
     return;
   }
   if (signal.type === "offer") {
@@ -650,7 +655,10 @@ async function joinRoomVoice() {
     state.voiceSelfId = state.activeRoom.members.find((member) => member.isSelf)?.userId || null;
     renderRoomVoice();
     const members = (state.activeRoom.members || []).filter((member) => member.userId !== state.voiceSelfId && member.role !== "spectator");
-    await Promise.all(members.map((member) => sendVoiceSignal(member.userId, "hello", {})));
+    await Promise.all(members.map(async (member) => {
+      await sendVoiceSignal(member.userId, "hello", {});
+      await createVoiceOffer(member);
+    }));
     await loadRoomVoiceSignals(state.activeRoom.id);
     clearInterval(state.roomVoiceTimer);
     state.roomVoiceTimer = setInterval(() => { void loadRoomVoiceSignals(state.activeRoom?.id); }, 1200);
