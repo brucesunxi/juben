@@ -1161,6 +1161,40 @@ async function openRoomLobby(room) {
   void loadRoomVoiceSignals(roomId);
 }
 
+async function refreshActiveRoomState({ revealLobby = false } = {}) {
+  const gameRoomId = typeof gameState !== "undefined" ? gameState.roomId : null;
+  const activeRoomId = state.activeRoom?.id || gameRoomId;
+  if (!activeRoomId) return;
+  try {
+    const profile = currentUserProfile();
+    const response = await apiFetch(`/api/rooms/${encodeURIComponent(activeRoomId)}?externalKey=${encodeURIComponent(profile.externalKey)}`);
+    if (!response.ok) throw new Error("room unavailable");
+    const data = await response.json();
+    const room = data.room;
+    if (!room) throw new Error("room missing");
+    state.activeRoom = room;
+
+    // Keep the case screen stable while refreshing room membership in the background.
+    if (gameRoomId && String(gameRoomId) === String(room.id)) {
+      if (room.status === "live") void syncRoomSession();
+      return;
+    }
+
+    const selfMember = room.members?.find((member) => member.isSelf === true);
+    if (!selfMember || room.status === "closed") throw new Error("room membership expired");
+    state.roomMember = true;
+    const lobbyIsOpen = Boolean($("#roomLobbyBackdrop")?.classList.contains("open"));
+    renderRoomLobby({ show: revealLobby || lobbyIsOpen });
+    renderRooms();
+  } catch {
+    // Do not interrupt an active case during a brief network/mobile resume gap.
+    if (gameRoomId) return;
+    clearActiveRoom();
+    closeRoomLobby({ preserveRoom: false });
+    await loadRooms();
+  }
+}
+
 async function roomAction(roomId, action, ready = true) {
   try {
     const body = { user: currentUserProfile(), ...(action === "ready" ? { ready } : {}), ...(action === "role" ? { characterKey: ready } : {}) };
@@ -1272,9 +1306,10 @@ async function joinRoomByCode(rawCode) {
       showToast(t("roomCodeNotFound"));
       return;
     }
+    setView("rooms");
     state.activeRoom = data.room;
     state.roomMember = Boolean(data.room.members?.some((member) => member.isSelf === true));
-    openRoomLobby(data.room);
+    await openRoomLobby(data.room);
   } catch {
     showToast(t("roomOffline"));
   }
@@ -2290,6 +2325,27 @@ function bindEvents() {
   });
   $("#scanNow").addEventListener("click", async () => { try { await apiFetch("/api/scripts/scan", { method: "POST" }); await loadScripts(); await refreshSync(); showToast(t("scanComplete")); } catch { showToast(t("scanOffline")); } });
   document.addEventListener("keydown", (event) => { if (event.key === "Escape") { closeModal(); closeProfileModal(); closeNotifications(); } });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible") return;
+    const roomId = typeof gameState !== "undefined" ? gameState.roomId : null;
+    if (roomId) {
+      void refreshActiveRoomState();
+      void syncRoomSession();
+    } else if (state.activeRoom) {
+      void refreshActiveRoomState();
+    } else {
+      void restoreActiveRoom();
+    }
+  });
+  window.addEventListener("pageshow", (event) => {
+    if (!event.persisted) return;
+    if (typeof gameState !== "undefined" && gameState.roomId) {
+      void refreshActiveRoomState();
+      void syncRoomSession();
+    } else {
+      void restoreActiveRoom();
+    }
+  });
   $("#chooseFile").addEventListener("click", () => $("#fileInput").click());
   $("#fileInput").addEventListener("change", async (event) => { const file = event.target.files[0]; if (file) { try { await importFile(file); } catch (error) { showToast(error.message); } event.target.value = ""; } });
   document.addEventListener("click", (event) => {
