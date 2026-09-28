@@ -51,7 +51,7 @@ npm run mobile:add:ios
 npm run mobile:sync
 ```
 
-然后使用 Android Studio 生成签名的 AAB，或使用 Xcode 生成 Archive 并提交 TestFlight / App Store。正式移动端构建前，请在 `public/runtime-config.js` 配置真实的 HTTPS API 地址，并在服务端设置 `CORS_ORIGINS`（至少包含 `capacitor://localhost` 和 `http://localhost`）；留空时核心单人试玩仍可通过内置剧本离线运行，创作后台的服务端同步不可用。
+然后使用 Android Studio 生成签名的 AAB，或使用 Xcode 生成 Archive 并提交 TestFlight / App Store。当前 `public/runtime-config.js` 已配置生产 HTTPS API 地址，服务端默认允许 `capacitor://localhost` 和 `http://localhost`；如果更换域名，需要同步修改 API 地址和 `CORS_ORIGINS`。核心单人试玩仍内置在应用中，房间与剧本后台通过 Neon 服务同步。
 
 审核前检查见 [STORE_COMPLIANCE.md](STORE_COMPLIANCE.md)。当前工程不能保证商店审核通过，尤其还需要补齐真实隐私政策、客服联系方式、商店素材、签名和平台元数据。
 
