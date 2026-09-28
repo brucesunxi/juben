@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import fsSync from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { databaseEnabled, databaseHealth, listDatabaseScripts, saveDatabaseScript } from "./db/store.mjs";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(root, "public");
@@ -68,6 +69,14 @@ function normalizeScript(raw, filename = "script.json") {
 }
 
 async function listScripts() {
+  if (databaseEnabled) {
+    try {
+      const scripts = await listDatabaseScripts();
+      if (scripts) return scripts;
+    } catch (error) {
+      syncState.lastError = `database read failed: ${error.message}`;
+    }
+  }
   const files = (await fs.readdir(scriptsDir)).filter((file) => file.endsWith(".json"));
   const scripts = [];
   for (const file of files) {
@@ -82,8 +91,16 @@ async function listScripts() {
 }
 
 async function saveScript(raw, filename = "script.json") {
-  if (isVercel) throw new Error("Script import is disabled in the read-only Vercel runtime; use the configured API service.");
   const script = normalizeScript(raw, filename);
+  if (databaseEnabled) {
+    const saved = await saveDatabaseScript(script, filename);
+    syncState.imported += 1;
+    syncState.lastSync = new Date().toISOString();
+    syncState.lastFile = filename;
+    syncState.lastError = null;
+    return saved;
+  }
+  if (isVercel) throw new Error("Script import requires DATABASE_URL to be configured for the API service.");
   const safeName = `${slugify(script.title)}.json`;
   await fs.writeFile(path.join(scriptsDir, safeName), `${JSON.stringify(script, null, 2)}\n`);
   syncState.imported += 1;
@@ -176,7 +193,10 @@ const server = http.createServer(async (request, response) => {
     }
     if (url.pathname === "/api/sync" && request.method === "GET") {
       const scripts = await listScripts();
-      return sendJson(response, 200, { ...syncState, total: scripts.length });
+      return sendJson(response, 200, { ...syncState, total: scripts.length, database: databaseEnabled });
+    }
+    if (url.pathname === "/api/health" && request.method === "GET") {
+      return sendJson(response, 200, { ok: true, ...(await databaseHealth()) });
     }
     if (url.pathname === "/api/locale" && request.method === "GET") {
       // Use a country code supplied by the trusted deployment edge. The app
@@ -187,7 +207,6 @@ const server = http.createServer(async (request, response) => {
       return sendJson(response, 200, { country_code: countryCode, source: countryCode ? "edge-header" : "browser-fallback" });
     }
     if (url.pathname === "/api/scripts/import" && request.method === "POST") {
-      if (isVercel) return sendJson(response, 501, { error: "Script import requires the configured writable API service." });
       const payload = JSON.parse(await readBody(request));
       const script = await saveScript(payload.script || payload, payload.filename || "uploaded.json");
       return sendJson(response, 201, { script });
