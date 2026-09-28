@@ -668,7 +668,7 @@ export async function getDatabaseRoomSession(roomId, profile = {}, since = 0) {
         LIMIT 100`,
       [session.id, Math.max(0, Number(since) || 0)]
     );
-    return { session: sessionPayload(session), player: { characterKey: membership.characterKey || "player" }, events: events.rows.map(eventPayload), nextSequence: events.rows.at(-1)?.sequence_no || Number(since) || 0 };
+    return { session: sessionPayload(session), player: { userId: membership.user.id, characterKey: membership.characterKey || "player" }, events: events.rows.map(eventPayload), nextSequence: events.rows.at(-1)?.sequence_no || Number(since) || 0 };
   } finally {
     client.release();
   }
@@ -688,7 +688,11 @@ function reduceGameState(previous, eventType, payload) {
     next.answers = [...new Set([...next.answers, String(payload.answerKey)])];
     next.questionCount += 1;
   }
-  if (eventType === "vote_cast" && payload.suspectId) next.votes = [...next.votes, { suspectId: String(payload.suspectId), userId: payload.userId || null }];
+  if (eventType === "vote_cast" && payload.suspectId) {
+    const voterId = payload.userId ? String(payload.userId) : null;
+    next.votes = voterId ? next.votes.filter((vote) => vote.userId !== voterId) : next.votes;
+    next.votes.push({ suspectId: String(payload.suspectId), userId: voterId });
+  }
   if (eventType === "result_shown") next.phase = "result";
   return next;
 }
@@ -701,16 +705,24 @@ export async function appendDatabaseGameEvent(roomId, profile = {}, eventType, p
     const { user, role } = await requireRoomMember(client, roomId, profile);
     if (role === "spectator") throw new RoomError("ROLE_FORBIDDEN", "Spectators cannot change the game state");
     const session = await getLatestSession(client, roomId, true);
+    if (eventType === "vote_cast" && session.phase !== "vote") throw new RoomError("INVALID_EVENT", "Votes are only accepted during the final accusation");
+    if (eventType === "result_shown" && role !== "host") throw new RoomError("ROLE_FORBIDDEN", "Only the host can close the case");
     const currentState = session.state || {};
-    const nextState = reduceGameState(currentState, eventType, payload);
-    const phase = eventType === "phase_changed" && gamePhases.has(payload.phase) ? payload.phase : eventType === "result_shown" ? "result" : session.phase;
+    const eventPayloadWithUser = { ...payload, userId: user.id };
+    const nextState = reduceGameState(currentState, eventType, eventPayloadWithUser);
+    let phase = eventType === "phase_changed" && gamePhases.has(payload.phase) ? payload.phase : eventType === "result_shown" ? "result" : session.phase;
+    if (eventType === "vote_cast") {
+      const playerCount = await client.query("SELECT count(*)::int AS players FROM room_members WHERE room_id = $1 AND left_at IS NULL AND member_role <> 'spectator'", [roomId]);
+      const voters = new Set(nextState.votes.filter((vote) => vote.userId).map((vote) => vote.userId));
+      if (voters.size >= Number(playerCount.rows[0]?.players || 0)) phase = "result";
+    }
     const sequence = await client.query("SELECT COALESCE(MAX(sequence_no), 0) + 1 AS next FROM game_events WHERE session_id = $1", [session.id]);
     const sequenceNo = Number(sequence.rows[0].next);
     const event = await client.query(
       `INSERT INTO game_events (session_id, sequence_no, event_type, payload, user_id)
        VALUES ($1, $2, $3, $4::jsonb, $5)
        RETURNING sequence_no, event_type, payload, created_at, user_id`,
-      [session.id, sequenceNo, eventType, JSON.stringify({ ...payload, userId: user.id }), user.id]
+      [session.id, sequenceNo, eventType, JSON.stringify(eventPayloadWithUser), user.id]
     );
     const updated = await client.query(
       `UPDATE game_sessions SET phase = $2, state = $3::jsonb, ended_at = CASE WHEN $2 = 'result' THEN COALESCE(ended_at, now()) ELSE ended_at END WHERE id = $1
