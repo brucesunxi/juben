@@ -9,6 +9,7 @@ import {
   createDatabaseRoom,
   appendDatabaseGameEvent,
   appendDatabaseRoomMessage,
+  blockDatabaseRoomUser,
   reportDatabaseRoomMessage,
   databaseEnabled,
   databaseHealth,
@@ -253,6 +254,7 @@ const server = http.createServer(async (request, response) => {
     const roomMessagesMatch = url.pathname.match(/^\/api\/rooms\/([^/]+)\/messages$/);
     const roomVoiceSignalsMatch = url.pathname.match(/^\/api\/rooms\/([^/]+)\/voice\/signals$/);
     const roomMessageReportMatch = url.pathname.match(/^\/api\/rooms\/([^/]+)\/messages\/(\d+)\/report$/);
+    const roomUserBlockMatch = url.pathname.match(/^\/api\/rooms\/([^/]+)\/users\/([^/]+)\/block$/);
     const roomSessionMatch = url.pathname.match(/^\/api\/rooms\/([^/]+)\/session$/);
     if (roomVoiceSignalsMatch && request.method === "GET") {
       if (!databaseEnabled) return sendJson(response, 404, { error: "Room voice signals not found" });
@@ -286,6 +288,16 @@ const server = http.createServer(async (request, response) => {
         payload.reason
       );
       return sendJson(response, 201, report);
+    }
+    if (roomUserBlockMatch && request.method === "POST") {
+      if (!databaseEnabled) return sendJson(response, 503, { error: "User blocks require DATABASE_URL to be configured." });
+      const payload = JSON.parse(await readBody(request));
+      const result = await blockDatabaseRoomUser(
+        decodeURIComponent(roomUserBlockMatch[1]),
+        payload.user || payload.profile,
+        decodeURIComponent(roomUserBlockMatch[2])
+      );
+      return sendJson(response, 201, result);
     }
     if (roomMessagesMatch && request.method === "GET") {
       if (!databaseEnabled) return sendJson(response, 404, { error: "Room messages not found" });
@@ -376,7 +388,9 @@ const server = http.createServer(async (request, response) => {
       EMPTY_MESSAGE: 400,
       INVALID_VOICE_SIGNAL: 400,
       REPORT_NOT_FOUND: 404,
-      REPORT_DUPLICATE: 409
+      REPORT_DUPLICATE: 409,
+      INVALID_BLOCK: 400,
+      BLOCK_NOT_FOUND: 404
     }[error.code];
     const status = roomStatus || (error.code === "ENOENT" ? 404 : 500);
     sendJson(response, status, { error: status === 404 && !roomStatus ? "not found" : error.message, code: error.code });

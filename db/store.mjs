@@ -47,6 +47,14 @@ const databaseShapeReady = databaseEnabled
       UNIQUE (message_id, reporter_user_id)
     )`))
     .then(() => pool.query("CREATE INDEX IF NOT EXISTS room_message_reports_status_idx ON room_message_reports (status, created_at DESC)"))
+    .then(() => pool.query(`CREATE TABLE IF NOT EXISTS user_blocks (
+      blocker_user_id UUID NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+      blocked_user_id UUID NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      PRIMARY KEY (blocker_user_id, blocked_user_id),
+      CHECK (blocker_user_id <> blocked_user_id)
+    )`))
+    .then(() => pool.query("CREATE INDEX IF NOT EXISTS user_blocks_blocked_idx ON user_blocks (blocked_user_id)"))
   : Promise.resolve();
 
 async function waitForDatabaseShape() {
@@ -412,15 +420,16 @@ export async function getDatabaseRoomMessages(roomId, profile = {}, since = 0) {
   const cursor = /^\d+$/.test(String(since || "")) ? String(since) : "0";
   const client = await pool.connect();
   try {
-    await requireRoomMember(client, roomId, profile);
+    const { user } = await requireRoomMember(client, roomId, profile);
     const result = await client.query(
       `SELECT message.id, message.user_id, message.body, message.created_at, member_user.display_name
          FROM room_messages message
          JOIN app_users member_user ON member_user.id = message.user_id
         WHERE message.room_id = $1 AND message.id > $2::bigint
+          AND NOT EXISTS (SELECT 1 FROM user_blocks block WHERE block.blocker_user_id = $3 AND block.blocked_user_id = message.user_id)
         ORDER BY message.id ASC
         LIMIT 100`,
-      [roomId, cursor]
+      [roomId, cursor, user.id]
     );
     const messages = result.rows.map(roomMessagePayload);
     return { messages, nextCursor: messages.at(-1)?.id || cursor };
@@ -466,6 +475,28 @@ export async function reportDatabaseRoomMessage(roomId, messageId, profile = {},
     );
     if (!report.rows[0]) throw new RoomError("REPORT_DUPLICATE", "Message already reported");
     return { reported: true, reportId: String(report.rows[0].id), createdAt: isoDate(report.rows[0].created_at) };
+  });
+}
+
+export async function blockDatabaseRoomUser(roomId, profile = {}, blockedUserId) {
+  if (!pool) return null;
+  await waitForDatabaseShape();
+  if (!blockedUserId || typeof blockedUserId !== "string") throw new RoomError("INVALID_BLOCK", "A user to block is required");
+  return inTransaction(async (client) => {
+    const { user } = await requireRoomMember(client, roomId, profile);
+    if (user.id === blockedUserId) throw new RoomError("INVALID_BLOCK", "You cannot block yourself");
+    const target = await client.query(
+      `SELECT user_id FROM room_members WHERE room_id = $1 AND user_id = $2 AND left_at IS NULL`,
+      [roomId, blockedUserId]
+    );
+    if (!target.rows[0]) throw new RoomError("BLOCK_NOT_FOUND", "User is not in this room");
+    await client.query(
+      `INSERT INTO user_blocks (blocker_user_id, blocked_user_id)
+       VALUES ($1, $2)
+       ON CONFLICT (blocker_user_id, blocked_user_id) DO NOTHING`,
+      [user.id, blockedUserId]
+    );
+    return { blocked: true, userId: blockedUserId };
   });
 }
 

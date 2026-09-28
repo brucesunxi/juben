@@ -136,6 +136,14 @@ CREATE TABLE IF NOT EXISTS room_message_reports (
   UNIQUE (message_id, reporter_user_id)
 );
 
+CREATE TABLE IF NOT EXISTS user_blocks (
+  blocker_user_id UUID NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+  blocked_user_id UUID NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (blocker_user_id, blocked_user_id),
+  CHECK (blocker_user_id <> blocked_user_id)
+);
+
 CREATE TABLE IF NOT EXISTS game_sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   script_id TEXT NOT NULL REFERENCES scripts(id) ON DELETE RESTRICT,
@@ -178,6 +186,7 @@ CREATE INDEX IF NOT EXISTS room_members_user_idx ON room_members (user_id, joine
 CREATE INDEX IF NOT EXISTS room_messages_room_idx ON room_messages (room_id, id);
 CREATE INDEX IF NOT EXISTS room_voice_signals_receiver_idx ON room_voice_signals (room_id, receiver_user_id, id);
 CREATE INDEX IF NOT EXISTS room_message_reports_status_idx ON room_message_reports (status, created_at DESC);
+CREATE INDEX IF NOT EXISTS user_blocks_blocked_idx ON user_blocks (blocked_user_id);
 CREATE INDEX IF NOT EXISTS sessions_user_started_idx ON game_sessions (user_id, started_at DESC);
 CREATE INDEX IF NOT EXISTS sessions_script_started_idx ON game_sessions (script_id, started_at DESC);
 CREATE INDEX IF NOT EXISTS game_events_session_created_idx ON game_events (session_id, created_at);
