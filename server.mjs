@@ -7,8 +7,10 @@ import {
   RoomError,
   closeDatabaseRoom,
   createDatabaseRoom,
+  appendDatabaseGameEvent,
   databaseEnabled,
   databaseHealth,
+  getDatabaseRoomSession,
   joinDatabaseRoom,
   leaveDatabaseRoom,
   listDatabaseRooms,
@@ -234,6 +236,29 @@ const server = http.createServer(async (request, response) => {
       return sendJson(response, 200, { room });
     }
     const roomMatch = url.pathname.match(/^\/api\/rooms\/([^/]+)$/);
+    const roomSessionMatch = url.pathname.match(/^\/api\/rooms\/([^/]+)\/session$/);
+    if (roomSessionMatch && request.method === "GET") {
+      if (!databaseEnabled) return sendJson(response, 404, { error: "Room session not found" });
+      const profile = {
+        externalKey: url.searchParams.get("externalKey") || "",
+        displayName: url.searchParams.get("displayName") || "Night Watcher",
+        locale: url.searchParams.get("locale") || "en"
+      };
+      const session = await getDatabaseRoomSession(decodeURIComponent(roomSessionMatch[1]), profile, url.searchParams.get("since"));
+      return sendJson(response, 200, session);
+    }
+    const roomEventMatch = url.pathname.match(/^\/api\/rooms\/([^/]+)\/session\/events$/);
+    if (roomEventMatch && request.method === "POST") {
+      if (!databaseEnabled) return sendJson(response, 503, { error: "Room sessions require DATABASE_URL to be configured." });
+      const payload = JSON.parse(await readBody(request));
+      const event = await appendDatabaseGameEvent(
+        decodeURIComponent(roomEventMatch[1]),
+        payload.user || payload.profile,
+        payload.eventType || payload.type,
+        payload.payload || {}
+      );
+      return sendJson(response, 201, event);
+    }
     if (roomMatch && request.method === "GET") {
       if (!databaseEnabled) return sendJson(response, 404, { error: "Room not found" });
       const rooms = await listDatabaseRooms(null);
@@ -273,7 +298,10 @@ const server = http.createServer(async (request, response) => {
       SCRIPT_NOT_FOUND: 404,
       ROOM_FULL: 409,
       ROOM_CLOSED: 409,
-      NOT_HOST: 403
+      NOT_HOST: 403,
+      NOT_MEMBER: 403,
+      SESSION_NOT_FOUND: 409,
+      INVALID_EVENT: 400
     }[error.code];
     const status = roomStatus || (error.code === "ENOENT" ? 404 : 500);
     sendJson(response, status, { error: status === 404 && !roomStatus ? "not found" : error.message, code: error.code });

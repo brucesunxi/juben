@@ -342,8 +342,9 @@ function renderRoomLobby() {
   $("#roomStartGame")?.addEventListener("click", () => roomAction(room.id, "start"));
   $("#roomEnterGame")?.addEventListener("click", () => {
     state.selectedScript = state.scripts.find((item) => item.id === room.scriptId) || fallbackScripts.find((item) => item.id === room.scriptId) || fallbackScripts[0];
+    const roomId = room.id;
     closeRoomLobby();
-    startGame();
+    startGame({ roomId });
   });
   $("#roomLeave")?.addEventListener("click", () => roomAction(room.id, isHost ? "close" : "leave"));
 }
@@ -711,7 +712,7 @@ function localizedCase(caseId) {
 }
 
 let activeCase = demoCase;
-const gameState = { phase: "briefing", discovered: new Set(), selectedEvidence: null, selectedSuspect: "shen", answers: new Set(), questionCount: 0, startedAt: 0, timer: null, nextAction: null };
+const gameState = { phase: "briefing", discovered: new Set(), selectedEvidence: null, selectedSuspect: "shen", answers: new Set(), questionCount: 0, startedAt: 0, timer: null, nextAction: null, roomId: null, sessionId: null, eventCursor: 0, roomPollTimer: null, lastEmittedPhase: null };
 
 function setGameNav(phase) {
   gameState.phase = phase;
@@ -720,11 +721,88 @@ function setGameNav(phase) {
   $$(".game-nav-item").forEach((item) => item.classList.toggle("active", item.dataset.gamePhase === phase));
   const labels = { briefing: t("phaseBriefing"), evidence: t("phaseEvidence"), question: t("phaseQuestion"), vote: t("phaseVote"), result: t("phaseResult") };
   $("#gamePhaseLabel").textContent = labels[phase];
+  if (gameState.roomId && gameState.sessionId && gameState.lastEmittedPhase !== phase) {
+    gameState.lastEmittedPhase = phase;
+    void emitRoomEvent("phase_changed", { phase });
+  }
 }
 
 function gameAction(content, hint, button, handler) {
   gameState.nextAction = handler || null;
   $("#gameActionBar").innerHTML = `<span class="action-hint">${hint}</span>${button ? `<button class="primary-button" id="gameNextAction">${button} <span>↗</span></button>` : ""}`;
+}
+
+function stopRoomSessionSync() {
+  clearInterval(gameState.roomPollTimer);
+  gameState.roomPollTimer = null;
+}
+
+function roomSessionQuery() {
+  const profile = currentUserProfile();
+  const params = new URLSearchParams({ externalKey: profile.externalKey, displayName: profile.displayName, locale: profile.locale, since: String(gameState.eventCursor) });
+  return params.toString();
+}
+
+const gamePhasesForClient = new Set(["briefing", "evidence", "question", "vote", "result"]);
+
+function renderCurrentGamePhase() {
+  ({ briefing: renderBriefing, evidence: renderEvidence, question: renderQuestion, vote: renderVote, result: renderResult }[gameState.phase] || renderBriefing)();
+}
+
+function applyRoomEvent(event) {
+  const payload = event.payload || {};
+  if (event.type === "phase_changed" && gamePhasesForClient.has(payload.phase)) gameState.phase = payload.phase;
+  if (event.type === "evidence_found" && payload.evidenceId) gameState.discovered.add(String(payload.evidenceId));
+  if (event.type === "question_asked" && payload.answerKey && !gameState.answers.has(payload.answerKey)) {
+    gameState.answers.add(payload.answerKey);
+    gameState.questionCount += 1;
+  }
+  if (event.type === "result_shown") gameState.phase = "result";
+}
+
+async function syncRoomSession() {
+  if (!gameState.roomId) return;
+  try {
+    const response = await apiFetch(`/api/rooms/${encodeURIComponent(gameState.roomId)}/session?${roomSessionQuery()}`);
+    if (!response.ok) throw new Error("room session unavailable");
+    const data = await response.json();
+    if (gameState.sessionId && data.session?.id !== gameState.sessionId) gameState.eventCursor = 0;
+    gameState.sessionId = data.session?.id || gameState.sessionId;
+    const remoteState = data.session?.state || {};
+    if (Array.isArray(remoteState.discovered)) remoteState.discovered.forEach((id) => gameState.discovered.add(String(id)));
+    if (Array.isArray(remoteState.answers)) remoteState.answers.forEach((answer) => gameState.answers.add(String(answer)));
+    gameState.questionCount = Math.max(gameState.questionCount, Number(remoteState.questionCount || 0));
+    for (const event of data.events || []) applyRoomEvent(event);
+    gameState.eventCursor = Math.max(gameState.eventCursor, Number(data.nextSequence || 0));
+    const remotePhase = data.session?.phase;
+    if (remotePhase && remotePhase !== gameState.phase) gameState.phase = remotePhase;
+    if (data.session && document.querySelector("#gameView.active-view")) renderCurrentGamePhase();
+  } catch {
+    // The local case remains playable if the room service briefly disconnects.
+  }
+}
+
+async function connectRoomSession(roomId) {
+  stopRoomSessionSync();
+  gameState.roomId = roomId;
+  gameState.sessionId = null;
+  gameState.eventCursor = 0;
+  gameState.lastEmittedPhase = null;
+  await syncRoomSession();
+  gameState.roomPollTimer = setInterval(syncRoomSession, 1800);
+}
+
+async function emitRoomEvent(type, payload = {}) {
+  if (!gameState.roomId || !gameState.sessionId) return;
+  try {
+    const response = await apiFetch(`/api/rooms/${encodeURIComponent(gameState.roomId)}/session/events`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ user: currentUserProfile(), eventType: type, payload }) });
+    if (!response.ok) return;
+    const data = await response.json();
+    if (data.event?.sequence) gameState.eventCursor = Math.max(gameState.eventCursor, Number(data.event.sequence));
+    if (data.session?.id) gameState.sessionId = data.session.id;
+  } catch {
+    // Keep local play responsive while a remote event retries on the next interaction.
+  }
 }
 
 function renderBriefing() {
@@ -755,6 +833,7 @@ function inspectEvidence(id) {
   gameState.discovered.add(id);
   gameState.selectedEvidence = id;
   renderEvidence();
+  void emitRoomEvent("evidence_found", { evidenceId: id });
   showToast(state.locale === "zh" ? `已记录：${item.name}` : `${item.name}: ${t("recorded")}`);
 }
 
@@ -777,6 +856,7 @@ function askQuestion(suspectId, question) {
   gameState.answers.add(answerKey);
   gameState.answers.add(suspectId);
   renderQuestion();
+  void emitRoomEvent("question_asked", { suspectId, question, answerKey });
   const box = $(".dialogue-text");
   box.textContent = suspect.answers[question];
   showToast(t("localResponse", { name: suspect.name }));
@@ -792,6 +872,7 @@ function renderVote() {
 }
 
 function castVote(id) {
+  void emitRoomEvent("vote_cast", { suspectId: id });
   if (id !== activeCase.solution) {
     const card = document.querySelector(`[data-vote="${id}"]`).parentElement;
     card.classList.add("wrong-vote");
@@ -799,6 +880,7 @@ function castVote(id) {
     setTimeout(() => card.classList.remove("wrong-vote"), 350);
     return;
   }
+  void emitRoomEvent("result_shown", { suspectId: id });
   renderResult();
 }
 
@@ -812,8 +894,13 @@ function renderResult() {
   gameAction(null, `${t("closed")} · ${activeCase.badge}`, t("replay"), () => { gameState.discovered = new Set(); gameState.selectedEvidence = null; gameState.answers = new Set(); gameState.questionCount = 0; gameState.selectedSuspect = activeCase.suspects[0].id; renderBriefing(); });
 }
 
-function startGame() {
+function startGame(options = {}) {
   closeModal();
+  stopRoomSessionSync();
+  gameState.roomId = options.roomId || null;
+  gameState.sessionId = null;
+  gameState.eventCursor = 0;
+  gameState.lastEmittedPhase = null;
   activeCase = localizedCase(state.selectedScript?.id || "moon-trial");
   gameState.discovered = new Set();
   gameState.selectedEvidence = null;
@@ -832,6 +919,7 @@ function startGame() {
   renderBriefing();
   clearInterval(gameState.timer);
   gameState.timer = setInterval(() => { const seconds = Math.floor((Date.now() - gameState.startedAt) / 1000); $("#gameClock").textContent = `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`; }, 1000);
+  if (gameState.roomId) void connectRoomSession(gameState.roomId);
 }
 
 function bindEvents() {
@@ -847,7 +935,7 @@ function bindEvents() {
   $("#modalClose").addEventListener("click", closeModal);
   $("#modalBackdrop").addEventListener("click", (event) => { if (event.target.id === "modalBackdrop") closeModal(); });
   $("#modalStart").addEventListener("click", startGame);
-  $("#exitGame").addEventListener("click", () => { clearInterval(gameState.timer); setView("discover"); });
+  $("#exitGame").addEventListener("click", () => { clearInterval(gameState.timer); stopRoomSessionSync(); gameState.roomId = null; gameState.sessionId = null; setView("discover"); });
   $("#scanNow").addEventListener("click", async () => { try { await apiFetch("/api/scripts/scan", { method: "POST" }); await loadScripts(); await refreshSync(); showToast(t("scanComplete")); } catch { showToast(t("scanOffline")); } });
   document.addEventListener("keydown", (event) => { if (event.key === "Escape") closeModal(); });
   $("#chooseFile").addEventListener("click", () => $("#fileInput").click());

@@ -14,6 +14,14 @@ const pool = databaseEnabled
     })
   : null;
 
+const databaseShapeReady = databaseEnabled
+  ? pool.query("ALTER TABLE game_events ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES app_users(id) ON DELETE SET NULL")
+  : Promise.resolve();
+
+async function waitForDatabaseShape() {
+  await databaseShapeReady;
+}
+
 function durationLabel(minutes) {
   return minutes ? `${minutes} min` : null;
 }
@@ -143,6 +151,8 @@ const roomSelect = `
   SELECT r.id, r.script_id, s.title, s.subtitle, s.cover,
          r.host_user_id, host.external_key AS host_external_key, host.display_name AS host_name, r.status, r.max_players,
          r.created_at, r.started_at, r.ended_at,
+         latest_session.id AS session_id, latest_session.phase AS session_phase, latest_session.state AS session_state,
+         latest_session.started_at AS session_started_at, latest_session.ended_at AS session_ended_at,
          (SELECT count(*)::int FROM room_members active_rm WHERE active_rm.room_id = r.id AND active_rm.left_at IS NULL) AS players,
          COALESCE((SELECT json_agg(json_build_object(
            'userId', member.user_id,
@@ -153,7 +163,14 @@ const roomSelect = `
          ) ORDER BY member.joined_at) FROM room_members member JOIN app_users member_user ON member_user.id = member.user_id WHERE member.room_id = r.id AND member.left_at IS NULL), '[]'::json) AS members
     FROM rooms r
     JOIN scripts s ON s.id = r.script_id
-    LEFT JOIN app_users host ON host.id = r.host_user_id`;
+    LEFT JOIN app_users host ON host.id = r.host_user_id
+    LEFT JOIN LATERAL (
+      SELECT gs.id, gs.phase, gs.state, gs.started_at, gs.ended_at
+        FROM game_sessions gs
+       WHERE gs.room_id = r.id
+       ORDER BY gs.started_at DESC
+       LIMIT 1
+    ) latest_session ON TRUE`;
 
 function rowToRoom(row) {
   return {
@@ -172,6 +189,13 @@ function rowToRoom(row) {
     createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : row.created_at,
     startedAt: row.started_at instanceof Date ? row.started_at.toISOString() : row.started_at,
     endedAt: row.ended_at instanceof Date ? row.ended_at.toISOString() : row.ended_at,
+    session: row.session_id ? {
+      id: row.session_id,
+      phase: row.session_phase,
+      state: row.session_state || {},
+      startedAt: row.session_started_at instanceof Date ? row.session_started_at.toISOString() : row.session_started_at,
+      endedAt: row.session_ended_at instanceof Date ? row.session_ended_at.toISOString() : row.session_ended_at
+    } : null,
     members: row.members || []
   };
 }
@@ -259,8 +283,12 @@ export async function startDatabaseRoom(roomId, profile = {}) {
     if (!host.rows[0]) throw new RoomError("ROOM_NOT_FOUND", "Room not found");
     if (host.rows[0].host_user_id !== user.id) throw new RoomError("NOT_HOST", "Only the host can start the room");
     if (host.rows[0].status === "closed") throw new RoomError("ROOM_CLOSED", "Room is closed");
+    if (host.rows[0].status === "live") return getRoom(client, roomId);
     await client.query("UPDATE rooms SET status = 'live', started_at = COALESCE(started_at, now()) WHERE id = $1", [roomId]);
-    await client.query("INSERT INTO game_sessions (script_id, room_id, mode, locale, phase) VALUES ($1, $2, 'room', $3, 'briefing')", [host.rows[0].script_id, roomId, user.locale]);
+    await client.query(
+      "INSERT INTO game_sessions (script_id, room_id, mode, locale, phase, state) VALUES ($1, $2, 'room', $3, 'briefing', $4::jsonb)",
+      [host.rows[0].script_id, roomId, user.locale, JSON.stringify({ phase: "briefing", discovered: [], questionCount: 0, answers: [], votes: [] })]
+    );
     return getRoom(client, roomId);
   });
 }
@@ -274,5 +302,128 @@ export async function closeDatabaseRoom(roomId, profile = {}) {
     if (room.rows[0].host_user_id !== user.id) throw new RoomError("NOT_HOST", "Only the host can close the room");
     await client.query("UPDATE rooms SET status = 'closed', ended_at = COALESCE(ended_at, now()) WHERE id = $1", [roomId]);
     return getRoom(client, roomId);
+  });
+}
+
+const gamePhases = new Set(["briefing", "evidence", "question", "vote", "result"]);
+const gameEventTypes = new Set(["phase_changed", "evidence_found", "question_asked", "vote_cast", "result_shown"]);
+
+function isoDate(value) {
+  return value instanceof Date ? value.toISOString() : value;
+}
+
+function sessionPayload(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    roomId: row.room_id,
+    scriptId: row.script_id,
+    phase: row.phase,
+    state: row.state || {},
+    locale: row.locale,
+    startedAt: isoDate(row.started_at),
+    endedAt: isoDate(row.ended_at)
+  };
+}
+
+function eventPayload(row) {
+  return {
+    sequence: row.sequence_no,
+    type: row.event_type,
+    payload: row.payload || {},
+    createdAt: isoDate(row.created_at),
+    userId: row.user_id || null
+  };
+}
+
+async function requireRoomMember(client, roomId, profile = {}) {
+  const user = await ensureUser(client, profile);
+  const member = await client.query(
+    `SELECT member_role FROM room_members WHERE room_id = $1 AND user_id = $2 AND left_at IS NULL`,
+    [roomId, user.id]
+  );
+  if (!member.rows[0]) throw new RoomError("NOT_MEMBER", "Join the room before playing");
+  return { user, role: member.rows[0].member_role };
+}
+
+async function getLatestSession(client, roomId, lock = false) {
+  const result = await client.query(
+    `SELECT id, room_id, script_id, phase, state, locale, started_at, ended_at
+       FROM game_sessions
+      WHERE room_id = $1
+      ORDER BY started_at DESC
+      LIMIT 1${lock ? " FOR UPDATE" : ""}`,
+    [roomId]
+  );
+  if (!result.rows[0]) throw new RoomError("SESSION_NOT_FOUND", "The room has not started a game");
+  return result.rows[0];
+}
+
+export async function getDatabaseRoomSession(roomId, profile = {}, since = 0) {
+  if (!pool) return null;
+  await waitForDatabaseShape();
+  const client = await pool.connect();
+  try {
+    const room = await client.query("SELECT status FROM rooms WHERE id = $1", [roomId]);
+    if (!room.rows[0]) throw new RoomError("ROOM_NOT_FOUND", "Room not found");
+    await requireRoomMember(client, roomId, profile);
+    const session = await getLatestSession(client, roomId);
+    const events = await client.query(
+      `SELECT sequence_no, event_type, payload, created_at, user_id
+         FROM game_events
+        WHERE session_id = $1 AND sequence_no > $2
+        ORDER BY sequence_no ASC
+        LIMIT 100`,
+      [session.id, Math.max(0, Number(since) || 0)]
+    );
+    return { session: sessionPayload(session), events: events.rows.map(eventPayload), nextSequence: events.rows.at(-1)?.sequence_no || Number(since) || 0 };
+  } finally {
+    client.release();
+  }
+}
+
+function reduceGameState(previous, eventType, payload) {
+  const next = {
+    ...(previous && typeof previous === "object" ? previous : {}),
+    discovered: Array.isArray(previous?.discovered) ? [...new Set(previous.discovered)] : [],
+    answers: Array.isArray(previous?.answers) ? [...new Set(previous.answers)] : [],
+    votes: Array.isArray(previous?.votes) ? [...previous.votes] : [],
+    questionCount: Number(previous?.questionCount || 0)
+  };
+  if (eventType === "phase_changed" && gamePhases.has(payload.phase)) next.phase = payload.phase;
+  if (eventType === "evidence_found" && payload.evidenceId) next.discovered = [...new Set([...next.discovered, String(payload.evidenceId)])];
+  if (eventType === "question_asked" && payload.answerKey) {
+    next.answers = [...new Set([...next.answers, String(payload.answerKey)])];
+    next.questionCount += 1;
+  }
+  if (eventType === "vote_cast" && payload.suspectId) next.votes = [...next.votes, { suspectId: String(payload.suspectId), userId: payload.userId || null }];
+  if (eventType === "result_shown") next.phase = "result";
+  return next;
+}
+
+export async function appendDatabaseGameEvent(roomId, profile = {}, eventType, payload = {}) {
+  if (!pool) return null;
+  await waitForDatabaseShape();
+  if (!gameEventTypes.has(eventType)) throw new RoomError("INVALID_EVENT", "Unsupported game event");
+  return inTransaction(async (client) => {
+    const { user } = await requireRoomMember(client, roomId, profile);
+    const session = await getLatestSession(client, roomId, true);
+    const currentState = session.state || {};
+    const nextState = reduceGameState(currentState, eventType, payload);
+    const phase = eventType === "phase_changed" && gamePhases.has(payload.phase) ? payload.phase : eventType === "result_shown" ? "result" : session.phase;
+    const sequence = await client.query("SELECT COALESCE(MAX(sequence_no), 0) + 1 AS next FROM game_events WHERE session_id = $1", [session.id]);
+    const sequenceNo = Number(sequence.rows[0].next);
+    const event = await client.query(
+      `INSERT INTO game_events (session_id, sequence_no, event_type, payload, user_id)
+       VALUES ($1, $2, $3, $4::jsonb, $5)
+       RETURNING sequence_no, event_type, payload, created_at, user_id`,
+      [session.id, sequenceNo, eventType, JSON.stringify({ ...payload, userId: user.id }), user.id]
+    );
+    const updated = await client.query(
+      `UPDATE game_sessions SET phase = $2, state = $3::jsonb, ended_at = CASE WHEN $2 = 'result' THEN COALESCE(ended_at, now()) ELSE ended_at END WHERE id = $1
+       RETURNING id, room_id, script_id, phase, state, locale, started_at, ended_at`,
+      [session.id, phase, JSON.stringify({ ...nextState, phase })]
+    );
+    return { session: sessionPayload(updated.rows[0]), event: eventPayload(event.rows[0]) };
   });
 }

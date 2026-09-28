@@ -121,9 +121,12 @@ CREATE TABLE IF NOT EXISTS game_events (
   sequence_no INTEGER NOT NULL,
   event_type TEXT NOT NULL,
   payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+  user_id UUID REFERENCES app_users(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (session_id, sequence_no)
 );
+
+ALTER TABLE game_events ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES app_users(id) ON DELETE SET NULL;
 
 CREATE TABLE IF NOT EXISTS content_imports (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -141,4 +144,5 @@ CREATE INDEX IF NOT EXISTS room_members_user_idx ON room_members (user_id, joine
 CREATE INDEX IF NOT EXISTS sessions_user_started_idx ON game_sessions (user_id, started_at DESC);
 CREATE INDEX IF NOT EXISTS sessions_script_started_idx ON game_sessions (script_id, started_at DESC);
 CREATE INDEX IF NOT EXISTS game_events_session_created_idx ON game_events (session_id, created_at);
+CREATE INDEX IF NOT EXISTS game_events_user_idx ON game_events (user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS content_imports_imported_idx ON content_imports (imported_at DESC);
