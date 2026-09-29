@@ -31,9 +31,12 @@ import {
   listDatabaseScripts,
   listDatabaseAdminScripts,
   listDatabaseScriptAudio,
+  getDatabaseAudioAsset,
   reviewDatabaseScript,
   saveDatabaseScriptAudio,
   saveDatabaseScript,
+  setDatabaseAdminPassword,
+  verifyDatabaseAdminPassword,
   updateDatabaseScriptProduction,
   startDatabaseRoom
 } from "./db/store.mjs";
@@ -210,7 +213,7 @@ function sendJson(response, status, payload) {
   response.end(JSON.stringify(payload));
 }
 
-function requireAdminToken(request) {
+async function requireAdminToken(request) {
   const expected = String(process.env.ADMIN_REVIEW_TOKEN || "").trim();
   if (!expected) {
     const error = new Error("Admin review is not configured");
@@ -218,11 +221,73 @@ function requireAdminToken(request) {
     throw error;
   }
   const provided = String(request.headers["x-admin-token"] || "").trim();
-  if (!provided || provided !== expected) {
+  const databaseMatch = databaseEnabled ? await verifyDatabaseAdminPassword(provided) : null;
+  if (!provided || (databaseMatch !== true && (databaseMatch !== null || provided !== expected))) {
     const error = new Error("Admin token is invalid");
     error.code = "ADMIN_UNAUTHORIZED";
     throw error;
   }
+}
+
+const azureVoiceProfiles = {
+  zh: {
+    host: ["zh-CN-YunjianNeural", "zh-CN-XiaoxiaoNeural"],
+    role: ["zh-CN-XiaoxiaoNeural", "zh-CN-YunxiNeural", "zh-CN-XiaoyiNeural", "zh-CN-YunyangNeural"]
+  },
+  en: {
+    host: ["en-US-GuyNeural", "en-US-RyanMultilingualNeural"],
+    role: ["en-US-JennyNeural", "en-US-AriaNeural", "en-US-GuyNeural", "en-US-DavisNeural"]
+  }
+};
+
+function escapeXml(value) {
+  return String(value || "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&apos;" }[character]));
+}
+
+function azureVoiceFor(locale, kind, requestedVoice) {
+  const language = locale === "zh" ? "zh" : "en";
+  const voicePool = azureVoiceProfiles[language][kind === "role" ? "role" : "host"];
+  return voicePool.includes(requestedVoice) ? requestedVoice : voicePool[0];
+}
+
+async function synthesizeAzureSpeech({ text, locale, kind, voiceName }) {
+  const key = String(process.env.AZURE_SPEECH_KEY || "").trim();
+  const region = String(process.env.AZURE_SPEECH_REGION || "eastus").trim();
+  if (!key) {
+    const error = new Error("Azure Speech is not configured");
+    error.code = "TTS_NOT_CONFIGURED";
+    throw error;
+  }
+  const normalizedText = String(text || "").trim();
+  if (!normalizedText || normalizedText.length > 3000) {
+    const error = new Error("TTS text must be between 1 and 3000 characters");
+    error.code = "INVALID_TTS_TEXT";
+    throw error;
+  }
+  const language = locale === "zh" ? "zh-CN" : "en-US";
+  const selectedVoice = azureVoiceFor(locale, kind, voiceName);
+  const ssml = `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="${language}"><voice name="${selectedVoice}"><prosody rate="0%" pitch="0%">${escapeXml(normalizedText)}</prosody></voice></speak>`;
+  const response = await fetch(`https://${region}.tts.speech.microsoft.com/cognitiveservices/v1`, {
+    method: "POST",
+    headers: {
+      "Ocp-Apim-Subscription-Key": key,
+      "Content-Type": "application/ssml+xml",
+      "X-Microsoft-OutputFormat": "audio-24khz-48kbitrate-mono-mp3"
+    },
+    body: ssml
+  });
+  if (!response.ok) {
+    const error = new Error(`Azure Speech request failed (${response.status})`);
+    error.code = "TTS_PROVIDER_ERROR";
+    throw error;
+  }
+  const audioData = Buffer.from(await response.arrayBuffer());
+  if (!audioData.length || audioData.length > 5 * 1024 * 1024) {
+    const error = new Error("Azure Speech returned an invalid audio file");
+    error.code = "TTS_PROVIDER_ERROR";
+    throw error;
+  }
+  return { audioData: audioData.toString("base64"), mimeType: "audio/mpeg", voiceName: selectedVoice };
 }
 
 function adminProfile(payload = {}) {
@@ -240,7 +305,7 @@ const server = http.createServer(async (request, response) => {
       response.setHeader("access-control-allow-origin", origin);
       response.setHeader("vary", "Origin");
       response.setHeader("access-control-allow-methods", "GET,POST,DELETE,OPTIONS");
-      response.setHeader("access-control-allow-headers", "content-type");
+      response.setHeader("access-control-allow-headers", "content-type, x-admin-token");
     }
     if (request.method === "OPTIONS") {
       response.writeHead(204);
@@ -252,14 +317,14 @@ const server = http.createServer(async (request, response) => {
     }
     const adminScriptsMatch = url.pathname === "/api/admin/scripts";
     if (adminScriptsMatch && request.method === "GET") {
-      requireAdminToken(request);
+      await requireAdminToken(request);
       if (!databaseEnabled) return sendJson(response, 503, { error: "Admin review requires DATABASE_URL to be configured." });
       const scripts = await listDatabaseAdminScripts({ reviewStatus: url.searchParams.get("reviewStatus") || "all", productionStatus: url.searchParams.get("productionStatus") || "all" });
       return sendJson(response, 200, { scripts });
     }
     const adminReviewMatch = url.pathname.match(/^\/api\/admin\/scripts\/([^/]+)\/review$/);
     if (adminReviewMatch && request.method === "POST") {
-      requireAdminToken(request);
+      await requireAdminToken(request);
       if (!databaseEnabled) return sendJson(response, 503, { error: "Admin review requires DATABASE_URL to be configured." });
       const payload = JSON.parse(await readBody(request));
       const result = await reviewDatabaseScript(decodeURIComponent(adminReviewMatch[1]), adminProfile(payload), payload.decision, payload.notes);
@@ -267,7 +332,7 @@ const server = http.createServer(async (request, response) => {
     }
     const adminProductionMatch = url.pathname.match(/^\/api\/admin\/scripts\/([^/]+)\/production$/);
     if (adminProductionMatch && request.method === "POST") {
-      requireAdminToken(request);
+      await requireAdminToken(request);
       if (!databaseEnabled) return sendJson(response, 503, { error: "Production queue requires DATABASE_URL to be configured." });
       const payload = JSON.parse(await readBody(request));
       const result = await updateDatabaseScriptProduction(decodeURIComponent(adminProductionMatch[1]), adminProfile(payload), payload.status, payload.notes);
@@ -275,17 +340,50 @@ const server = http.createServer(async (request, response) => {
     }
     const adminAudioMatch = url.pathname.match(/^\/api\/admin\/scripts\/([^/]+)\/audio$/);
     if (adminAudioMatch && request.method === "POST") {
-      requireAdminToken(request);
+      await requireAdminToken(request);
       if (!databaseEnabled) return sendJson(response, 503, { error: "Audio production requires DATABASE_URL to be configured." });
       const payload = JSON.parse(await readBody(request));
       const asset = await saveDatabaseScriptAudio(decodeURIComponent(adminAudioMatch[1]), adminProfile(payload), payload.asset || payload);
       return sendJson(response, 201, { asset });
+    }
+    const adminAudioGenerateMatch = url.pathname.match(/^\/api\/admin\/scripts\/([^/]+)\/audio\/generate$/);
+    if (adminAudioGenerateMatch && request.method === "POST") {
+      await requireAdminToken(request);
+      if (!databaseEnabled) return sendJson(response, 503, { error: "Audio production requires DATABASE_URL to be configured." });
+      const payload = JSON.parse(await readBody(request));
+      const input = payload.asset || payload;
+      const generated = await synthesizeAzureSpeech({ text: input.text, locale: input.locale, kind: input.kind, voiceName: input.voiceName });
+      const asset = await saveDatabaseScriptAudio(decodeURIComponent(adminAudioGenerateMatch[1]), adminProfile(payload), {
+        ...input,
+        ...generated,
+        status: input.status === "draft" ? "draft" : "ready"
+      });
+      return sendJson(response, 201, { asset, provider: "azure-speech" });
+    }
+    if (url.pathname === "/api/admin/tts/voices" && request.method === "GET") {
+      await requireAdminToken(request);
+      return sendJson(response, 200, { voices: azureVoiceProfiles });
+    }
+    if (url.pathname === "/api/admin/password" && request.method === "POST") {
+      await requireAdminToken(request);
+      if (!databaseEnabled) return sendJson(response, 503, { error: "Admin password changes require DATABASE_URL to be configured." });
+      const payload = JSON.parse(await readBody(request));
+      const result = await setDatabaseAdminPassword(payload.newPassword, adminProfile(payload));
+      return sendJson(response, 200, result);
     }
     const scriptAudioMatch = url.pathname.match(/^\/api\/scripts\/([^/]+)\/audio$/);
     if (scriptAudioMatch && request.method === "GET") {
       if (!databaseEnabled) return sendJson(response, 200, { assets: [] });
       const assets = await listDatabaseScriptAudio(decodeURIComponent(scriptAudioMatch[1]), url.searchParams.get("locale") || "");
       return sendJson(response, 200, { assets: assets || [] });
+    }
+    const audioAssetMatch = url.pathname.match(/^\/api\/audio-assets\/([^/]+)$/);
+    if (audioAssetMatch && request.method === "GET") {
+      if (!databaseEnabled) return sendJson(response, 404, { error: "Audio asset not found" });
+      const asset = await getDatabaseAudioAsset(decodeURIComponent(audioAssetMatch[1]));
+      if (!asset) return sendJson(response, 404, { error: "Audio asset not found" });
+      response.writeHead(200, { "content-type": asset.mime_type || "audio/mpeg", "cache-control": "public, max-age=31536000, immutable" });
+      return response.end(asset.audio_data);
     }
     if (url.pathname === "/api/sync" && request.method === "GET") {
       const scripts = await listScripts();
@@ -495,6 +593,10 @@ const server = http.createServer(async (request, response) => {
       INVALID_PRODUCTION_STATUS: 400,
       SCRIPT_NOT_APPROVED: 409,
       INVALID_AUDIO_ASSET: 400,
+      INVALID_ADMIN_PASSWORD: 400,
+      TTS_NOT_CONFIGURED: 503,
+      INVALID_TTS_TEXT: 400,
+      TTS_PROVIDER_ERROR: 502,
       ADMIN_NOT_CONFIGURED: 503,
       ADMIN_UNAUTHORIZED: 401
     }[error.code];

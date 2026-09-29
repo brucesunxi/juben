@@ -61,14 +61,20 @@ POST https://juben-lyart.vercel.app/api/rooms/match
 
 生产环境必须配置 Vercel 环境变量 `ADMIN_REVIEW_TOKEN`。令牌只通过 `x-admin-token` 请求头传递，不写入公开前端资源；没有配置令牌时，审核 API 会返回 503，避免后台误开放。
 
+管理员可以在 Studio 的审核面板中使用当前令牌修改密码。新密码不会明文保存，而是以哈希形式写入 Neon 的 `admin_credentials` 表；修改成功后旧密码立即失效。
+
 音频素材接口：
 
 ```text
 POST /api/admin/scripts/:id/audio
+POST /api/admin/scripts/:id/audio/generate
 GET  /api/scripts/:id/audio?locale=zh|en
+GET  /api/audio-assets/:assetId
 ```
 
-游戏页的“自动主持人与角色音频”面板会优先播放已审核的 `script_audio_assets.audio_url`；没有音频 URL 时，使用当前选择的中文或英文设备语音播放对应台词。剧本 JSON 也可以在 `content.audio` 中提供 `host`、`roles`、`sceneKey`、`text` 和 `audioUrl`。
+配置 `AZURE_SPEECH_KEY` 和 `AZURE_SPEECH_REGION=eastus` 后，制作人员可以在每个已审核剧本卡片中为主持人或具体角色选择中英文声线、填写台词并生成 Azure Neural TTS 素材。每条素材会记录 `locale`、`kind`、`speakerKey`、`sceneKey` 和 `voiceName`，因此 DM 与角色可以分别保持稳定声线；不建议让所有角色共用主持人声线。生成的音频以受保护的数据库素材保存，只有已审核且已上架的剧本才会对玩家播放。
+
+游戏页的“自动主持人与角色音频”面板会优先播放 Azure 音频素材，其次是剧本内置的 `content.audio`，最后才使用设备语音作为兜底。剧本 JSON 可以提供 `host`、`roles`、`sceneKey`、`text` 和 `audioUrl`。
 
 ## Android / iOS 打包
 

@@ -113,6 +113,16 @@ const databaseShapeReady = databaseEnabled
       UNIQUE (script_id, locale, kind, speaker_key, scene_key)
     )`))
     .then(() => pool.query("CREATE INDEX IF NOT EXISTS script_audio_assets_lookup_idx ON script_audio_assets (script_id, locale, status, sort_order)"))
+    .then(() => pool.query("ALTER TABLE script_audio_assets ADD COLUMN IF NOT EXISTS audio_data BYTEA"))
+    .then(() => pool.query("ALTER TABLE script_audio_assets ADD COLUMN IF NOT EXISTS mime_type TEXT NOT NULL DEFAULT 'audio/mpeg'"))
+    .then(() => pool.query(`CREATE TABLE IF NOT EXISTS admin_credentials (
+      id SMALLINT PRIMARY KEY CHECK (id = 1),
+      password_hash TEXT NOT NULL,
+      password_salt TEXT NOT NULL,
+      updated_by TEXT,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )`))
+    .then(() => pool.query("CREATE INDEX IF NOT EXISTS admin_credentials_updated_idx ON admin_credentials (updated_at DESC)"))
   : Promise.resolve();
 
 async function waitForDatabaseShape() {
@@ -379,14 +389,15 @@ export async function listDatabaseScriptAudio(scriptId, locale = "") {
   const localeFilter = locale === "zh" || locale === "en" ? " AND locale = $2" : "";
   if (localeFilter) values.push(locale);
   const result = await pool.query(
-    `SELECT a.id, a.locale, a.kind, a.speaker_key, a.scene_key, a.text, a.audio_url, a.voice_name, a.status, a.sort_order
+    `SELECT a.id, a.locale, a.kind, a.speaker_key, a.scene_key, a.text, a.audio_url, a.voice_name, a.status, a.sort_order,
+            CASE WHEN a.audio_data IS NULL THEN FALSE ELSE TRUE END AS has_audio_data
        FROM script_audio_assets a
        JOIN scripts s ON s.id = a.script_id
       WHERE a.script_id = $1 AND a.status = 'ready' AND s.published = TRUE AND s.review_status = 'approved' AND s.production_status = 'published'${localeFilter}
       ORDER BY a.locale, a.kind, a.sort_order, a.id`,
     values
   );
-  return result.rows.map((row) => ({ id: String(row.id), locale: row.locale, kind: row.kind, speakerKey: row.speaker_key, sceneKey: row.scene_key, text: row.text, audioUrl: row.audio_url, voiceName: row.voice_name, status: row.status, sortOrder: row.sort_order }));
+  return result.rows.map((row) => ({ id: String(row.id), locale: row.locale, kind: row.kind, speakerKey: row.speaker_key, sceneKey: row.scene_key, text: row.text, audioUrl: row.audio_url || (row.has_audio_data ? `/api/audio-assets/${row.id}` : null), voiceName: row.voice_name, status: row.status, sortOrder: row.sort_order }));
 }
 
 export async function saveDatabaseScriptAudio(scriptId, profile = {}, asset = {}) {
@@ -401,21 +412,77 @@ export async function saveDatabaseScriptAudio(scriptId, profile = {}, asset = {}
     const existing = await client.query("SELECT id FROM scripts WHERE id = $1", [scriptId]);
     if (!existing.rows[0]) throw new RoomError("SCRIPT_NOT_FOUND", "Script not found");
     const result = await client.query(
-      `INSERT INTO script_audio_assets (script_id, locale, kind, speaker_key, scene_key, text, audio_url, voice_name, status, sort_order)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      `INSERT INTO script_audio_assets (script_id, locale, kind, speaker_key, scene_key, text, audio_url, audio_data, mime_type, voice_name, status, sort_order)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
        ON CONFLICT (script_id, locale, kind, speaker_key, scene_key) DO UPDATE SET
          text = EXCLUDED.text,
          audio_url = EXCLUDED.audio_url,
+         audio_data = EXCLUDED.audio_data,
+         mime_type = EXCLUDED.mime_type,
          voice_name = EXCLUDED.voice_name,
          status = EXCLUDED.status,
          sort_order = EXCLUDED.sort_order,
          updated_at = now()
        RETURNING id, locale, kind, speaker_key, scene_key, text, audio_url, voice_name, status, sort_order`,
-      [scriptId, locale, kind, String(asset.speakerKey || "host").slice(0, 120), String(asset.sceneKey || "briefing").slice(0, 120), text, String(asset.audioUrl || "").trim().slice(0, 2000) || null, String(asset.voiceName || "").trim().slice(0, 120) || null, asset.status === "ready" ? "ready" : "draft", Number(asset.sortOrder) || 0]
+      [scriptId, locale, kind, String(asset.speakerKey || "host").slice(0, 120), String(asset.sceneKey || "briefing").slice(0, 120), text, String(asset.audioUrl || "").trim().slice(0, 2000) || null, asset.audioData ? Buffer.from(String(asset.audioData), "base64") : null, String(asset.mimeType || "audio/mpeg").trim().slice(0, 120) || "audio/mpeg", String(asset.voiceName || "").trim().slice(0, 120) || null, asset.status === "ready" ? "ready" : "draft", Number(asset.sortOrder) || 0]
     );
     await client.query("UPDATE scripts SET updated_at = now() WHERE id = $1", [scriptId]);
     return result.rows[0];
   });
+}
+
+export async function getDatabaseAudioAsset(assetId) {
+  if (!pool) return null;
+  await waitForDatabaseShape();
+  const result = await pool.query(
+    `SELECT a.audio_data, a.mime_type
+       FROM script_audio_assets a
+       JOIN scripts s ON s.id = a.script_id
+      WHERE a.id = $1 AND a.status = 'ready' AND a.audio_data IS NOT NULL
+        AND s.published = TRUE AND s.review_status = 'approved' AND s.production_status = 'published'`,
+    [assetId]
+  );
+  return result.rows[0] || null;
+}
+
+function adminPasswordHash(password, salt) {
+  return crypto.scryptSync(password, salt, 64).toString("hex");
+}
+
+function adminPasswordMatches(password, record) {
+  if (!record?.password_hash || !record?.password_salt) return false;
+  const expected = Buffer.from(record.password_hash, "hex");
+  const actual = Buffer.from(adminPasswordHash(password, record.password_salt), "hex");
+  return expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
+}
+
+export async function verifyDatabaseAdminPassword(password) {
+  if (!pool) return null;
+  await waitForDatabaseShape();
+  const result = await pool.query("SELECT password_hash, password_salt FROM admin_credentials WHERE id = 1");
+  if (!result.rows[0]) return null;
+  return adminPasswordMatches(String(password || ""), result.rows[0]);
+}
+
+export async function setDatabaseAdminPassword(password, profile = {}) {
+  if (!pool) return null;
+  const normalizedPassword = String(password || "");
+  if (normalizedPassword.length < 12 || normalizedPassword.length > 200) throw new RoomError("INVALID_ADMIN_PASSWORD", "Admin password must be between 12 and 200 characters");
+  await waitForDatabaseShape();
+  const salt = crypto.randomBytes(16).toString("hex");
+  const passwordHash = adminPasswordHash(normalizedPassword, salt);
+  const updatedBy = String(profile.displayName || profile.externalKey || "admin-reviewer").slice(0, 120);
+  await pool.query(
+    `INSERT INTO admin_credentials (id, password_hash, password_salt, updated_by)
+     VALUES (1, $1, $2, $3)
+     ON CONFLICT (id) DO UPDATE SET
+       password_hash = EXCLUDED.password_hash,
+       password_salt = EXCLUDED.password_salt,
+       updated_by = EXCLUDED.updated_by,
+       updated_at = now()`,
+    [passwordHash, salt, updatedBy]
+  );
+  return { updated: true };
 }
 
 export async function databaseHealth() {

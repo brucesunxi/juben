@@ -274,6 +274,40 @@ translations.zh.adminUnauthorized = "审核令牌无效或后台未配置";
 translations.en.adminUnauthorized = "The admin token is invalid or review access is not configured";
 translations.zh.adminNotConfigured = "生产环境尚未配置 ADMIN_REVIEW_TOKEN，请先在 Vercel 环境变量中设置。";
 translations.en.adminNotConfigured = "ADMIN_REVIEW_TOKEN is not configured in production. Add it in Vercel environment variables first.";
+translations.zh.adminPasswordTitle = "修改管理员密码";
+translations.en.adminPasswordTitle = "Change admin password";
+translations.zh.adminPasswordHelp = "先用当前令牌加载队列，再设置新的管理员密码。新密码会安全保存到数据库。";
+translations.en.adminPasswordHelp = "Load the queue with your current token, then set a new admin password. The new password is stored securely in the database.";
+translations.zh.adminNewPasswordPlaceholder = "新密码（至少 12 位）";
+translations.en.adminNewPasswordPlaceholder = "New password (at least 12 characters)";
+translations.zh.adminConfirmPasswordPlaceholder = "再次输入新密码";
+translations.en.adminConfirmPasswordPlaceholder = "Confirm the new password";
+translations.zh.adminChangePassword = "保存新密码";
+translations.en.adminChangePassword = "Save new password";
+translations.zh.adminPasswordChanged = "管理员密码已更新";
+translations.en.adminPasswordChanged = "Admin password updated";
+translations.zh.adminPasswordMismatch = "两次输入的新密码不一致";
+translations.en.adminPasswordMismatch = "The new passwords do not match";
+translations.zh.adminPasswordTooShort = "新密码至少需要 12 位";
+translations.en.adminPasswordTooShort = "The new password must be at least 12 characters";
+translations.zh.ttsNotConfigured = "Azure TTS 尚未配置";
+translations.en.ttsNotConfigured = "Azure TTS is not configured";
+translations.zh.ttsGenerated = "Azure 音频素材已生成";
+translations.en.ttsGenerated = "Azure audio asset generated";
+translations.zh.ttsPanelTitle = "Azure 声音素材";
+translations.en.ttsPanelTitle = "Azure voice assets";
+translations.zh.ttsPanelHelp = "主持人和每个角色都可以单独选择语言、声音和台词，避免角色声线混用。";
+translations.en.ttsPanelHelp = "Choose a language, voice and line for the host or each role so character voices stay consistent.";
+translations.zh.ttsGenerate = "生成音频素材";
+translations.en.ttsGenerate = "Generate voice asset";
+translations.zh.ttsSpeakerPlaceholder = "角色标识，如 he / player";
+translations.en.ttsSpeakerPlaceholder = "Speaker key, e.g. he / player";
+translations.zh.ttsTextPlaceholder = "输入主持人或角色台词";
+translations.en.ttsTextPlaceholder = "Enter the host or character line";
+translations.zh.ttsHost = "主持人";
+translations.en.ttsHost = "Host";
+translations.zh.ttsRole = "角色";
+translations.en.ttsRole = "Role";
 translations.zh.uploadSubmitted = "已提交审核，审核通过后进入待制作仓库";
 translations.en.uploadSubmitted = "Submitted for review; approval will move it into the production warehouse";
 translations.zh.reviewPending = "待审核";
@@ -480,6 +514,11 @@ function applyStaticLocale() {
   $("#adminTokenInput").placeholder = t("adminTokenPlaceholder");
   $("#adminLoadQueue").textContent = t("adminLoadQueue");
   $("#adminHelp").textContent = t("adminHelp");
+  $("#adminPasswordTitle").textContent = t("adminPasswordTitle");
+  $("#adminPasswordHelp").textContent = t("adminPasswordHelp");
+  $("#adminNewPassword").placeholder = t("adminNewPasswordPlaceholder");
+  $("#adminConfirmPassword").placeholder = t("adminConfirmPasswordPlaceholder");
+  $("#adminChangePassword").textContent = t("adminChangePassword");
   $("#reviewFilterLabel").textContent = t("reviewFilter");
   $("#productionFilterLabel").textContent = t("productionFilter");
   $("#adminRefreshQueue").textContent = t("adminRefresh");
@@ -1590,6 +1629,23 @@ function adminStatusLabel(prefix, status) {
   return t(key);
 }
 
+const ttsVoiceChoices = [
+  ["zh-CN-YunjianNeural", "中文 · 云健 / Narrator"],
+  ["zh-CN-XiaoxiaoNeural", "中文 · 晓晓 / Warm"],
+  ["zh-CN-YunxiNeural", "中文 · 云希 / Young male"],
+  ["zh-CN-XiaoyiNeural", "中文 · 晓伊 / Young female"],
+  ["zh-CN-YunyangNeural", "中文 · 云扬 / Calm male"],
+  ["en-US-GuyNeural", "English · Guy / Narrator"],
+  ["en-US-RyanMultilingualNeural", "English · Ryan / Multilingual"],
+  ["en-US-JennyNeural", "English · Jenny / Warm"],
+  ["en-US-AriaNeural", "English · Aria / Expressive"],
+  ["en-US-DavisNeural", "English · Davis / Calm male"]
+];
+
+function ttsVoiceOptions(selectedVoice = "") {
+  return ttsVoiceChoices.map(([value, label]) => `<option value="${value}"${value === selectedVoice ? " selected" : ""}>${label}</option>`).join("");
+}
+
 function renderAdminQueue() {
   const container = $("#adminQueue");
   if (!container) return;
@@ -1610,13 +1666,48 @@ function renderAdminQueue() {
     const productionActions = script.reviewStatus === "approved"
       ? `<select data-production-select="${escapeHtml(script.id)}" aria-label="${t("productionUpdate")}">${productionChoices.map((status) => `<option value="${status}"${status === productionStatus ? " selected" : ""}>${adminStatusLabel("production", status)}</option>`).join("")}</select><button class="ghost-button" type="button" data-production-update="${escapeHtml(script.id)}">${t("productionUpdate")}</button>`
       : "";
-    return `<article class="admin-queue-card"><div class="admin-queue-card-head"><div><h4>${escapeHtml(localized.title || script.title)}</h4><small>${escapeHtml(script.sourceFilename || script.id)} · ${escapeHtml(script.author || "Nocturne")}</small></div><div class="admin-queue-meta"><span class="admin-status ${reviewClass}">${adminStatusLabel("review", script.reviewStatus)}</span><span class="admin-status ${productionClass}">${adminStatusLabel("production", productionStatus)}</span></div></div><p>${escapeHtml(script.reviewNotes || workItem?.nextStep || (state.locale === "zh" ? "等待内容审核。" : "Waiting for content review."))}</p><small>${t("audioAssets", { count: audioAssetCount || 0 })}</small><div class="admin-queue-actions">${reviewActions}${rejectAction}${productionActions}</div></article>`;
+    const audioComposer = script.reviewStatus === "approved"
+      ? `<div class="admin-tts-composer"><div class="admin-tts-heading"><strong>${t("ttsPanelTitle")}</strong><small>${t("ttsPanelHelp")}</small></div><div class="admin-tts-fields"><select data-tts-locale aria-label="Audio language"><option value="zh">中文</option><option value="en">English</option></select><select data-tts-kind aria-label="Audio kind"><option value="host">${t("ttsHost")}</option><option value="role">${t("ttsRole")}</option></select><input data-tts-speaker value="host" placeholder="${t("ttsSpeakerPlaceholder")}" aria-label="Speaker key" /><select data-tts-voice aria-label="Azure voice">${ttsVoiceOptions()}</select></div><textarea data-tts-text placeholder="${t("ttsTextPlaceholder")}">${escapeHtml(localized.intro || localized.description || script.description || "")}</textarea><button class="ghost-button" type="button" data-generate-audio="${escapeHtml(script.id)}">${t("ttsGenerate")}</button></div>`
+      : "";
+    return `<article class="admin-queue-card"><div class="admin-queue-card-head"><div><h4>${escapeHtml(localized.title || script.title)}</h4><small>${escapeHtml(script.sourceFilename || script.id)} · ${escapeHtml(script.author || "Nocturne")}</small></div><div class="admin-queue-meta"><span class="admin-status ${reviewClass}">${adminStatusLabel("review", script.reviewStatus)}</span><span class="admin-status ${productionClass}">${adminStatusLabel("production", productionStatus)}</span></div></div><p>${escapeHtml(script.reviewNotes || workItem?.nextStep || (state.locale === "zh" ? "等待内容审核。" : "Waiting for content review."))}</p><small>${t("audioAssets", { count: audioAssetCount || 0 })}</small><div class="admin-queue-actions">${reviewActions}${rejectAction}${productionActions}</div>${audioComposer}</article>`;
   }).join("");
   $$('[data-admin-review]').forEach((button) => button.addEventListener("click", () => void reviewAdminScript(button.dataset.scriptId, button.dataset.adminReview)));
   $$('[data-production-update]').forEach((button) => button.addEventListener("click", () => {
     const select = $$('[data-production-select]').find((element) => element.dataset.productionSelect === button.dataset.productionUpdate);
     void updateAdminProduction(button.dataset.productionUpdate, select?.value || "queued");
   }));
+  $$('[data-generate-audio]').forEach((button) => button.addEventListener("click", () => void generateAdminAudio(button)));
+}
+
+async function generateAdminAudio(button) {
+  const card = button.closest(".admin-queue-card");
+  const scriptId = button.dataset.generateAudio;
+  if (!state.adminToken || !card || !scriptId) return loadAdminQueue();
+  const asset = {
+    locale: card.querySelector("[data-tts-locale]")?.value || "zh",
+    kind: card.querySelector("[data-tts-kind]")?.value || "host",
+    speakerKey: card.querySelector("[data-tts-speaker]")?.value || "host",
+    sceneKey: "briefing",
+    text: card.querySelector("[data-tts-text]")?.value || "",
+    voiceName: card.querySelector("[data-tts-voice]")?.value || "",
+    status: "ready"
+  };
+  button.disabled = true;
+  try {
+    const response = await apiFetch(`/api/admin/scripts/${encodeURIComponent(scriptId)}/audio/generate`, { method: "POST", headers: { "content-type": "application/json", "x-admin-token": state.adminToken }, body: JSON.stringify({ asset, displayName: "Voice Producer", locale: state.locale }) });
+    const data = await response.json();
+    if (!response.ok) {
+      const error = new Error(data.error || t("ttsNotConfigured"));
+      error.code = data.code;
+      throw error;
+    }
+    showToast(t("ttsGenerated"));
+    await loadAdminQueue();
+  } catch (error) {
+    showToast(error.code === "TTS_NOT_CONFIGURED" ? t("ttsNotConfigured") : (error.message || t("adminUnauthorized")));
+  } finally {
+    button.disabled = false;
+  }
 }
 
 async function loadAdminQueue() {
@@ -1639,6 +1730,38 @@ async function loadAdminQueue() {
     state.adminQueue = [];
     renderAdminQueue();
     showToast(error.code === "ADMIN_NOT_CONFIGURED" ? t("adminNotConfigured") : (/token|configured|admin/i.test(error.message || "") ? t("adminUnauthorized") : (error.message || t("roomOffline"))));
+  }
+}
+
+async function changeAdminPassword(event) {
+  event.preventDefault();
+  const currentToken = String($("#adminTokenInput")?.value || state.adminToken || "").trim();
+  const newPassword = String($("#adminNewPassword")?.value || "");
+  const confirmPassword = String($("#adminConfirmPassword")?.value || "");
+  if (!currentToken) return showToast(t("adminUnauthorized"));
+  if (newPassword.length < 12) return showToast(t("adminPasswordTooShort"));
+  if (newPassword !== confirmPassword) return showToast(t("adminPasswordMismatch"));
+  try {
+    const response = await apiFetch("/api/admin/password", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-admin-token": currentToken },
+      body: JSON.stringify({ newPassword, displayName: "Content Administrator", locale: state.locale })
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      const error = new Error(data.error || t("adminUnauthorized"));
+      error.code = data.code;
+      throw error;
+    }
+    state.adminToken = newPassword;
+    try { sessionStorage.setItem("nocturne-admin-token", newPassword); } catch { /* session storage may be unavailable */ }
+    $("#adminTokenInput").value = newPassword;
+    $("#adminNewPassword").value = "";
+    $("#adminConfirmPassword").value = "";
+    showToast(t("adminPasswordChanged"));
+    await loadAdminQueue();
+  } catch (error) {
+    showToast(error.code === "INVALID_ADMIN_PASSWORD" ? t("adminPasswordTooShort") : (error.message || t("adminUnauthorized")));
   }
 }
 
@@ -2606,6 +2729,7 @@ function bindEvents() {
   });
   $("#scanNow").addEventListener("click", async () => { try { await apiFetch("/api/scripts/scan", { method: "POST" }); await loadScripts(); await refreshSync(); showToast(t("scanComplete")); } catch { showToast(t("scanOffline")); } });
   $("#adminTokenForm").addEventListener("submit", (event) => { event.preventDefault(); void loadAdminQueue(); });
+  $("#adminPasswordForm").addEventListener("submit", (event) => { void changeAdminPassword(event); });
   $("#adminRefreshQueue").addEventListener("click", () => void loadAdminQueue());
   $("#reviewStatusFilter").addEventListener("change", () => { if (state.adminToken) void loadAdminQueue(); });
   $("#productionStatusFilter").addEventListener("change", () => { if (state.adminToken) void loadAdminQueue(); });

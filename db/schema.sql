@@ -69,12 +69,22 @@ CREATE TABLE IF NOT EXISTS script_audio_assets (
   scene_key TEXT NOT NULL DEFAULT 'briefing',
   text TEXT NOT NULL,
   audio_url TEXT,
+  audio_data BYTEA,
+  mime_type TEXT NOT NULL DEFAULT 'audio/mpeg',
   voice_name TEXT,
   status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'ready', 'rejected')),
   sort_order INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (script_id, locale, kind, speaker_key, scene_key)
+);
+
+CREATE TABLE IF NOT EXISTS admin_credentials (
+  id SMALLINT PRIMARY KEY CHECK (id = 1),
+  password_hash TEXT NOT NULL,
+  password_salt TEXT NOT NULL,
+  updated_by TEXT,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS script_versions (
@@ -249,6 +259,7 @@ CREATE INDEX IF NOT EXISTS scripts_published_updated_idx ON scripts (published, 
 CREATE INDEX IF NOT EXISTS scripts_review_queue_idx ON scripts (review_status, production_status, updated_at DESC);
 CREATE INDEX IF NOT EXISTS script_work_items_status_idx ON script_work_items (status, updated_at DESC);
 CREATE INDEX IF NOT EXISTS script_audio_assets_lookup_idx ON script_audio_assets (script_id, locale, status, sort_order);
+CREATE INDEX IF NOT EXISTS admin_credentials_updated_idx ON admin_credentials (updated_at DESC);
 CREATE INDEX IF NOT EXISTS rooms_status_created_idx ON rooms (status, created_at DESC);
 CREATE INDEX IF NOT EXISTS room_members_user_idx ON room_members (user_id, joined_at DESC);
 CREATE INDEX IF NOT EXISTS room_messages_room_idx ON room_messages (room_id, id);
