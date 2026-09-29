@@ -140,6 +140,103 @@ translations.zh.statsQuestions = "公开质询";
 translations.en.statsQuestions = "Questions asked";
 translations.zh.achievementsTitle = "探索成就";
 translations.en.achievementsTitle = "Explorer achievements";
+translations.zh.musicTitle = "背景音乐";
+translations.en.musicTitle = "Ambient music";
+translations.zh.musicPlay = "播放背景音乐";
+translations.en.musicPlay = "Play ambient music";
+translations.zh.musicPause = "暂停背景音乐";
+translations.en.musicPause = "Pause ambient music";
+translations.zh.musicBlocked = "请点击播放按钮后开始音乐";
+translations.en.musicBlocked = "Click play to start the music";
+
+const ambientTracks = [
+  { id: "ancient-mysteries", src: "assets/audio/ancient-mysteries.mp3", zh: "古谜回声 · 电影悬疑", en: "Ancient Mysteries · cinematic suspense" },
+  { id: "deep-as-it-gets", src: "assets/audio/deep-as-it-gets.mp3", zh: "深处低语 · 极简紧张", en: "Deep as It Gets · minimal tension" },
+  { id: "dream-ambience", src: "assets/audio/dream-ambience.mp3", zh: "梦境档案 · 调查氛围", en: "Dream Ambience · investigative mood" }
+];
+const ambientMusicState = { trackId: "ancient-mysteries", volume: 0.16, playing: false };
+let ambientAudio = null;
+
+function saveAmbientMusicPreference() {
+  try { localStorage.setItem("nocturne-ambient-music", JSON.stringify({ trackId: ambientMusicState.trackId, volume: ambientMusicState.volume })); } catch { /* storage can be unavailable in private webviews */ }
+}
+
+function readAmbientMusicPreference() {
+  try {
+    const saved = JSON.parse(localStorage.getItem("nocturne-ambient-music") || "null");
+    if (saved?.trackId && ambientTracks.some((track) => track.id === saved.trackId)) ambientMusicState.trackId = saved.trackId;
+    if (Number.isFinite(Number(saved?.volume))) ambientMusicState.volume = Math.min(0.35, Math.max(0, Number(saved.volume)));
+  } catch { /* storage can be unavailable in private webviews */ }
+}
+
+function renderAmbientMusicControls() {
+  const select = $("#musicTrackSelect");
+  const volume = $("#musicVolume");
+  const toggle = $("#musicToggle");
+  if (!select || !volume || !toggle) return;
+  select.innerHTML = ambientTracks.map((track) => `<option value="${track.id}"${track.id === ambientMusicState.trackId ? " selected" : ""}>${track[state.locale]}</option>`).join("");
+  select.setAttribute("aria-label", t("musicTitle"));
+  volume.value = String(ambientMusicState.volume);
+  volume.setAttribute("aria-label", t("musicTitle"));
+  toggle.textContent = ambientMusicState.playing ? "❚❚" : "♫";
+  toggle.setAttribute("aria-label", ambientMusicState.playing ? t("musicPause") : t("musicPlay"));
+  toggle.title = ambientMusicState.playing ? t("musicPause") : t("musicPlay");
+  $("#ambientMusic")?.classList.toggle("is-playing", ambientMusicState.playing);
+}
+
+function selectedAmbientTrack() {
+  return ambientTracks.find((track) => track.id === ambientMusicState.trackId) || ambientTracks[0];
+}
+
+async function playAmbientMusic() {
+  const track = selectedAmbientTrack();
+  if (!ambientAudio) {
+    ambientAudio = new Audio();
+    ambientAudio.loop = true;
+    ambientAudio.preload = "auto";
+    ambientAudio.addEventListener("ended", () => { ambientMusicState.playing = false; renderAmbientMusicControls(); });
+  }
+  if (!ambientAudio.src.endsWith(track.src)) {
+    ambientAudio.src = track.src;
+    ambientAudio.load();
+  }
+  ambientAudio.volume = ambientMusicState.volume;
+  try {
+    await ambientAudio.play();
+    ambientMusicState.playing = true;
+    renderAmbientMusicControls();
+  } catch {
+    ambientMusicState.playing = false;
+    renderAmbientMusicControls();
+    showToast(t("musicBlocked"));
+  }
+}
+
+function pauseAmbientMusic() {
+  ambientAudio?.pause();
+  ambientMusicState.playing = false;
+  renderAmbientMusicControls();
+}
+
+function bindAmbientMusic() {
+  readAmbientMusicPreference();
+  renderAmbientMusicControls();
+  $("#musicToggle")?.addEventListener("click", () => {
+    if (ambientMusicState.playing) pauseAmbientMusic();
+    else void playAmbientMusic();
+  });
+  $("#musicTrackSelect")?.addEventListener("change", (event) => {
+    ambientMusicState.trackId = ambientTracks.some((track) => track.id === event.target.value) ? event.target.value : ambientTracks[0].id;
+    saveAmbientMusicPreference();
+    if (ambientMusicState.playing) void playAmbientMusic();
+    else renderAmbientMusicControls();
+  });
+  $("#musicVolume")?.addEventListener("input", (event) => {
+    ambientMusicState.volume = Math.min(0.35, Math.max(0, Number(event.target.value) || 0));
+    if (ambientAudio) ambientAudio.volume = ambientMusicState.volume;
+    saveAmbientMusicPreference();
+  });
+}
 translations.zh.achievementFirstCase = "初次入案";
 translations.en.achievementFirstCase = "First case";
 translations.zh.achievementFirstCaseDesc = "完成一局案件，建立你的第一条推理记录。";
@@ -442,6 +539,7 @@ function applyStaticLocale() {
   $(".top-avatar").textContent = displayName.slice(0, 1);
   $(".top-avatar").setAttribute("aria-label", t("profileEdit"));
   $(".icon-button").title = t("notification");
+  renderAmbientMusicControls();
   renderNotifications();
   $(".legal-links a[href='privacy.html']").textContent = t("privacy");
   $(".legal-links a[href='terms.html']").textContent = t("terms");
@@ -2798,6 +2896,7 @@ function bindEvents() {
 
 ensureNotificationCenter();
 bindEvents();
+bindAmbientMusic();
 applyStaticLocale();
 ensureRoomLobby();
 renderRooms();
