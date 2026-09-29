@@ -719,7 +719,17 @@ async function loadScriptAudio(scriptId) {
     const response = await apiFetch(`/api/scripts/${encodeURIComponent(scriptId)}/audio?locale=${encodeURIComponent(state.audioLocale)}`);
     if (!response.ok) return;
     const data = await response.json();
-    state.audioAssets[scriptId] = Array.isArray(data.assets) ? data.assets : [];
+    state.audioAssets[scriptId] = Array.isArray(data.assets)
+      ? data.assets.map((asset) => ({
+        ...asset,
+        locale: asset.locale || asset.language,
+        kind: asset.kind || asset.type,
+        speakerKey: asset.speakerKey || asset.speaker_key,
+        sceneKey: asset.sceneKey || asset.scene_key,
+        audioUrl: asset.audioUrl || asset.audio_url,
+        voiceName: asset.voiceName || asset.voice_name
+      }))
+      : [];
     if (activeCase?.id === scriptId && document.querySelector("#gameView.active-view")) {
       activeCase = localizedCase(scriptId);
       renderCurrentGamePhase();
@@ -2313,7 +2323,13 @@ function contentAudioClip(kind, speakerKey, sceneKey) {
 
 async function playVoice(kind, speakerKey, sceneKey) {
   stopVoicePlayback();
-  const asset = audioAssetFor(kind, speakerKey, sceneKey);
+  let asset = audioAssetFor(kind, speakerKey, sceneKey);
+  // The audio catalog loads asynchronously when a case opens. If a player
+  // taps immediately, refresh once before deciding that the scene is missing.
+  if (!asset && activeCase?.id) {
+    await loadScriptAudio(activeCase.id);
+    asset = audioAssetFor(kind, speakerKey, sceneKey);
+  }
   const inlineClip = contentAudioClip(kind, speakerKey, sceneKey) || {};
   const audioUrl = gameAsset(asset?.audioUrl || inlineClip.audioUrl, "");
   if (!audioUrl) {
