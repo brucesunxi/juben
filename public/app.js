@@ -447,6 +447,8 @@ translations.zh.audioHost = "主持人播放";
 translations.en.audioHost = "Play host narration";
 translations.zh.audioRole = "角色播放";
 translations.en.audioRole = "Play character voice";
+translations.zh.audioRoleSelect = "角色语音";
+translations.en.audioRoleSelect = "Character voice";
 translations.zh.audioStop = "停止播放";
 translations.en.audioStop = "Stop audio";
 translations.zh.audioFallback = "Azure TTS 素材待生成";
@@ -2225,7 +2227,7 @@ function localizedCase(caseId) {
 
 let activeCase = demoCase;
 let activeCaseLocale = state.locale;
-const gameState = { phase: "briefing", discovered: new Set(), pinnedEvidence: new Set(), boardSelection: new Set(), evidenceLinks: [], selectedEvidence: null, selectedSuspect: "shen", answers: new Set(), questionCount: 0, hintsUsed: 0, votedSuspect: null, roomVotes: [], startedAt: 0, timer: null, nextAction: null, roomId: null, sessionId: null, characterKey: "player", playerUserId: null, spectator: false, isHost: false, suppressPhaseEmit: false, eventCursor: 0, roomPollTimer: null, lastEmittedPhase: null };
+const gameState = { phase: "briefing", discovered: new Set(), pinnedEvidence: new Set(), boardSelection: new Set(), evidenceLinks: [], selectedEvidence: null, selectedSuspect: "shen", voiceSuspectId: "shen", answers: new Set(), questionCount: 0, hintsUsed: 0, votedSuspect: null, roomVotes: [], startedAt: 0, timer: null, nextAction: null, roomId: null, sessionId: null, characterKey: "player", playerUserId: null, spectator: false, isHost: false, suppressPhaseEmit: false, eventCursor: 0, roomPollTimer: null, lastEmittedPhase: null };
 
 function syncActiveCaseLocale() {
   const caseId = activeCase?.id || state.selectedScript?.id || "moon-trial";
@@ -2233,6 +2235,7 @@ function syncActiveCaseLocale() {
     activeCase = localizedCase(caseId);
     activeCaseLocale = state.locale;
     if (!activeCase.suspects.some((entry) => entry.id === gameState.selectedSuspect)) gameState.selectedSuspect = activeCase.suspects[0]?.id;
+    if (!activeCase.suspects.some((entry) => entry.id === gameState.voiceSuspectId)) gameState.voiceSuspectId = gameState.selectedSuspect;
     applyCurrentRole();
     $("#gameCaseLabel").textContent = activeCase.caseLabel || "CASE 014 / MOONLIGHT";
     $("#caseNoteText").textContent = activeCase.intro;
@@ -2344,19 +2347,29 @@ async function playVoice(kind, speakerKey, sceneKey) {
 
 function renderVoiceDirector() {
   $(".voice-director-panel")?.remove();
-  const suspect = activeCase.suspects.find((entry) => entry.id === gameState.selectedSuspect) || activeCase.suspects[0];
+  const selectedSuspect = activeCase.suspects.find((entry) => entry.id === gameState.selectedSuspect) || activeCase.suspects[0];
+  const suspect = activeCase.suspects.find((entry) => entry.id === gameState.voiceSuspectId) || selectedSuspect;
   if (!suspect) return;
+  gameState.voiceSuspectId = suspect.id;
   const hasRecordedHost = Boolean(audioAssetFor("host", "host", gameState.phase) || gameAsset(contentAudioClip("host", "host", gameState.phase)?.audioUrl, ""));
   const hasRecordedRole = Boolean(audioAssetFor("role", suspect.id, gameState.phase) || gameAsset(contentAudioClip("role", suspect.id, gameState.phase)?.audioUrl, ""));
   const readyCount = Number(hasRecordedHost) + Number(hasRecordedRole);
   const fallbackLabel = `<small class="voice-source-status ${readyCount === 2 ? "ready" : "pending"}">${readyCount === 2 ? t("audioAzureReady") : `${t("audioFallback")} · ${readyCount}/2`}</small>`;
-  const panel = `<section class="voice-director-panel" aria-label="${t("audioTitle")}"><div class="voice-director-heading"><div><span class="game-kicker">${t("audioTitle")}</span>${fallbackLabel}</div><label>${t("audioLang")} <select id="voiceLocaleSelect"><option value="zh"${state.audioLocale === "zh" ? " selected" : ""}>中文</option><option value="en"${state.audioLocale === "en" ? " selected" : ""}>English</option></select></label></div><div class="voice-director-actions"><button class="ghost-button" type="button" id="playHostVoice">◉ ${t("audioHost")}</button><button class="ghost-button" type="button" id="playRoleVoice">◉ ${t("audioRole")} · ${escapeHtml(suspect.name)}</button><button class="text-button" type="button" id="stopVoice">${t("audioStop")}</button></div></section>`;
+  const roleOptions = activeCase.suspects.map((entry) => {
+    const ready = Boolean(audioAssetFor("role", entry.id, gameState.phase) || gameAsset(contentAudioClip("role", entry.id, gameState.phase)?.audioUrl, ""));
+    return `<option value="${escapeHtml(entry.id)}"${entry.id === suspect.id ? " selected" : ""}>${escapeHtml(entry.name)} · ${escapeHtml(entry.role)}${ready ? " · Azure" : " · 待生成"}</option>`;
+  }).join("");
+  const panel = `<section class="voice-director-panel" aria-label="${t("audioTitle")}"><div class="voice-director-heading"><div><span class="game-kicker">${t("audioTitle")}</span>${fallbackLabel}</div><label>${t("audioLang")} <select id="voiceLocaleSelect"><option value="zh"${state.audioLocale === "zh" ? " selected" : ""}>中文</option><option value="en"${state.audioLocale === "en" ? " selected" : ""}>English</option></select></label></div><div class="voice-director-role"><label>${t("audioRoleSelect")} <select id="voiceRoleSelect">${roleOptions}</select></label></div><div class="voice-director-actions"><button class="ghost-button" type="button" id="playHostVoice">◉ ${t("audioHost")}</button><button class="ghost-button" type="button" id="playRoleVoice">◉ ${t("audioRole")} · ${escapeHtml(suspect.name)}</button><button class="text-button" type="button" id="stopVoice">${t("audioStop")}</button></div></section>`;
   // Keep playback controls above the case file so players can start narration
   // before scrolling through evidence, questions or the final accusation.
   $("#gameContent")?.insertAdjacentHTML("beforebegin", panel);
   $("#playHostVoice")?.addEventListener("click", () => void playVoice("host", "host", gameState.phase));
   $("#playRoleVoice")?.addEventListener("click", () => void playVoice("role", suspect.id, gameState.phase));
   $("#stopVoice")?.addEventListener("click", stopVoicePlayback);
+  $("#voiceRoleSelect")?.addEventListener("change", (event) => {
+    gameState.voiceSuspectId = event.target.value;
+    renderVoiceDirector();
+  });
   $("#voiceLocaleSelect")?.addEventListener("change", (event) => {
     state.audioLocale = event.target.value === "zh" ? "zh" : "en";
     void loadScriptAudio(activeCase.id);
@@ -2750,7 +2763,7 @@ function renderResult() {
   $("#gameTitle").textContent = t("gameTitleResult");
   const awardText = completion.spectator ? t("resultAwardObserver") : completion.solved ? t("resultAwardSolved") : completion.first ? t("resultAwardFirst") : t("resultAward");
   $("#gameContent").innerHTML = `<div class="result-card"><div class="result-scene"><img src="${activeCase.sceneImage}" alt="${activeCase.title} ${t("sceneAlt")}" /></div><div class="result-symbol">✓</div><h2>${activeCase.resultTitle}</h2><p>${activeCase.resultText}</p>${renderRoomVoteSummary()}<section class="result-award"><span class="game-kicker">${t("resultAward")}</span><strong>${awardText}</strong><small>${t("profileLevel", { level: playerLevel() })} · ${t("statsSolved")}: ${state.stats.solved}</small></section><div class="timeline">${activeCase.timeline.map(([time, text]) => `<div class="timeline-item"><b>${time}</b><span>${text}</span></div>`).join("")}</div></div>`;
-  gameAction(null, `${t("closed")} · ${activeCase.badge}`, gameState.roomId ? null : t("replay"), () => { gameState.discovered = new Set(); gameState.pinnedEvidence = new Set(); gameState.boardSelection = new Set(); gameState.evidenceLinks = []; gameState.selectedEvidence = null; gameState.answers = new Set(); gameState.questionCount = 0; gameState.hintsUsed = 0; gameState.votedSuspect = null; gameState.selectedSuspect = activeCase.suspects[0].id; renderBriefing(); });
+  gameAction(null, `${t("closed")} · ${activeCase.badge}`, gameState.roomId ? null : t("replay"), () => { gameState.discovered = new Set(); gameState.pinnedEvidence = new Set(); gameState.boardSelection = new Set(); gameState.evidenceLinks = []; gameState.selectedEvidence = null; gameState.answers = new Set(); gameState.questionCount = 0; gameState.hintsUsed = 0; gameState.votedSuspect = null; gameState.selectedSuspect = activeCase.suspects[0].id; gameState.voiceSuspectId = gameState.selectedSuspect; renderBriefing(); });
 }
 
 function startGame(options = {}) {
@@ -2779,6 +2792,7 @@ function startGame(options = {}) {
   gameState.votedSuspect = null;
   gameState.roomVotes = [];
   gameState.selectedSuspect = activeCase.suspects[0].id;
+  gameState.voiceSuspectId = gameState.selectedSuspect;
   gameState.characterKey = options.characterKey || "player";
   $("#gameCaseLabel").textContent = activeCase.caseLabel || "CASE 014 / MOONLIGHT";
   applyCurrentRole();
