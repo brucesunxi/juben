@@ -2742,8 +2742,6 @@ function bindEvents() {
       void syncRoomSession();
     } else if (state.activeRoom) {
       void refreshActiveRoomState();
-    } else {
-      void restoreActiveRoom();
     }
   });
   window.addEventListener("pageshow", (event) => {
@@ -2751,8 +2749,6 @@ function bindEvents() {
     if (typeof gameState !== "undefined" && gameState.roomId) {
       void refreshActiveRoomState();
       void syncRoomSession();
-    } else {
-      void restoreActiveRoom();
     }
   });
   $("#chooseFile").addEventListener("click", () => $("#fileInput").click());
@@ -2781,5 +2777,5 @@ loadRooms();
 loadLeaderboard();
 if (state.adminToken) void loadAdminQueue();
 detectLocale();
-void handleRoomInvite().then((handled) => { if (!handled) return restoreActiveRoom(); });
+void handleRoomInvite();
 setInterval(refreshSync, 4500);
