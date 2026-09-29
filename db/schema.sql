@@ -28,9 +28,53 @@ CREATE TABLE IF NOT EXISTS scripts (
   content JSONB NOT NULL DEFAULT '{}'::jsonb,
   i18n JSONB NOT NULL DEFAULT '{}'::jsonb,
   source_filename TEXT,
+  review_status TEXT NOT NULL DEFAULT 'approved' CHECK (review_status IN ('pending', 'approved', 'rejected')),
+  production_status TEXT NOT NULL DEFAULT 'published' CHECK (production_status IN ('not_started', 'queued', 'writing', 'audio', 'qa', 'ready', 'published', 'blocked')),
+  submitted_by UUID REFERENCES app_users(id) ON DELETE SET NULL,
+  reviewed_by UUID REFERENCES app_users(id) ON DELETE SET NULL,
+  review_notes TEXT,
+  reviewed_at TIMESTAMPTZ,
   published BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE scripts ADD COLUMN IF NOT EXISTS review_status TEXT NOT NULL DEFAULT 'approved';
+ALTER TABLE scripts ADD COLUMN IF NOT EXISTS production_status TEXT NOT NULL DEFAULT 'published';
+ALTER TABLE scripts ADD COLUMN IF NOT EXISTS submitted_by UUID REFERENCES app_users(id) ON DELETE SET NULL;
+ALTER TABLE scripts ADD COLUMN IF NOT EXISTS reviewed_by UUID REFERENCES app_users(id) ON DELETE SET NULL;
+ALTER TABLE scripts ADD COLUMN IF NOT EXISTS review_notes TEXT;
+ALTER TABLE scripts ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
+
+CREATE TABLE IF NOT EXISTS script_work_items (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  script_id TEXT NOT NULL UNIQUE REFERENCES scripts(id) ON DELETE CASCADE,
+  status TEXT NOT NULL DEFAULT 'queued' CHECK (status IN ('queued', 'writing', 'audio', 'qa', 'ready', 'published', 'blocked')),
+  next_step TEXT,
+  brief_zh TEXT,
+  brief_en TEXT,
+  notes TEXT,
+  artifacts JSONB NOT NULL DEFAULT '{}'::jsonb,
+  updated_by UUID REFERENCES app_users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS script_audio_assets (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  script_id TEXT NOT NULL REFERENCES scripts(id) ON DELETE CASCADE,
+  locale TEXT NOT NULL CHECK (locale IN ('zh', 'en')),
+  kind TEXT NOT NULL CHECK (kind IN ('host', 'role')),
+  speaker_key TEXT NOT NULL DEFAULT 'host',
+  scene_key TEXT NOT NULL DEFAULT 'briefing',
+  text TEXT NOT NULL,
+  audio_url TEXT,
+  voice_name TEXT,
+  status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'ready', 'rejected')),
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (script_id, locale, kind, speaker_key, scene_key)
 );
 
 CREATE TABLE IF NOT EXISTS script_versions (
@@ -202,6 +246,9 @@ CREATE TABLE IF NOT EXISTS content_imports (
 );
 
 CREATE INDEX IF NOT EXISTS scripts_published_updated_idx ON scripts (published, updated_at DESC);
+CREATE INDEX IF NOT EXISTS scripts_review_queue_idx ON scripts (review_status, production_status, updated_at DESC);
+CREATE INDEX IF NOT EXISTS script_work_items_status_idx ON script_work_items (status, updated_at DESC);
+CREATE INDEX IF NOT EXISTS script_audio_assets_lookup_idx ON script_audio_assets (script_id, locale, status, sort_order);
 CREATE INDEX IF NOT EXISTS rooms_status_created_idx ON rooms (status, created_at DESC);
 CREATE INDEX IF NOT EXISTS room_members_user_idx ON room_members (user_id, joined_at DESC);
 CREATE INDEX IF NOT EXISTS room_messages_room_idx ON room_messages (room_id, id);

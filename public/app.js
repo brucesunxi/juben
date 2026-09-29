@@ -7,6 +7,10 @@ function readLocalePreference() {
   }
 }
 
+function readAdminToken() {
+  try { return sessionStorage.getItem("nocturne-admin-token") || ""; } catch { return ""; }
+}
+
 function browserFallbackLocale() {
   return /^zh(?:-|$)/i.test(navigator.language || "") ? "zh" : "en";
 }
@@ -82,7 +86,7 @@ function clearActiveRoom() {
 }
 
 const savedLocale = readLocalePreference();
-const state = { scripts: [], archive: readArchive(), favorites: readFavorites(), notifications: readNotifications(), stats: readPlayerStats(), leaderboard: [], profileName: readProfileName(), activeFilter: "all", searchQuery: "", selectedScript: null, locale: savedLocale || browserFallbackLocale(), localeSource: savedLocale ? "manual" : "auto", liveRooms: [], activeRoom: null, roomMember: false, roomPollTimer: null, roomChatTimer: null, roomVoiceTimer: null, roomChatRoomId: null, roomChatCursor: "0", roomMessages: [], blockedUsers: new Set(), voiceRoomId: null, voiceCursor: "0", voiceSelfId: null, voiceJoined: false, voiceMuted: false, voiceStream: null, voicePeers: new Map(), voicePendingCandidates: new Map() };
+const state = { scripts: [], archive: readArchive(), favorites: readFavorites(), notifications: readNotifications(), stats: readPlayerStats(), leaderboard: [], profileName: readProfileName(), adminToken: readAdminToken(), adminQueue: [], activeFilter: "all", searchQuery: "", selectedScript: null, locale: savedLocale || browserFallbackLocale(), audioLocale: savedLocale || browserFallbackLocale(), localeSource: savedLocale ? "manual" : "auto", liveRooms: [], activeRoom: null, roomMember: false, roomPollTimer: null, roomChatTimer: null, roomVoiceTimer: null, roomChatRoomId: null, roomChatCursor: "0", roomMessages: [], blockedUsers: new Set(), voiceRoomId: null, voiceCursor: "0", voiceSelfId: null, voiceJoined: false, voiceMuted: false, voiceStream: null, voicePeers: new Map(), voicePendingCandidates: new Map(), audioAssets: {} };
 const API_BASE = String(window.NOCTURNE_API_BASE || "").replace(/\/$/, "");
 const apiFetch = (path, options) => fetch(`${API_BASE}${path}`, options);
 const translations = {
@@ -248,6 +252,76 @@ translations.zh.leaderboardQuestions = "质询次数";
 translations.en.leaderboardQuestions = "Questions";
 translations.zh.leaderboardLocal = "本设备记录";
 translations.en.leaderboardLocal = "This device";
+translations.zh.reviewKicker = "审核 / 制作队列";
+translations.en.reviewKicker = "REVIEW / PRODUCTION QUEUE";
+translations.zh.reviewTitle = "审核与制作仓库";
+translations.en.reviewTitle = "Review & production warehouse";
+translations.zh.adminTokenPlaceholder = "后台审核令牌";
+translations.en.adminTokenPlaceholder = "Admin review token";
+translations.zh.adminLoadQueue = "加载队列";
+translations.en.adminLoadQueue = "Load queue";
+translations.zh.adminHelp = "上传内容不会直接公开。审核通过后会进入待制作仓库，再按剧情、音频、质检和上架逐步推进。";
+translations.en.adminHelp = "Uploads never become public immediately. Approved scripts enter the production warehouse and move through writing, audio, QA and publishing.";
+translations.zh.reviewFilter = "审核状态";
+translations.en.reviewFilter = "Review status";
+translations.zh.productionFilter = "制作状态";
+translations.en.productionFilter = "Production status";
+translations.zh.adminRefresh = "刷新队列 ↗";
+translations.en.adminRefresh = "Refresh queue ↗";
+translations.zh.adminQueueEmpty = "输入后台令牌后加载审核队列。";
+translations.en.adminQueueEmpty = "Enter an admin token to load the review queue.";
+translations.zh.adminUnauthorized = "审核令牌无效或后台未配置";
+translations.en.adminUnauthorized = "The admin token is invalid or review access is not configured";
+translations.zh.uploadSubmitted = "已提交审核，审核通过后进入待制作仓库";
+translations.en.uploadSubmitted = "Submitted for review; approval will move it into the production warehouse";
+translations.zh.reviewPending = "待审核";
+translations.en.reviewPending = "Pending review";
+translations.zh.reviewApproved = "已通过";
+translations.en.reviewApproved = "Approved";
+translations.zh.reviewRejected = "已驳回";
+translations.en.reviewRejected = "Rejected";
+translations.zh.productionNotStarted = "未开始";
+translations.en.productionNotStarted = "Not started";
+translations.zh.productionQueued = "待制作";
+translations.en.productionQueued = "Queued";
+translations.zh.productionWriting = "剧情制作";
+translations.en.productionWriting = "Writing";
+translations.zh.productionAudio = "音频制作";
+translations.en.productionAudio = "Audio";
+translations.zh.productionQa = "质检";
+translations.en.productionQa = "QA";
+translations.zh.productionReady = "待上架";
+translations.en.productionReady = "Ready to publish";
+translations.zh.productionPublished = "已上架";
+translations.en.productionPublished = "Published";
+translations.zh.productionBlocked = "已阻塞";
+translations.en.productionBlocked = "Blocked";
+translations.zh.reviewApprove = "通过并进入待制作";
+translations.en.reviewApprove = "Approve & queue";
+translations.zh.reviewReject = "驳回";
+translations.en.reviewReject = "Reject";
+translations.zh.reviewNotesPrompt = "填写审核备注（可选）";
+translations.en.reviewNotesPrompt = "Review notes (optional)";
+translations.zh.productionNext = "下一步";
+translations.en.productionNext = "Next step";
+translations.zh.productionUpdate = "更新制作状态";
+translations.en.productionUpdate = "Update production";
+translations.zh.audioAssets = "音频素材 {count} 条";
+translations.en.audioAssets = "{count} audio asset(s)";
+translations.zh.audioTitle = "自动主持人与角色音频";
+translations.en.audioTitle = "Auto host & character audio";
+translations.zh.audioHost = "主持人播放";
+translations.en.audioHost = "Play host narration";
+translations.zh.audioRole = "角色播放";
+translations.en.audioRole = "Play character voice";
+translations.zh.audioStop = "停止播放";
+translations.en.audioStop = "Stop audio";
+translations.zh.audioFallback = "当前没有录音，将使用设备语音播放";
+translations.en.audioFallback = "No recording is attached; device speech will be used";
+translations.zh.audioUnavailable = "当前设备不支持语音播放";
+translations.en.audioUnavailable = "Speech playback is not available on this device";
+translations.zh.audioLang = "播放语言";
+translations.en.audioLang = "Playback language";
 
 function t(key, vars = {}) {
   let value = translations[state.locale]?.[key] ?? translations.zh[key] ?? key;
@@ -399,6 +473,19 @@ function applyStaticLocale() {
   $(".sync-row small").textContent = t("incomingFolder");
   $("#syncTime").textContent = t("waiting");
   $("#scanNow").textContent = t("scanNow");
+  $("#reviewKicker").textContent = t("reviewKicker");
+  $("#reviewTitle").textContent = t("reviewTitle");
+  $("#adminTokenInput").placeholder = t("adminTokenPlaceholder");
+  $("#adminLoadQueue").textContent = t("adminLoadQueue");
+  $("#adminHelp").textContent = t("adminHelp");
+  $("#reviewFilterLabel").textContent = t("reviewFilter");
+  $("#productionFilterLabel").textContent = t("productionFilter");
+  $("#adminRefreshQueue").textContent = t("adminRefresh");
+  const reviewOptions = { all: state.locale === "zh" ? "全部" : "All", pending: t("reviewPending"), approved: t("reviewApproved"), rejected: t("reviewRejected") };
+  $$("#reviewStatusFilter option").forEach((option) => { option.textContent = reviewOptions[option.value] || option.textContent; });
+  const productionOptions = { all: state.locale === "zh" ? "全部" : "All", queued: t("productionQueued"), writing: t("productionWriting"), audio: t("productionAudio"), qa: t("productionQa"), ready: t("productionReady"), published: t("productionPublished") };
+  $$("#productionStatusFilter option").forEach((option) => { option.textContent = productionOptions[option.value] || option.textContent; });
+  $("#adminTokenInput").value = state.adminToken;
   $(".schema-tip strong").textContent = t("schemaTitle");
   $(".schema-tip p").textContent = t("schemaDescription");
   $(".schema-tip code").textContent = `{ "title": "${t("schemaExampleTitle")}", "players": 6 }`;
@@ -417,11 +504,13 @@ function applyStaticLocale() {
   $$("[data-locale]").forEach((button) => button.classList.toggle("active", button.dataset.locale === state.locale));
   const activeView = $(".view.active-view")?.id.replace(/View$/, "") || $(".sidebar .nav-item.active")?.dataset.view || "discover";
   $("#viewLabel").textContent = activeView === "game" ? t("gamePlaying") : t(activeView);
+  renderAdminQueue();
 }
 
 function setLocale(locale, { persist = true, source = "manual" } = {}) {
   if (locale !== "zh" && locale !== "en") return;
   state.locale = locale;
+  state.audioLocale = locale;
   state.localeSource = source;
   const toast = $("#toast");
   toast?.classList.remove("show");
@@ -477,6 +566,20 @@ async function loadScripts() {
   }
   renderScripts();
   renderActivity();
+}
+
+async function loadScriptAudio(scriptId) {
+  if (!scriptId) return;
+  try {
+    const response = await apiFetch(`/api/scripts/${encodeURIComponent(scriptId)}/audio?locale=${encodeURIComponent(state.audioLocale)}`);
+    if (!response.ok) return;
+    const data = await response.json();
+    state.audioAssets[scriptId] = Array.isArray(data.assets) ? data.assets : [];
+    if (activeCase?.id === scriptId && document.querySelector("#gameView.active-view")) {
+      activeCase = localizedCase(scriptId);
+      renderCurrentGamePhase();
+    }
+  } catch { /* recorded audio is optional; device speech remains available */ }
 }
 
 function currentUserProfile() {
@@ -1480,6 +1583,84 @@ function renderActivity(data = {}) {
   $("#activityFeed").innerHTML = rows.map(([title, detail]) => `<div class="activity-item"><span class="activity-dot"></span><div><strong>${title}</strong><small>${detail}</small></div></div>`).join("");
 }
 
+function adminStatusLabel(prefix, status) {
+  const key = `${prefix}${String(status || "").replace(/(^|_)([a-z])/g, (_, separator, letter) => letter.toUpperCase())}`;
+  return t(key);
+}
+
+function renderAdminQueue() {
+  const container = $("#adminQueue");
+  if (!container) return;
+  if (!state.adminQueue.length) {
+    container.innerHTML = `<div class="admin-queue-empty" id="adminQueueEmpty">${state.adminToken ? t("adminQueueEmpty") : t("adminQueueEmpty")}</div>`;
+    return;
+  }
+  const productionChoices = ["queued", "writing", "audio", "qa", "ready", "published", "blocked"];
+  container.innerHTML = state.adminQueue.map(({ script, workItem, audioAssetCount }) => {
+    const localized = localizedScript(script);
+    const reviewClass = `review-${script.reviewStatus || "pending"}`;
+    const productionStatus = workItem?.status || script.productionStatus || "not_started";
+    const productionClass = `production-${productionStatus}`;
+    const reviewActions = script.reviewStatus === "pending" || script.reviewStatus === "rejected"
+      ? `<button class="primary-button" type="button" data-admin-review="approved" data-script-id="${escapeHtml(script.id)}">${t("reviewApprove")}</button>`
+      : "";
+    const rejectAction = script.reviewStatus === "pending" ? `<button class="ghost-button" type="button" data-admin-review="rejected" data-script-id="${escapeHtml(script.id)}">${t("reviewReject")}</button>` : "";
+    const productionActions = script.reviewStatus === "approved"
+      ? `<select data-production-select="${escapeHtml(script.id)}" aria-label="${t("productionUpdate")}">${productionChoices.map((status) => `<option value="${status}"${status === productionStatus ? " selected" : ""}>${adminStatusLabel("production", status)}</option>`).join("")}</select><button class="ghost-button" type="button" data-production-update="${escapeHtml(script.id)}">${t("productionUpdate")}</button>`
+      : "";
+    return `<article class="admin-queue-card"><div class="admin-queue-card-head"><div><h4>${escapeHtml(localized.title || script.title)}</h4><small>${escapeHtml(script.sourceFilename || script.id)} · ${escapeHtml(script.author || "Nocturne")}</small></div><div class="admin-queue-meta"><span class="admin-status ${reviewClass}">${adminStatusLabel("review", script.reviewStatus)}</span><span class="admin-status ${productionClass}">${adminStatusLabel("production", productionStatus)}</span></div></div><p>${escapeHtml(script.reviewNotes || workItem?.nextStep || (state.locale === "zh" ? "等待内容审核。" : "Waiting for content review."))}</p><small>${t("audioAssets", { count: audioAssetCount || 0 })}</small><div class="admin-queue-actions">${reviewActions}${rejectAction}${productionActions}</div></article>`;
+  }).join("");
+  $$('[data-admin-review]').forEach((button) => button.addEventListener("click", () => void reviewAdminScript(button.dataset.scriptId, button.dataset.adminReview)));
+  $$('[data-production-update]').forEach((button) => button.addEventListener("click", () => {
+    const select = $$('[data-production-select]').find((element) => element.dataset.productionSelect === button.dataset.productionUpdate);
+    void updateAdminProduction(button.dataset.productionUpdate, select?.value || "queued");
+  }));
+}
+
+async function loadAdminQueue() {
+  const token = String($("#adminTokenInput")?.value || state.adminToken || "").trim();
+  state.adminToken = token;
+  if (!token) { state.adminQueue = []; renderAdminQueue(); return; }
+  try {
+    const params = new URLSearchParams({ reviewStatus: $("#reviewStatusFilter")?.value || "all", productionStatus: $("#productionStatusFilter")?.value || "all" });
+    const response = await apiFetch(`/api/admin/scripts?${params.toString()}`, { headers: { "x-admin-token": token } });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "admin queue unavailable");
+    try { sessionStorage.setItem("nocturne-admin-token", token); } catch { /* session storage may be unavailable */ }
+    state.adminQueue = Array.isArray(data.scripts) ? data.scripts : [];
+    renderAdminQueue();
+  } catch (error) {
+    state.adminQueue = [];
+    renderAdminQueue();
+    showToast(/token|configured|admin/i.test(error.message || "") ? t("adminUnauthorized") : (error.message || t("roomOffline")));
+  }
+}
+
+async function reviewAdminScript(scriptId, decision) {
+  if (!state.adminToken || !scriptId) return loadAdminQueue();
+  const notes = window.prompt(t("reviewNotesPrompt"), "") ?? "";
+  try {
+    const response = await apiFetch(`/api/admin/scripts/${encodeURIComponent(scriptId)}/review`, { method: "POST", headers: { "content-type": "application/json", "x-admin-token": state.adminToken }, body: JSON.stringify({ decision, notes, displayName: "Content Reviewer", locale: state.locale }) });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "review failed");
+    showToast(decision === "approved" ? t("reviewApproved") : t("reviewRejected"));
+    await loadAdminQueue();
+    await loadScripts();
+  } catch (error) { showToast(error.message || t("adminUnauthorized")); }
+}
+
+async function updateAdminProduction(scriptId, status) {
+  if (!state.adminToken || !scriptId) return loadAdminQueue();
+  try {
+    const response = await apiFetch(`/api/admin/scripts/${encodeURIComponent(scriptId)}/production`, { method: "POST", headers: { "content-type": "application/json", "x-admin-token": state.adminToken }, body: JSON.stringify({ status, displayName: "Content Producer", locale: state.locale }) });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "production update failed");
+    showToast(adminStatusLabel("production", status));
+    await loadAdminQueue();
+    await loadScripts();
+  } catch (error) { showToast(error.message || t("adminUnauthorized")); }
+}
+
 async function importFile(file) {
   const content = await file.text();
   let script;
@@ -1488,10 +1669,10 @@ async function importFile(file) {
     const title = (content.match(/^#\s+(.+)$/m) || [null, file.name.replace(/\.md$/i, "")])[1];
     script = { title, content: { markdown: content }, description: content.split(/\r?\n/).filter(Boolean).slice(1, 4).join(" ") };
   }
-  const response = await apiFetch("/api/scripts/import", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ filename: file.name, script }) });
+  const response = await apiFetch("/api/scripts/import", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ filename: file.name, script, user: currentUserProfile() }) });
   if (!response.ok) throw new Error("导入失败");
-  showToast(state.locale === "zh" ? `${script.title || file.name} 已自动入库` : `${script.title || file.name} was added to the library`);
-  await loadScripts();
+  showToast(t("uploadSubmitted"));
+  await loadAdminQueue();
   await refreshSync();
 }
 
@@ -1764,6 +1945,7 @@ function buildImportedCase(script) {
     voteCopy: contentText(content.voteCopy, state.locale === "zh" ? "正确答案必须能够解释现场留下的关键证据。" : "The right answer must explain the key evidence left at the scene."),
     resultTitle: contentText(content.resultTitle, state.locale === "zh" ? "真相浮出水面" : "The truth comes to light"),
     resultText: contentText(content.resultText, state.locale === "zh" ? `最终证据指向${solutionSuspect.name}。重新检查时间线，看看真相如何被隐藏。` : `The final evidence points to ${solutionSuspect.name}. Revisit the timeline to see how the truth was hidden.`),
+    audio: content.audio && typeof content.audio === "object" ? content.audio : {},
     solution: solutionSuspect.id,
     solutionName: solutionSuspect.name,
     suspects,
@@ -1780,7 +1962,7 @@ function localizedCase(caseId) {
   const evidence = override.evidence
     ? override.evidence.map((item) => ({ ...baseEvidence.get(item.id), ...item }))
     : base.evidence;
-  return { ...base, ...override, id: caseId, suspects: override.suspects || base.suspects, evidence, timeline: override.timeline || base.timeline };
+  return { ...base, ...override, id: caseId, audioAssets: state.audioAssets[caseId] || [], suspects: override.suspects || base.suspects, evidence, timeline: override.timeline || base.timeline };
 }
 
 let activeCase = demoCase;
@@ -1852,6 +2034,96 @@ function currentRoleDossier() {
   };
 }
 
+let currentVoiceAudio = null;
+
+function stopVoicePlayback() {
+  if (currentVoiceAudio) {
+    currentVoiceAudio.pause();
+    currentVoiceAudio.src = "";
+    currentVoiceAudio = null;
+  }
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+}
+
+function audioAssetFor(kind, speakerKey, sceneKey) {
+  const assets = Array.isArray(activeCase?.audioAssets) ? activeCase.audioAssets : [];
+  return assets.find((asset) => asset.locale === state.audioLocale && asset.kind === kind && asset.speakerKey === speakerKey && asset.sceneKey === sceneKey)
+    || assets.find((asset) => asset.locale === state.audioLocale && asset.kind === kind && asset.speakerKey === speakerKey)
+    || null;
+}
+
+function contentAudioClip(kind, speakerKey, sceneKey) {
+  const audio = activeCase?.audio && typeof activeCase.audio === "object" ? activeCase.audio : {};
+  const branch = kind === "host" ? (audio.host || audio.narrator || {}) : (audio.roles?.[speakerKey] || audio[speakerKey] || {});
+  const localized = branch?.[state.audioLocale] || branch?.[state.locale] || branch;
+  if (typeof localized === "string") return { text: localized };
+  if (!localized || typeof localized !== "object") return null;
+  const clip = localized[sceneKey] || localized.default || localized;
+  return typeof clip === "string" ? { text: clip } : clip;
+}
+
+async function playVoice(kind, speakerKey, sceneKey, fallbackText) {
+  stopVoicePlayback();
+  const asset = audioAssetFor(kind, speakerKey, sceneKey);
+  const inlineClip = contentAudioClip(kind, speakerKey, sceneKey) || {};
+  const text = String(asset?.text || inlineClip.text || fallbackText || "").trim();
+  const audioUrl = gameAsset(asset?.audioUrl || inlineClip.audioUrl, "");
+  if (audioUrl) {
+    currentVoiceAudio = new Audio(audioUrl);
+    currentVoiceAudio.addEventListener("ended", () => { currentVoiceAudio = null; });
+    try { await currentVoiceAudio.play(); } catch { showToast(t("audioUnavailable")); }
+    return;
+  }
+  if (!text || !window.speechSynthesis || typeof window.SpeechSynthesisUtterance !== "function") {
+    showToast(t("audioUnavailable"));
+    return;
+  }
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = state.audioLocale === "zh" ? "zh-CN" : "en-US";
+  utterance.rate = 0.94;
+  utterance.pitch = kind === "host" ? 0.96 : 1.02;
+  const voiceName = asset?.voiceName || inlineClip.voiceName;
+  const voice = voiceName ? window.speechSynthesis.getVoices().find((candidate) => candidate.name === voiceName) : null;
+  if (voice) utterance.voice = voice;
+  window.speechSynthesis.speak(utterance);
+}
+
+function hostNarrationText() {
+  return ({
+    briefing: activeCase.intro,
+    evidence: `${activeCase.evidenceLead} ${activeCase.evidenceCopy}`,
+    question: activeCase.questionCopy,
+    vote: `${activeCase.voteLead} ${activeCase.voteCopy}`,
+    result: `${activeCase.resultTitle} ${activeCase.resultText}`
+  }[gameState.phase] || activeCase.intro);
+}
+
+function roleNarrationText() {
+  const suspect = activeCase.suspects.find((entry) => entry.id === gameState.selectedSuspect) || activeCase.suspects[0];
+  if (!suspect) return currentRoleDossier().clue;
+  const answered = gameState.answers.has(suspect.id);
+  return answered ? suspect.answers.time : suspect.line;
+}
+
+function renderVoiceDirector() {
+  $(".voice-director-panel")?.remove();
+  const suspect = activeCase.suspects.find((entry) => entry.id === gameState.selectedSuspect) || activeCase.suspects[0];
+  if (!suspect) return;
+  const hasRecordedHost = Boolean(audioAssetFor("host", "host", gameState.phase) || contentAudioClip("host", "host", gameState.phase));
+  const hasRecordedRole = Boolean(audioAssetFor("role", suspect.id, gameState.phase) || contentAudioClip("role", suspect.id, gameState.phase));
+  const fallbackLabel = hasRecordedHost || hasRecordedRole ? "" : `<small>${t("audioFallback")}</small>`;
+  const panel = `<section class="voice-director-panel" aria-label="${t("audioTitle")}"><div class="voice-director-heading"><div><span class="game-kicker">${t("audioTitle")}</span>${fallbackLabel}</div><label>${t("audioLang")} <select id="voiceLocaleSelect"><option value="zh"${state.audioLocale === "zh" ? " selected" : ""}>中文</option><option value="en"${state.audioLocale === "en" ? " selected" : ""}>English</option></select></label></div><div class="voice-director-actions"><button class="ghost-button" type="button" id="playHostVoice">◉ ${t("audioHost")}</button><button class="ghost-button" type="button" id="playRoleVoice">◉ ${t("audioRole")} · ${escapeHtml(suspect.name)}</button><button class="text-button" type="button" id="stopVoice">${t("audioStop")}</button></div></section>`;
+  $("#gameActionBar")?.insertAdjacentHTML("afterend", panel);
+  $("#playHostVoice")?.addEventListener("click", () => void playVoice("host", "host", gameState.phase, hostNarrationText()));
+  $("#playRoleVoice")?.addEventListener("click", () => void playVoice("role", suspect.id, gameState.phase, roleNarrationText()));
+  $("#stopVoice")?.addEventListener("click", stopVoicePlayback);
+  $("#voiceLocaleSelect")?.addEventListener("change", (event) => {
+    state.audioLocale = event.target.value === "zh" ? "zh" : "en";
+    void loadScriptAudio(activeCase.id);
+    renderVoiceDirector();
+  });
+}
+
 function setGameNav(phase) {
   gameState.phase = phase;
   const phases = { briefing: 1, evidence: 2, question: 3, vote: 4, result: 4 };
@@ -1874,6 +2146,7 @@ function gameAction(content, hint, button, handler) {
   $("#gameActionBar").innerHTML = `<div class="action-hint-wrap"><span class="action-hint">${actionHint}</span>${hintButton}</div>${!gameState.spectator && button ? `<button class="primary-button" id="gameNextAction">${button} <span>↗</span></button>` : ""}`;
   $("#gameHintAction")?.addEventListener("click", showEvidenceHint);
   renderDmPanel();
+  renderVoiceDirector();
 }
 
 function renderDmPanel() {
@@ -2275,6 +2548,7 @@ function startGame(options = {}) {
   $("#viewLabel").textContent = t("gamePlaying");
   window.scrollTo({ top: 0, behavior: "instant" });
   renderBriefing();
+  void loadScriptAudio(activeCase.id);
   clearInterval(gameState.timer);
   gameState.timer = setInterval(() => { const seconds = Math.floor((Date.now() - gameState.startedAt) / 1000); $("#gameClock").textContent = `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`; }, 1000);
   if (gameState.roomId) void connectRoomSession(gameState.roomId);
@@ -2307,6 +2581,7 @@ function bindEvents() {
   $("#gameRoomButton").addEventListener("click", () => { if (state.activeRoom) openRoomLobby(state.activeRoom); });
   $("#exitGame").addEventListener("click", () => {
     clearInterval(gameState.timer);
+    stopVoicePlayback();
     const room = state.activeRoom;
     const wasRoomGame = Boolean(gameState.roomId && room);
     stopRoomSessionSync();
@@ -2324,6 +2599,10 @@ function bindEvents() {
     }
   });
   $("#scanNow").addEventListener("click", async () => { try { await apiFetch("/api/scripts/scan", { method: "POST" }); await loadScripts(); await refreshSync(); showToast(t("scanComplete")); } catch { showToast(t("scanOffline")); } });
+  $("#adminTokenForm").addEventListener("submit", (event) => { event.preventDefault(); void loadAdminQueue(); });
+  $("#adminRefreshQueue").addEventListener("click", () => void loadAdminQueue());
+  $("#reviewStatusFilter").addEventListener("change", () => { if (state.adminToken) void loadAdminQueue(); });
+  $("#productionStatusFilter").addEventListener("change", () => { if (state.adminToken) void loadAdminQueue(); });
   document.addEventListener("keydown", (event) => { if (event.key === "Escape") { closeModal(); closeProfileModal(); closeNotifications(); } });
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState !== "visible") return;
@@ -2370,6 +2649,7 @@ renderLibrary();
 loadScripts();
 loadRooms();
 loadLeaderboard();
+if (state.adminToken) void loadAdminQueue();
 detectLocale();
 void handleRoomInvite().then((handled) => { if (!handled) return restoreActiveRoom(); });
 setInterval(refreshSync, 4500);

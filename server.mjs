@@ -29,7 +29,12 @@ import {
   leaveDatabaseRoom,
   listDatabaseRooms,
   listDatabaseScripts,
+  listDatabaseAdminScripts,
+  listDatabaseScriptAudio,
+  reviewDatabaseScript,
+  saveDatabaseScriptAudio,
   saveDatabaseScript,
+  updateDatabaseScriptProduction,
   startDatabaseRoom
 } from "./db/store.mjs";
 
@@ -92,6 +97,8 @@ function normalizeScript(raw, filename = "script.json") {
       opening: "夜色落在城市边缘，所有人都带着一段不能被说出的过去。",
       chapters: ["序章 · 入场", "第一幕 · 私密线索", "第二幕 · 公开质询", "终局 · 投票与复盘"]
     },
+    i18n: raw.i18n && typeof raw.i18n === "object" ? raw.i18n : {},
+    published: raw.published === true,
     updatedAt: raw.updatedAt || new Date().toISOString()
   };
 }
@@ -110,7 +117,8 @@ async function listScripts() {
   for (const file of files) {
     try {
       const raw = JSON.parse(await fs.readFile(path.join(scriptsDir, file), "utf8"));
-      scripts.push(normalizeScript(raw, file));
+      const script = normalizeScript(raw, file);
+      if (script.published === true) scripts.push(script);
     } catch (error) {
       syncState.lastError = `${file}: ${error.message}`;
     }
@@ -118,8 +126,8 @@ async function listScripts() {
   return scripts.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
 }
 
-async function saveScript(raw, filename = "script.json") {
-  const script = normalizeScript(raw, filename);
+async function saveScript(raw, filename = "script.json", submitter = {}) {
+  const script = { ...normalizeScript(raw, filename), submittedByExternalKey: submitter.externalKey || "" };
   if (databaseEnabled) {
     const saved = await saveDatabaseScript(script, filename);
     syncState.imported += 1;
@@ -130,7 +138,7 @@ async function saveScript(raw, filename = "script.json") {
   }
   if (isVercel) throw new Error("Script import requires DATABASE_URL to be configured for the API service.");
   const safeName = `${slugify(script.title)}.json`;
-  await fs.writeFile(path.join(scriptsDir, safeName), `${JSON.stringify(script, null, 2)}\n`);
+  await fs.writeFile(path.join(scriptsDir, safeName), `${JSON.stringify({ ...script, published: false, reviewStatus: "pending", productionStatus: "not_started" }, null, 2)}\n`);
   syncState.imported += 1;
   syncState.lastSync = new Date().toISOString();
   syncState.lastFile = safeName;
@@ -202,6 +210,29 @@ function sendJson(response, status, payload) {
   response.end(JSON.stringify(payload));
 }
 
+function requireAdminToken(request) {
+  const expected = String(process.env.ADMIN_REVIEW_TOKEN || "").trim();
+  if (!expected) {
+    const error = new Error("Admin review is not configured");
+    error.code = "ADMIN_NOT_CONFIGURED";
+    throw error;
+  }
+  const provided = String(request.headers["x-admin-token"] || "").trim();
+  if (!provided || provided !== expected) {
+    const error = new Error("Admin token is invalid");
+    error.code = "ADMIN_UNAUTHORIZED";
+    throw error;
+  }
+}
+
+function adminProfile(payload = {}) {
+  return {
+    externalKey: String(payload.externalKey || payload.user?.externalKey || "admin-reviewer").slice(0, 160),
+    displayName: String(payload.displayName || payload.user?.displayName || "Content Reviewer").slice(0, 80),
+    locale: payload.locale === "zh" ? "zh" : "en"
+  };
+}
+
 const server = http.createServer(async (request, response) => {
   try {
     const origin = request.headers.origin;
@@ -218,6 +249,43 @@ const server = http.createServer(async (request, response) => {
     const url = new URL(request.url, `http://${request.headers.host}`);
     if (url.pathname === "/api/scripts" && request.method === "GET") {
       return sendJson(response, 200, { scripts: await listScripts() });
+    }
+    const adminScriptsMatch = url.pathname === "/api/admin/scripts";
+    if (adminScriptsMatch && request.method === "GET") {
+      requireAdminToken(request);
+      if (!databaseEnabled) return sendJson(response, 503, { error: "Admin review requires DATABASE_URL to be configured." });
+      const scripts = await listDatabaseAdminScripts({ reviewStatus: url.searchParams.get("reviewStatus") || "all", productionStatus: url.searchParams.get("productionStatus") || "all" });
+      return sendJson(response, 200, { scripts });
+    }
+    const adminReviewMatch = url.pathname.match(/^\/api\/admin\/scripts\/([^/]+)\/review$/);
+    if (adminReviewMatch && request.method === "POST") {
+      requireAdminToken(request);
+      if (!databaseEnabled) return sendJson(response, 503, { error: "Admin review requires DATABASE_URL to be configured." });
+      const payload = JSON.parse(await readBody(request));
+      const result = await reviewDatabaseScript(decodeURIComponent(adminReviewMatch[1]), adminProfile(payload), payload.decision, payload.notes);
+      return sendJson(response, 200, result);
+    }
+    const adminProductionMatch = url.pathname.match(/^\/api\/admin\/scripts\/([^/]+)\/production$/);
+    if (adminProductionMatch && request.method === "POST") {
+      requireAdminToken(request);
+      if (!databaseEnabled) return sendJson(response, 503, { error: "Production queue requires DATABASE_URL to be configured." });
+      const payload = JSON.parse(await readBody(request));
+      const result = await updateDatabaseScriptProduction(decodeURIComponent(adminProductionMatch[1]), adminProfile(payload), payload.status, payload.notes);
+      return sendJson(response, 200, result);
+    }
+    const adminAudioMatch = url.pathname.match(/^\/api\/admin\/scripts\/([^/]+)\/audio$/);
+    if (adminAudioMatch && request.method === "POST") {
+      requireAdminToken(request);
+      if (!databaseEnabled) return sendJson(response, 503, { error: "Audio production requires DATABASE_URL to be configured." });
+      const payload = JSON.parse(await readBody(request));
+      const asset = await saveDatabaseScriptAudio(decodeURIComponent(adminAudioMatch[1]), adminProfile(payload), payload.asset || payload);
+      return sendJson(response, 201, { asset });
+    }
+    const scriptAudioMatch = url.pathname.match(/^\/api\/scripts\/([^/]+)\/audio$/);
+    if (scriptAudioMatch && request.method === "GET") {
+      if (!databaseEnabled) return sendJson(response, 200, { assets: [] });
+      const assets = await listDatabaseScriptAudio(decodeURIComponent(scriptAudioMatch[1]), url.searchParams.get("locale") || "");
+      return sendJson(response, 200, { assets: assets || [] });
     }
     if (url.pathname === "/api/sync" && request.method === "GET") {
       const scripts = await listScripts();
@@ -384,7 +452,7 @@ const server = http.createServer(async (request, response) => {
     }
     if (url.pathname === "/api/scripts/import" && request.method === "POST") {
       const payload = JSON.parse(await readBody(request));
-      const script = await saveScript(payload.script || payload, payload.filename || "uploaded.json");
+      const script = await saveScript(payload.script || payload, payload.filename || "uploaded.json", payload.user || payload.profile || {});
       return sendJson(response, 201, { script });
     }
     if (url.pathname === "/api/scripts/scan" && request.method === "POST") {
@@ -422,7 +490,13 @@ const server = http.createServer(async (request, response) => {
       REPORT_DUPLICATE: 409,
       INVALID_BLOCK: 400,
       INVALID_PROGRESS: 400,
-      BLOCK_NOT_FOUND: 404
+      BLOCK_NOT_FOUND: 404,
+      INVALID_REVIEW: 400,
+      INVALID_PRODUCTION_STATUS: 400,
+      SCRIPT_NOT_APPROVED: 409,
+      INVALID_AUDIO_ASSET: 400,
+      ADMIN_NOT_CONFIGURED: 503,
+      ADMIN_UNAUTHORIZED: 401
     }[error.code];
     const status = roomStatus || (error.code === "ENOENT" ? 404 : 500);
     sendJson(response, status, { error: status === 404 && !roomStatus ? "not found" : error.message, code: error.code });

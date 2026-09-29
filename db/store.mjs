@@ -76,6 +76,43 @@ const databaseShapeReady = databaseEnabled
     )`))
     .then(() => pool.query("CREATE INDEX IF NOT EXISTS player_progress_rank_idx ON player_progress (solved DESC, played DESC, updated_at ASC)"))
     .then(() => pool.query("CREATE INDEX IF NOT EXISTS player_completions_script_idx ON player_completions (script_id, completed_at DESC)"))
+    .then(() => pool.query("ALTER TABLE scripts ADD COLUMN IF NOT EXISTS review_status TEXT NOT NULL DEFAULT 'approved'"))
+    .then(() => pool.query("ALTER TABLE scripts ADD COLUMN IF NOT EXISTS production_status TEXT NOT NULL DEFAULT 'published'"))
+    .then(() => pool.query("ALTER TABLE scripts ADD COLUMN IF NOT EXISTS submitted_by UUID REFERENCES app_users(id) ON DELETE SET NULL"))
+    .then(() => pool.query("ALTER TABLE scripts ADD COLUMN IF NOT EXISTS reviewed_by UUID REFERENCES app_users(id) ON DELETE SET NULL"))
+    .then(() => pool.query("ALTER TABLE scripts ADD COLUMN IF NOT EXISTS review_notes TEXT"))
+    .then(() => pool.query("ALTER TABLE scripts ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ"))
+    .then(() => pool.query(`CREATE TABLE IF NOT EXISTS script_work_items (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      script_id TEXT NOT NULL UNIQUE REFERENCES scripts(id) ON DELETE CASCADE,
+      status TEXT NOT NULL DEFAULT 'queued',
+      next_step TEXT,
+      brief_zh TEXT,
+      brief_en TEXT,
+      notes TEXT,
+      artifacts JSONB NOT NULL DEFAULT '{}'::jsonb,
+      updated_by UUID REFERENCES app_users(id) ON DELETE SET NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )`))
+    .then(() => pool.query("CREATE INDEX IF NOT EXISTS script_work_items_status_idx ON script_work_items (status, updated_at DESC)"))
+    .then(() => pool.query(`CREATE TABLE IF NOT EXISTS script_audio_assets (
+      id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      script_id TEXT NOT NULL REFERENCES scripts(id) ON DELETE CASCADE,
+      locale TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      speaker_key TEXT NOT NULL DEFAULT 'host',
+      scene_key TEXT NOT NULL DEFAULT 'briefing',
+      text TEXT NOT NULL,
+      audio_url TEXT,
+      voice_name TEXT,
+      status TEXT NOT NULL DEFAULT 'draft',
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE (script_id, locale, kind, speaker_key, scene_key)
+    )`))
+    .then(() => pool.query("CREATE INDEX IF NOT EXISTS script_audio_assets_lookup_idx ON script_audio_assets (script_id, locale, status, sort_order)"))
   : Promise.resolve();
 
 async function waitForDatabaseShape() {
@@ -115,6 +152,10 @@ function rowToScript(row) {
     content: row.content || {},
     i18n: row.i18n || {},
     sourceFilename: row.source_filename,
+    reviewStatus: row.review_status || "approved",
+    productionStatus: row.production_status || (row.published ? "published" : "not_started"),
+    reviewNotes: row.review_notes || "",
+    reviewedAt: row.reviewed_at instanceof Date ? row.reviewed_at.toISOString() : row.reviewed_at,
     published: row.published,
     updatedAt: row.updated_at instanceof Date ? row.updated_at.toISOString() : row.updated_at
   };
@@ -122,12 +163,13 @@ function rowToScript(row) {
 
 export async function listDatabaseScripts() {
   if (!pool) return null;
+  await waitForDatabaseShape();
   const result = await pool.query(`
     SELECT id, title, subtitle, genre, player_count, duration_minutes, difficulty,
            tags, author, cover, description, status, content, i18n, source_filename,
-           published, updated_at
+           review_status, production_status, review_notes, reviewed_at, published, updated_at
       FROM scripts
-     WHERE published = TRUE
+     WHERE published = TRUE AND review_status = 'approved' AND production_status = 'published'
      ORDER BY updated_at DESC
   `);
   return result.rows.map(rowToScript);
@@ -135,11 +177,14 @@ export async function listDatabaseScripts() {
 
 export async function saveDatabaseScript(script, filename) {
   if (!pool) return null;
+  await waitForDatabaseShape();
+  const submitter = String(script.submittedByExternalKey || script.submittedBy || "").trim();
   const result = await pool.query(
     `INSERT INTO scripts (
       id, title, subtitle, genre, player_count, duration_minutes, difficulty,
-      tags, author, cover, description, status, content, i18n, source_filename, published
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, TRUE)
+      tags, author, cover, description, status, content, i18n, source_filename,
+      review_status, production_status, published, submitted_by
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 'pending', 'not_started', FALSE, (SELECT id FROM app_users WHERE external_key = $16))
     ON CONFLICT (id) DO UPDATE SET
       title = EXCLUDED.title,
       subtitle = EXCLUDED.subtitle,
@@ -155,10 +200,17 @@ export async function saveDatabaseScript(script, filename) {
       content = EXCLUDED.content,
       i18n = EXCLUDED.i18n,
       source_filename = EXCLUDED.source_filename,
+      review_status = 'pending',
+      production_status = 'not_started',
+      review_notes = NULL,
+      reviewed_by = NULL,
+      reviewed_at = NULL,
+      published = FALSE,
+      submitted_by = EXCLUDED.submitted_by,
       updated_at = now()
     RETURNING id, title, subtitle, genre, player_count, duration_minutes, difficulty,
               tags, author, cover, description, status, content, i18n, source_filename,
-              published, updated_at`,
+              review_status, production_status, review_notes, reviewed_at, published, updated_at`,
     [
       script.id,
       script.title,
@@ -171,10 +223,11 @@ export async function saveDatabaseScript(script, filename) {
       script.author,
       script.cover,
       script.description,
-      script.status,
+      script.status || "待审核",
       JSON.stringify(script.content || {}),
       JSON.stringify(script.i18n || {}),
-      filename
+      filename,
+      submitter || null
     ]
   );
   await pool.query(
@@ -183,6 +236,186 @@ export async function saveDatabaseScript(script, filename) {
     [filename, script.id, JSON.stringify(script)]
   );
   return rowToScript(result.rows[0]);
+}
+
+const productionStatuses = new Set(["queued", "writing", "audio", "qa", "ready", "published", "blocked"]);
+const reviewStatuses = new Set(["pending", "approved", "rejected"]);
+
+function nextProductionStep(status) {
+  return {
+    queued: "完善案件结构、角色与线索",
+    writing: "补齐双语剧情、角色目标与关卡逻辑",
+    audio: "制作主持人和角色双语音频",
+    qa: "检查剧情闭环、语言和设备播放",
+    ready: "等待运营人员确认后上架",
+    published: "已上架，可进入剧本库和房间",
+    blocked: "处理阻塞问题后重新进入制作",
+  }[status] || "等待制作排期";
+}
+
+function adminScriptPayload(row) {
+  return {
+    script: rowToScript(row),
+    workItem: row.work_status ? {
+      status: row.work_status,
+      nextStep: row.work_next_step || nextProductionStep(row.work_status),
+      briefZh: row.work_brief_zh || "补齐案件结构、双语文本、主持人台词和角色语音。",
+      briefEn: row.work_brief_en || "Complete the case structure, bilingual copy, host lines and role voice clips.",
+      notes: row.work_notes || "",
+      artifacts: row.work_artifacts || {},
+      updatedAt: row.work_updated_at instanceof Date ? row.work_updated_at.toISOString() : row.work_updated_at
+    } : null,
+    audioAssetCount: Number(row.audio_asset_count || 0)
+  };
+}
+
+const adminScriptSelect = `
+  SELECT s.id, s.title, s.subtitle, s.genre, s.player_count, s.duration_minutes, s.difficulty,
+         s.tags, s.author, s.cover, s.description, s.status, s.content, s.i18n, s.source_filename,
+         s.review_status, s.production_status, s.review_notes, s.reviewed_at, s.published, s.updated_at,
+         w.status AS work_status, w.next_step AS work_next_step, w.brief_zh AS work_brief_zh,
+         w.brief_en AS work_brief_en, w.notes AS work_notes, w.artifacts AS work_artifacts,
+         w.updated_at AS work_updated_at,
+         (SELECT count(*)::int FROM script_audio_assets a WHERE a.script_id = s.id) AS audio_asset_count
+    FROM scripts s
+    LEFT JOIN script_work_items w ON w.script_id = s.id`;
+
+export async function listDatabaseAdminScripts({ reviewStatus = "all", productionStatus = "all" } = {}) {
+  if (!pool) return null;
+  await waitForDatabaseShape();
+  const values = [];
+  const filters = [];
+  if (reviewStatuses.has(reviewStatus)) { values.push(reviewStatus); filters.push(`s.review_status = $${values.length}`); }
+  if (productionStatuses.has(productionStatus)) { values.push(productionStatus); filters.push(`s.production_status = $${values.length}`); }
+  const result = await pool.query(`${adminScriptSelect}${filters.length ? ` WHERE ${filters.join(" AND ")}` : ""} ORDER BY s.updated_at DESC LIMIT 200`, values);
+  return result.rows.map(adminScriptPayload);
+}
+
+async function getDatabaseAdminScript(client, scriptId) {
+  const result = await client.query(`${adminScriptSelect} WHERE s.id = $1`, [scriptId]);
+  if (!result.rows[0]) throw new RoomError("SCRIPT_NOT_FOUND", "Script not found");
+  return adminScriptPayload(result.rows[0]);
+}
+
+export async function reviewDatabaseScript(scriptId, profile = {}, decision, notes = "") {
+  if (!pool) return null;
+  const normalizedDecision = String(decision || "").trim().toLowerCase();
+  if (!reviewStatuses.has(normalizedDecision) || normalizedDecision === "pending") throw new RoomError("INVALID_REVIEW", "Review decision must be approved or rejected");
+  return inTransaction(async (client) => {
+    const reviewer = await ensureUser(client, profile);
+    const existing = await client.query("SELECT id, title FROM scripts WHERE id = $1 FOR UPDATE", [scriptId]);
+    if (!existing.rows[0]) throw new RoomError("SCRIPT_NOT_FOUND", "Script not found");
+    const productionStatus = normalizedDecision === "approved" ? "queued" : "not_started";
+    await client.query(
+      `UPDATE scripts
+          SET review_status = $2,
+              production_status = $3,
+              review_notes = $4,
+              reviewed_by = $5,
+              reviewed_at = now(),
+              published = FALSE,
+              updated_at = now()
+        WHERE id = $1`,
+      [scriptId, normalizedDecision, productionStatus, String(notes || "").slice(0, 2000), reviewer.id]
+    );
+    if (normalizedDecision === "approved") {
+      await client.query(
+        `INSERT INTO script_work_items (script_id, status, next_step, brief_zh, brief_en, updated_by)
+         VALUES ($1, 'queued', $2, $3, $4, $5)
+         ON CONFLICT (script_id) DO UPDATE SET
+           status = 'queued',
+           next_step = EXCLUDED.next_step,
+           notes = NULL,
+           updated_by = EXCLUDED.updated_by,
+           updated_at = now()`,
+        [scriptId, nextProductionStep("queued"), "补齐案件结构、双语文本、主持人台词和角色语音。", "Complete the case structure, bilingual copy, host lines and role voice clips.", reviewer.id]
+      );
+    } else {
+      await client.query("DELETE FROM script_work_items WHERE script_id = $1", [scriptId]);
+    }
+    const result = await getDatabaseAdminScript(client, scriptId);
+    return { ...result, decision: normalizedDecision };
+  });
+}
+
+export async function updateDatabaseScriptProduction(scriptId, profile = {}, status, notes = "") {
+  if (!pool) return null;
+  const normalizedStatus = String(status || "").trim().toLowerCase();
+  if (!productionStatuses.has(normalizedStatus)) throw new RoomError("INVALID_PRODUCTION_STATUS", "Unsupported production status");
+  return inTransaction(async (client) => {
+    const editor = await ensureUser(client, profile);
+    const existing = await client.query("SELECT id, review_status FROM scripts WHERE id = $1 FOR UPDATE", [scriptId]);
+    if (!existing.rows[0]) throw new RoomError("SCRIPT_NOT_FOUND", "Script not found");
+    if (existing.rows[0].review_status !== "approved") throw new RoomError("SCRIPT_NOT_APPROVED", "Approve the script before production");
+    const published = normalizedStatus === "published";
+    await client.query(
+      `UPDATE scripts
+          SET production_status = $2,
+              published = $3,
+              status = CASE WHEN $3 THEN '可开局' ELSE status END,
+              updated_at = now()
+        WHERE id = $1`,
+      [scriptId, normalizedStatus, published]
+    );
+    await client.query(
+      `INSERT INTO script_work_items (script_id, status, next_step, notes, updated_by)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (script_id) DO UPDATE SET
+         status = EXCLUDED.status,
+         next_step = EXCLUDED.next_step,
+         notes = CASE WHEN EXCLUDED.notes <> '' THEN EXCLUDED.notes ELSE script_work_items.notes END,
+         updated_by = EXCLUDED.updated_by,
+         updated_at = now()`,
+      [scriptId, normalizedStatus, nextProductionStep(normalizedStatus), String(notes || "").slice(0, 2000), editor.id]
+    );
+    return getDatabaseAdminScript(client, scriptId);
+  });
+}
+
+export async function listDatabaseScriptAudio(scriptId, locale = "") {
+  if (!pool) return null;
+  await waitForDatabaseShape();
+  const values = [scriptId];
+  const localeFilter = locale === "zh" || locale === "en" ? " AND locale = $2" : "";
+  if (localeFilter) values.push(locale);
+  const result = await pool.query(
+    `SELECT a.id, a.locale, a.kind, a.speaker_key, a.scene_key, a.text, a.audio_url, a.voice_name, a.status, a.sort_order
+       FROM script_audio_assets a
+       JOIN scripts s ON s.id = a.script_id
+      WHERE a.script_id = $1 AND a.status = 'ready' AND s.published = TRUE AND s.review_status = 'approved' AND s.production_status = 'published'${localeFilter}
+      ORDER BY a.locale, a.kind, a.sort_order, a.id`,
+    values
+  );
+  return result.rows.map((row) => ({ id: String(row.id), locale: row.locale, kind: row.kind, speakerKey: row.speaker_key, sceneKey: row.scene_key, text: row.text, audioUrl: row.audio_url, voiceName: row.voice_name, status: row.status, sortOrder: row.sort_order }));
+}
+
+export async function saveDatabaseScriptAudio(scriptId, profile = {}, asset = {}) {
+  if (!pool) return null;
+  await waitForDatabaseShape();
+  const locale = asset.locale === "zh" ? "zh" : asset.locale === "en" ? "en" : "";
+  const kind = asset.kind === "role" ? "role" : asset.kind === "host" ? "host" : "";
+  const text = String(asset.text || "").trim().slice(0, 10000);
+  if (!locale || !kind || !text) throw new RoomError("INVALID_AUDIO_ASSET", "Audio locale, kind and text are required");
+  return inTransaction(async (client) => {
+    const editor = await ensureUser(client, profile);
+    const existing = await client.query("SELECT id FROM scripts WHERE id = $1", [scriptId]);
+    if (!existing.rows[0]) throw new RoomError("SCRIPT_NOT_FOUND", "Script not found");
+    const result = await client.query(
+      `INSERT INTO script_audio_assets (script_id, locale, kind, speaker_key, scene_key, text, audio_url, voice_name, status, sort_order)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       ON CONFLICT (script_id, locale, kind, speaker_key, scene_key) DO UPDATE SET
+         text = EXCLUDED.text,
+         audio_url = EXCLUDED.audio_url,
+         voice_name = EXCLUDED.voice_name,
+         status = EXCLUDED.status,
+         sort_order = EXCLUDED.sort_order,
+         updated_at = now()
+       RETURNING id, locale, kind, speaker_key, scene_key, text, audio_url, voice_name, status, sort_order`,
+      [scriptId, locale, kind, String(asset.speakerKey || "host").slice(0, 120), String(asset.sceneKey || "briefing").slice(0, 120), text, String(asset.audioUrl || "").trim().slice(0, 2000) || null, String(asset.voiceName || "").trim().slice(0, 120) || null, asset.status === "ready" ? "ready" : "draft", Number(asset.sortOrder) || 0]
+    );
+    await client.query("UPDATE scripts SET updated_at = now() WHERE id = $1", [scriptId]);
+    return result.rows[0];
+  });
 }
 
 export async function databaseHealth() {

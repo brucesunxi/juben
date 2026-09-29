@@ -17,6 +17,9 @@ Nocturne 是一个高质感线上剧本推理社交 MVP，包含：
 - 剧本详情可直接创建多人房间；开局后按成员分配角色，并在序章展示各自的角色剧本、个人目标和持有线索
 - 探索榜：完成案件后的进度会去重写入 Neon，并以公开昵称展示社区榜单；网络不可用时仍保留本地成长记录
 - 创作后台与剧本文件导入
+- 剧本审核队列：上传内容先进入待审核，审核通过后才进入待制作素材仓库
+- 制作仓库状态：待制作、剧情制作、音频制作、质检、待上架、已上架和阻塞
+- 自动主持人与角色音频：支持 Neon 音频素材、剧本内嵌音频 URL；没有录音时使用设备中文/英文语音兜底
 - `incoming/` 文件夹自动扫描并写入 `data/scripts/`
 - JSON / Markdown 剧本解析
 - 导入剧本可直接生成可玩的通用案件流程；如果 JSON 提供 `content.suspects`、`content.evidence`、`content.timeline` 和 `content.solution`，会优先使用自定义角色、线索、时间线与真相
@@ -41,7 +44,7 @@ npm run dev
 
 ## Neon 数据库
 
-生产服务使用 Vercel 的 `DATABASE_URL` 连接 Neon。数据库结构位于 [db/schema.sql](db/schema.sql)，包括用户、剧本、剧本版本、角色、证物、时间线、房间、房间成员、游戏 session 和事件日志。首次部署后，服务会以幂等方式补齐 `game_events.user_id` 兼容字段；不会删除或覆盖已有剧本和房间数据。
+生产服务使用 Vercel 的 `DATABASE_URL` 连接 Neon。数据库结构位于 [db/schema.sql](db/schema.sql)，包括用户、剧本、剧本版本、角色、证物、时间线、剧本审核字段、制作工作项、音频素材、房间、房间成员、游戏 session 和事件日志。首次部署后，服务会以幂等方式补齐兼容字段；不会删除或覆盖已有剧本和房间数据。
 
 生产接口可用性检查：
 
@@ -51,6 +54,21 @@ GET https://juben-lyart.vercel.app/api/scripts
 GET https://juben-lyart.vercel.app/api/rooms?status=waiting
 POST https://juben-lyart.vercel.app/api/rooms/match
 ```
+
+### 剧本审核与制作仓库
+
+后台上传支持 `.json` 和 `.md`。上传后剧本会写入 Neon，但 `published = false`，不会出现在玩家剧本库。内容管理员在创作后台输入 `ADMIN_REVIEW_TOKEN` 后，可以查看待审核剧本、通过或驳回，并推进剧情、音频、质检和上架状态。
+
+生产环境必须配置 Vercel 环境变量 `ADMIN_REVIEW_TOKEN`。令牌只通过 `x-admin-token` 请求头传递，不写入公开前端资源；没有配置令牌时，审核 API 会返回 503，避免后台误开放。
+
+音频素材接口：
+
+```text
+POST /api/admin/scripts/:id/audio
+GET  /api/scripts/:id/audio?locale=zh|en
+```
+
+游戏页的“自动主持人与角色音频”面板会优先播放已审核的 `script_audio_assets.audio_url`；没有音频 URL 时，使用当前选择的中文或英文设备语音播放对应台词。剧本 JSON 也可以在 `content.audio` 中提供 `host`、`roles`、`sceneKey`、`text` 和 `audioUrl`。
 
 ## Android / iOS 打包
 
@@ -72,7 +90,7 @@ npm run mobile:preflight
 
 ## 自动导入剧本
 
-将 `.json` 或 `.md` 文件放入 `incoming/`。后台服务会定期扫描并把解析后的剧本写入 `data/scripts/`。说明文件和已处理文件会被忽略。
+将 `.json` 或 `.md` 文件放入 `incoming/`。本地服务会定期扫描并把解析后的剧本提交到待审核流程；Vercel 生产环境使用创作后台上传接口。说明文件和已处理文件会被忽略。
 
 JSON 最小格式：
 
@@ -83,7 +101,22 @@ JSON 最小格式：
   "players": 6,
   "duration": "60 分钟",
   "tags": ["搜证", "角色演绎"],
-  "description": "剧本简介"
+  "description": "剧本简介",
+  "i18n": {
+    "en": {
+      "title": "Script title",
+      "description": "English description"
+    }
+  },
+  "content": {
+    "audio": {
+      "host": {
+        "zh": { "briefing": { "text": "欢迎进入案件。", "audioUrl": "/audio/case-zh.mp3" } },
+        "en": { "briefing": { "text": "Welcome to the case.", "audioUrl": "/audio/case-en.mp3" } }
+      },
+      "roles": {}
+    }
+  }
 }
 ```
 
