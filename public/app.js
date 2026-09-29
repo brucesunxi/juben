@@ -272,6 +272,8 @@ translations.zh.adminQueueEmpty = "输入后台令牌后加载审核队列。";
 translations.en.adminQueueEmpty = "Enter an admin token to load the review queue.";
 translations.zh.adminUnauthorized = "审核令牌无效或后台未配置";
 translations.en.adminUnauthorized = "The admin token is invalid or review access is not configured";
+translations.zh.adminNotConfigured = "生产环境尚未配置 ADMIN_REVIEW_TOKEN，请先在 Vercel 环境变量中设置。";
+translations.en.adminNotConfigured = "ADMIN_REVIEW_TOKEN is not configured in production. Add it in Vercel environment variables first.";
 translations.zh.uploadSubmitted = "已提交审核，审核通过后进入待制作仓库";
 translations.en.uploadSubmitted = "Submitted for review; approval will move it into the production warehouse";
 translations.zh.reviewPending = "待审核";
@@ -1592,7 +1594,7 @@ function renderAdminQueue() {
   const container = $("#adminQueue");
   if (!container) return;
   if (!state.adminQueue.length) {
-    container.innerHTML = `<div class="admin-queue-empty" id="adminQueueEmpty">${state.adminToken ? t("adminQueueEmpty") : t("adminQueueEmpty")}</div>`;
+    container.innerHTML = `<div class="admin-queue-empty" id="adminQueueEmpty">${t("adminQueueEmpty")}</div>`;
     return;
   }
   const productionChoices = ["queued", "writing", "audio", "qa", "ready", "published", "blocked"];
@@ -1625,14 +1627,18 @@ async function loadAdminQueue() {
     const params = new URLSearchParams({ reviewStatus: $("#reviewStatusFilter")?.value || "all", productionStatus: $("#productionStatusFilter")?.value || "all" });
     const response = await apiFetch(`/api/admin/scripts?${params.toString()}`, { headers: { "x-admin-token": token } });
     const data = await response.json();
-    if (!response.ok) throw new Error(data.error || "admin queue unavailable");
+    if (!response.ok) {
+      const error = new Error(data.error || "admin queue unavailable");
+      error.code = data.code;
+      throw error;
+    }
     try { sessionStorage.setItem("nocturne-admin-token", token); } catch { /* session storage may be unavailable */ }
     state.adminQueue = Array.isArray(data.scripts) ? data.scripts : [];
     renderAdminQueue();
   } catch (error) {
     state.adminQueue = [];
     renderAdminQueue();
-    showToast(/token|configured|admin/i.test(error.message || "") ? t("adminUnauthorized") : (error.message || t("roomOffline")));
+    showToast(error.code === "ADMIN_NOT_CONFIGURED" ? t("adminNotConfigured") : (/token|configured|admin/i.test(error.message || "") ? t("adminUnauthorized") : (error.message || t("roomOffline"))));
   }
 }
 
