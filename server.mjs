@@ -240,6 +240,21 @@ const azureVoiceProfiles = {
   }
 };
 
+// Keep generated voices deliberately restrained. Small rate/pitch changes make
+// long mystery lines easier to follow without turning characters into cartoons.
+const azureVoiceSettings = {
+  "zh-CN-YunjianNeural": { rate: "-4%", pitch: "-1st", pause: "190ms" },
+  "zh-CN-XiaoxiaoNeural": { rate: "-2%", pitch: "+1st", pause: "170ms" },
+  "zh-CN-YunxiNeural": { rate: "-3%", pitch: "0st", pause: "170ms" },
+  "zh-CN-XiaoyiNeural": { rate: "-2%", pitch: "+1st", pause: "160ms" },
+  "zh-CN-YunyangNeural": { rate: "-4%", pitch: "-1st", pause: "190ms" },
+  "en-US-GuyNeural": { rate: "-4%", pitch: "-1st", pause: "190ms" },
+  "en-US-RyanMultilingualNeural": { rate: "-3%", pitch: "0st", pause: "180ms" },
+  "en-US-JennyNeural": { rate: "-3%", pitch: "+1st", pause: "170ms" },
+  "en-US-AriaNeural": { rate: "-2%", pitch: "+1st", pause: "160ms" },
+  "en-US-DavisNeural": { rate: "-4%", pitch: "-1st", pause: "190ms" }
+};
+
 function escapeXml(value) {
   return String(value || "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&apos;" }[character]));
 }
@@ -248,6 +263,15 @@ function azureVoiceFor(locale, kind, requestedVoice) {
   const language = locale === "zh" ? "zh" : "en";
   const voicePool = azureVoiceProfiles[language][kind === "role" ? "role" : "host"];
   return voicePool.includes(requestedVoice) ? requestedVoice : voicePool[0];
+}
+
+function azureSsmlText(text, pause) {
+  const escaped = escapeXml(text);
+  const sentencePattern = /([。！？!?；;])(?=\s|$|[^。！？!?；;])/g;
+  const commaPattern = /([，、,])(?=\s|[^，、,])/g;
+  return escaped
+    .replace(sentencePattern, `$1<break time="${pause}"/>`)
+    .replace(commaPattern, `$1<break time="90ms"/>`);
 }
 
 async function synthesizeAzureSpeech({ text, locale, kind, voiceName }) {
@@ -266,7 +290,8 @@ async function synthesizeAzureSpeech({ text, locale, kind, voiceName }) {
   }
   const language = locale === "zh" ? "zh-CN" : "en-US";
   const selectedVoice = azureVoiceFor(locale, kind, voiceName);
-  const ssml = `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="${language}"><voice name="${selectedVoice}"><prosody rate="0%" pitch="0%">${escapeXml(normalizedText)}</prosody></voice></speak>`;
+  const settings = azureVoiceSettings[selectedVoice] || { rate: "-3%", pitch: "0st", pause: "180ms" };
+  const ssml = `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="${language}"><voice name="${selectedVoice}"><prosody rate="${settings.rate}" pitch="${settings.pitch}">${azureSsmlText(normalizedText, settings.pause)}</prosody></voice></speak>`;
   const response = await fetch(`https://${region}.tts.speech.microsoft.com/cognitiveservices/v1`, {
     method: "POST",
     headers: {

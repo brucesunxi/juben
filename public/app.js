@@ -1630,20 +1630,28 @@ function adminStatusLabel(prefix, status) {
 }
 
 const ttsVoiceChoices = [
-  ["zh-CN-YunjianNeural", "中文 · 云健 / Narrator"],
-  ["zh-CN-XiaoxiaoNeural", "中文 · 晓晓 / Warm"],
-  ["zh-CN-YunxiNeural", "中文 · 云希 / Young male"],
-  ["zh-CN-XiaoyiNeural", "中文 · 晓伊 / Young female"],
-  ["zh-CN-YunyangNeural", "中文 · 云扬 / Calm male"],
-  ["en-US-GuyNeural", "English · Guy / Narrator"],
-  ["en-US-RyanMultilingualNeural", "English · Ryan / Multilingual"],
-  ["en-US-JennyNeural", "English · Jenny / Warm"],
-  ["en-US-AriaNeural", "English · Aria / Expressive"],
-  ["en-US-DavisNeural", "English · Davis / Calm male"]
+  ["zh-CN-YunjianNeural", "中文 · 云健 / 稳重主持"],
+  ["zh-CN-XiaoxiaoNeural", "中文 · 晓晓 / 温和女声"],
+  ["zh-CN-YunxiNeural", "中文 · 云希 / 年轻男声"],
+  ["zh-CN-XiaoyiNeural", "中文 · 晓伊 / 清晰女声"],
+  ["zh-CN-YunyangNeural", "中文 · 云扬 / 冷静男声"],
+  ["en-US-GuyNeural", "English · Guy / steady narrator"],
+  ["en-US-RyanMultilingualNeural", "English · Ryan / multilingual backup"],
+  ["en-US-JennyNeural", "English · Jenny / warm character"],
+  ["en-US-AriaNeural", "English · Aria / expressive character"],
+  ["en-US-DavisNeural", "English · Davis / calm character"]
 ];
 
-function ttsVoiceOptions(selectedVoice = "") {
-  return ttsVoiceChoices.map(([value, label]) => `<option value="${value}"${value === selectedVoice ? " selected" : ""}>${label}</option>`).join("");
+const ttsVoiceDefaults = {
+  zh: { host: "zh-CN-YunjianNeural", role: "zh-CN-XiaoxiaoNeural" },
+  en: { host: "en-US-GuyNeural", role: "en-US-JennyNeural" }
+};
+
+function ttsVoiceOptions(locale = "zh", kind = "host", selectedVoice = "") {
+  const prefix = locale === "zh" ? "zh-CN-" : "en-US-";
+  const voices = ttsVoiceChoices.filter(([value]) => value.startsWith(prefix));
+  const fallback = selectedVoice || ttsVoiceDefaults[locale]?.[kind] || voices[0]?.[0] || "";
+  return voices.map(([value, label]) => `<option value="${value}"${value === fallback ? " selected" : ""}>${label}</option>`).join("");
 }
 
 function renderAdminQueue() {
@@ -1667,7 +1675,7 @@ function renderAdminQueue() {
       ? `<select data-production-select="${escapeHtml(script.id)}" aria-label="${t("productionUpdate")}">${productionChoices.map((status) => `<option value="${status}"${status === productionStatus ? " selected" : ""}>${adminStatusLabel("production", status)}</option>`).join("")}</select><button class="ghost-button" type="button" data-production-update="${escapeHtml(script.id)}">${t("productionUpdate")}</button>`
       : "";
     const audioComposer = script.reviewStatus === "approved"
-      ? `<div class="admin-tts-composer"><div class="admin-tts-heading"><strong>${t("ttsPanelTitle")}</strong><small>${t("ttsPanelHelp")}</small></div><div class="admin-tts-fields"><select data-tts-locale aria-label="Audio language"><option value="zh">中文</option><option value="en">English</option></select><select data-tts-kind aria-label="Audio kind"><option value="host">${t("ttsHost")}</option><option value="role">${t("ttsRole")}</option></select><input data-tts-speaker value="host" placeholder="${t("ttsSpeakerPlaceholder")}" aria-label="Speaker key" /><select data-tts-voice aria-label="Azure voice">${ttsVoiceOptions()}</select></div><textarea data-tts-text placeholder="${t("ttsTextPlaceholder")}">${escapeHtml(localized.intro || localized.description || script.description || "")}</textarea><button class="ghost-button" type="button" data-generate-audio="${escapeHtml(script.id)}">${t("ttsGenerate")}</button></div>`
+      ? `<div class="admin-tts-composer"><div class="admin-tts-heading"><strong>${t("ttsPanelTitle")}</strong><small>${t("ttsPanelHelp")}</small></div><div class="admin-tts-fields"><select data-tts-locale aria-label="Audio language"><option value="zh" selected>中文</option><option value="en">English</option></select><select data-tts-kind aria-label="Audio kind"><option value="host" selected>${t("ttsHost")}</option><option value="role">${t("ttsRole")}</option></select><input data-tts-speaker value="host" placeholder="${t("ttsSpeakerPlaceholder")}" aria-label="Speaker key" /><select data-tts-voice aria-label="Azure voice">${ttsVoiceOptions("zh", "host")}</select></div><textarea data-tts-text placeholder="${t("ttsTextPlaceholder")}">${escapeHtml(localized.intro || localized.description || script.description || "")}</textarea><button class="ghost-button" type="button" data-generate-audio="${escapeHtml(script.id)}">${t("ttsGenerate")}</button></div>`
       : "";
     return `<article class="admin-queue-card"><div class="admin-queue-card-head"><div><h4>${escapeHtml(localized.title || script.title)}</h4><small>${escapeHtml(script.sourceFilename || script.id)} · ${escapeHtml(script.author || "Nocturne")}</small></div><div class="admin-queue-meta"><span class="admin-status ${reviewClass}">${adminStatusLabel("review", script.reviewStatus)}</span><span class="admin-status ${productionClass}">${adminStatusLabel("production", productionStatus)}</span></div></div><p>${escapeHtml(script.reviewNotes || workItem?.nextStep || (state.locale === "zh" ? "等待内容审核。" : "Waiting for content review."))}</p><small>${t("audioAssets", { count: audioAssetCount || 0 })}</small><div class="admin-queue-actions">${reviewActions}${rejectAction}${productionActions}</div>${audioComposer}</article>`;
   }).join("");
@@ -1675,6 +1683,13 @@ function renderAdminQueue() {
   $$('[data-production-update]').forEach((button) => button.addEventListener("click", () => {
     const select = $$('[data-production-select]').find((element) => element.dataset.productionSelect === button.dataset.productionUpdate);
     void updateAdminProduction(button.dataset.productionUpdate, select?.value || "queued");
+  }));
+  $$('[data-tts-locale], [data-tts-kind]').forEach((field) => field.addEventListener("change", () => {
+    const card = field.closest(".admin-queue-card");
+    const locale = card?.querySelector("[data-tts-locale]")?.value || "zh";
+    const kind = card?.querySelector("[data-tts-kind]")?.value || "host";
+    const voice = card?.querySelector("[data-tts-voice]");
+    if (voice) voice.innerHTML = ttsVoiceOptions(locale, kind);
   }));
   $$('[data-generate-audio]').forEach((button) => button.addEventListener("click", () => void generateAdminAudio(button)));
 }
@@ -2242,7 +2257,9 @@ function renderVoiceDirector() {
   const hasRecordedRole = Boolean(audioAssetFor("role", suspect.id, gameState.phase) || contentAudioClip("role", suspect.id, gameState.phase));
   const fallbackLabel = hasRecordedHost || hasRecordedRole ? "" : `<small>${t("audioFallback")}</small>`;
   const panel = `<section class="voice-director-panel" aria-label="${t("audioTitle")}"><div class="voice-director-heading"><div><span class="game-kicker">${t("audioTitle")}</span>${fallbackLabel}</div><label>${t("audioLang")} <select id="voiceLocaleSelect"><option value="zh"${state.audioLocale === "zh" ? " selected" : ""}>中文</option><option value="en"${state.audioLocale === "en" ? " selected" : ""}>English</option></select></label></div><div class="voice-director-actions"><button class="ghost-button" type="button" id="playHostVoice">◉ ${t("audioHost")}</button><button class="ghost-button" type="button" id="playRoleVoice">◉ ${t("audioRole")} · ${escapeHtml(suspect.name)}</button><button class="text-button" type="button" id="stopVoice">${t("audioStop")}</button></div></section>`;
-  $("#gameActionBar")?.insertAdjacentHTML("afterend", panel);
+  // Keep playback controls above the case file so players can start narration
+  // before scrolling through evidence, questions or the final accusation.
+  $("#gameContent")?.insertAdjacentHTML("beforebegin", panel);
   $("#playHostVoice")?.addEventListener("click", () => void playVoice("host", "host", gameState.phase, hostNarrationText()));
   $("#playRoleVoice")?.addEventListener("click", () => void playVoice("role", suspect.id, gameState.phase, roleNarrationText()));
   $("#stopVoice")?.addEventListener("click", stopVoicePlayback);
