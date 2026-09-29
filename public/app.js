@@ -2206,6 +2206,19 @@ function contentAudioClip(kind, speakerKey, sceneKey) {
   return typeof clip === "string" ? { text: clip } : clip;
 }
 
+function preferredDeviceVoice(locale, requestedName) {
+  if (!window.speechSynthesis) return null;
+  const voices = window.speechSynthesis.getVoices();
+  if (!voices.length) return null;
+  if (requestedName) {
+    const exact = voices.find((voice) => voice.name === requestedName);
+    if (exact) return exact;
+  }
+  const language = locale === "zh" ? "zh" : "en";
+  const localePattern = language === "zh" ? /zh[-_]CN|chinese|xiaoxiao|yunxi|tingting/i : /en[-_]US|english|jenny|aria|samantha/i;
+  return voices.find((voice) => localePattern.test(`${voice.lang} ${voice.name}`)) || voices.find((voice) => voice.lang?.toLowerCase().startsWith(language));
+}
+
 async function playVoice(kind, speakerKey, sceneKey, fallbackText) {
   stopVoicePlayback();
   const asset = audioAssetFor(kind, speakerKey, sceneKey);
@@ -2227,7 +2240,7 @@ async function playVoice(kind, speakerKey, sceneKey, fallbackText) {
   utterance.rate = 0.94;
   utterance.pitch = kind === "host" ? 0.96 : 1.02;
   const voiceName = asset?.voiceName || inlineClip.voiceName;
-  const voice = voiceName ? window.speechSynthesis.getVoices().find((candidate) => candidate.name === voiceName) : null;
+  const voice = preferredDeviceVoice(state.audioLocale, voiceName);
   if (voice) utterance.voice = voice;
   window.speechSynthesis.speak(utterance);
 }
