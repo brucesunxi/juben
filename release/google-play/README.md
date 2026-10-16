@@ -74,6 +74,8 @@ Guest deletion now retains the original identity and local records on rejected, 
 
 ## Browser checkpoint
 
+**Current status, 2026-10-17:** The official Chrome extension is connected again and browser control can open Google Play. The existing application's Data safety URL redirects to Google sign-in in the connected Chrome profile. The sign-in tab is preserved for the publisher to log into the existing JRYS account. No new app, repository, upload key, or production release was created. The version-2 AAB hash and four prepared screenshots were rechecked; the bundle is unchanged and has not been uploaded. Earlier missing-host findings below are historical and no longer the current blocker.
+
 Before reboot, official Chrome and the ChatGPT extension were connected. User enabled **Allow access to file URLs** after explicitly authorizing the permission; the AAB upload then succeeded. Browser security forbids automated chrome:// settings navigation, so the user performed that setting manually. Do not bypass denied internal settings or account-management pages.
 
 After restarting, Chrome no longer appears in the browser-control inventory. The user checked chrome://extensions and reported an empty list in the active profile. They were given the official extension store link and setup instructions. The Windows browser fallback also stopped because it could not reliably determine the current Chrome URL; do not bypass that boundary. Use the restored official extension connection or ask the user to finish the browser setup manually.
