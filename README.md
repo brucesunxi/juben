@@ -28,6 +28,24 @@ Nocturne 是一个高质感线上剧本推理社交 MVP，包含：
 - 《月影审判》角色肖像：林澈、沈鸢、顾砚、贺云川、苏弥、罗序
 - 四个剧本均有独立单人可试玩案件：序章、搜证、脚本化质询、最终指认和结局复盘
 
+## 清理后恢复开发环境
+
+2026-10-14 已清理 `node_modules/`、Android 和 iOS 的网页资源副本、Finder 元数据及 Android 构建日志。源码、数据、原始 `public/` 资源和现有 APK / AAB 均保留。
+
+当 `node_modules/` 不存在时，开始开发前先在项目根目录安装依赖：
+
+```bash
+npm ci
+```
+
+当移动端网页副本被清理后，运行或打包 Android / iOS 前，在安装依赖后执行：
+
+```bash
+npm run mobile:sync
+```
+
+同步会使用当前 `public/` 重新生成 `android/app/src/main/assets/public/` 和 `ios/App/App/public/`。恢复完成后即可按下面的步骤继续开发；之后修改网页资源，也需要同步后再进行移动端运行或打包。
+
 ## 本地运行
 
 ```bash
@@ -78,15 +96,14 @@ GET  /api/audio-assets/:assetId
 
 ## Android / iOS 打包
 
-项目已加入 Capacitor 配置。先安装依赖并生成平台工程：
+项目已加入 Capacitor 配置，当前 Android / iOS 平台工程已存在。依赖尚未安装时，先按上面的恢复步骤执行 `npm ci`，再同步并检查：
 
 ```bash
-npm install
-npm run mobile:add:android
-npm run mobile:add:ios
 npm run mobile:sync
 npm run mobile:preflight
 ```
+
+仅在对应平台目录不存在时，才先运行 `npm run mobile:add:android` 或 `npm run mobile:add:ios` 创建平台工程，再执行同步。
 
 然后使用 Android Studio 生成签名的 AAB，或在 Xcode 打开 `ios/App/App.xcodeproj` 生成 Archive 并提交 TestFlight / App Store。Android Release 支持通过 `ANDROID_KEYSTORE_PATH`、`ANDROID_KEYSTORE_PASSWORD`、`ANDROID_KEY_ALIAS` 和 `ANDROID_KEY_PASSWORD` 注入正式签名，未配置时只会生成未签名 AAB。当前 `public/runtime-config.js` 已配置生产 HTTPS API 地址，服务端默认允许 `capacitor://localhost` 和 `http://localhost`；如果更换域名，需要同步修改 API 地址和 `CORS_ORIGINS`。核心单人试玩仍内置在应用中，房间与剧本后台通过 Neon 服务同步。
 

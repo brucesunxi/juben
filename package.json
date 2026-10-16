@@ -7,7 +7,11 @@
   "scripts": {
     "dev": "node server.mjs",
     "start": "node server.mjs",
-    "check": "node --check server.mjs && node --check public/app.js",
+    "check": "node --check server.mjs && node --check public/app.js && node scripts/build-voice-passages.mjs --check && node scripts/build-scene-narration.mjs --check && node scripts/build-evidence-narration.mjs --check",
+    "audio:build-clues": "node scripts/build-evidence-narration.mjs",
+    "audio:produce-clues": "node scripts/produce-evidence-narration.mjs",
+    "audio:build-summaries": "node scripts/build-scene-narration.mjs",
+    "audio:produce-summaries": "node scripts/produce-scene-narration.mjs",
     "db:migrate": "node scripts/migrate-neon.mjs",
     "assets:generate": "node scripts/generate-icon.mjs",
     "mobile:sync": "npm run check && npx cap sync",

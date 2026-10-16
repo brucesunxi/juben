@@ -44,6 +44,8 @@ import {
 const root = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(root, "public");
 const scriptsDir = path.join(root, "data", "scripts");
+const voicePassages = JSON.parse(fsSync.readFileSync(path.join(root, "data", "voice-passages.json"), "utf8"));
+const pendingNarration = new Map();
 const incomingDir = path.join(root, "incoming");
 const port = Number(process.env.PORT || 4173);
 const isVercel = process.env.VERCEL === "1";
@@ -62,7 +64,8 @@ const mime = {
   ".js": "text/javascript; charset=utf-8",
   ".json": "application/json; charset=utf-8",
   ".webmanifest": "application/manifest+json; charset=utf-8",
-  ".svg": "image/svg+xml"
+  ".svg": "image/svg+xml",
+  ".mp3": "audio/mpeg"
 };
 
 if (!isVercel) {
@@ -213,6 +216,26 @@ function sendJson(response, status, payload) {
   response.end(JSON.stringify(payload));
 }
 
+function sendAudio(request, response, data, contentType = "audio/mpeg") {
+  const headers = { "content-type": contentType, "accept-ranges": "bytes", "content-length": data.length };
+  const range = request.headers.range;
+  if (range && request.method === "GET") {
+    const match = /^bytes=(\d*)-(\d*)$/.exec(range);
+    const suffix = match && !match[1] ? Number(match[2]) : null;
+    const start = suffix !== null ? Math.max(0, data.length - suffix) : Number(match?.[1]);
+    const end = suffix !== null || !match?.[2] ? data.length - 1 : Math.min(Number(match[2]), data.length - 1);
+    if (!match || (!match[1] && !match[2]) || suffix === 0 || !Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start > end || start >= data.length) {
+      response.writeHead(416, { "content-range": `bytes */${data.length}` });
+      return response.end();
+    }
+    const chunk = data.subarray(start, end + 1);
+    response.writeHead(206, { ...headers, "content-length": chunk.length, "content-range": `bytes ${start}-${end}/${data.length}` });
+    return response.end(chunk);
+  }
+  response.writeHead(200, headers);
+  return response.end(request.method === "HEAD" ? undefined : data);
+}
+
 async function requireAdminToken(request) {
   const expected = String(process.env.ADMIN_REVIEW_TOKEN || "").trim();
   if (!expected) {
@@ -231,11 +254,11 @@ async function requireAdminToken(request) {
 
 const azureVoiceProfiles = {
   zh: {
-    host: ["zh-CN-YunjianNeural", "zh-CN-XiaoxiaoNeural"],
+    host: ["zh-CN-YunjianNeural", "zh-CN-YunyangNeural", "zh-CN-XiaoxiaoNeural"],
     role: ["zh-CN-XiaoxiaoNeural", "zh-CN-YunxiNeural", "zh-CN-XiaoyiNeural", "zh-CN-YunyangNeural"]
   },
   en: {
-    host: ["en-US-GuyNeural", "en-US-RyanMultilingualNeural"],
+    host: ["en-US-GuyNeural", "en-US-RyanMultilingualNeural", "en-US-JennyNeural"],
     role: ["en-US-JennyNeural", "en-US-AriaNeural", "en-US-GuyNeural", "en-US-DavisNeural"]
   }
 };
@@ -243,13 +266,13 @@ const azureVoiceProfiles = {
 // Keep generated voices deliberately restrained. Small rate/pitch changes make
 // long mystery lines easier to follow without turning characters into cartoons.
 const azureVoiceSettings = {
-  "zh-CN-YunjianNeural": { rate: "-4%", pitch: "-1st", pause: "190ms" },
+  "zh-CN-YunjianNeural": { rate: "-1%", pitch: "+1st", pause: "180ms" },
   "zh-CN-XiaoxiaoNeural": { rate: "-2%", pitch: "+1st", pause: "170ms" },
-  "zh-CN-YunxiNeural": { rate: "-3%", pitch: "0st", pause: "170ms" },
+  "zh-CN-YunxiNeural": { rate: "-1%", pitch: "+1st", pause: "165ms" },
   "zh-CN-XiaoyiNeural": { rate: "-2%", pitch: "+1st", pause: "160ms" },
   "zh-CN-YunyangNeural": { rate: "-4%", pitch: "-1st", pause: "190ms" },
-  "en-US-GuyNeural": { rate: "-4%", pitch: "-1st", pause: "190ms" },
-  "en-US-RyanMultilingualNeural": { rate: "-3%", pitch: "0st", pause: "180ms" },
+  "en-US-GuyNeural": { rate: "-1%", pitch: "+1st", pause: "180ms" },
+  "en-US-RyanMultilingualNeural": { rate: "-1%", pitch: "+1st", pause: "170ms" },
   "en-US-JennyNeural": { rate: "-3%", pitch: "+1st", pause: "170ms" },
   "en-US-AriaNeural": { rate: "-2%", pitch: "+1st", pause: "160ms" },
   "en-US-DavisNeural": { rate: "-4%", pitch: "-1st", pause: "190ms" }
@@ -402,13 +425,64 @@ const server = http.createServer(async (request, response) => {
       const assets = await listDatabaseScriptAudio(decodeURIComponent(scriptAudioMatch[1]), url.searchParams.get("locale") || "");
       return sendJson(response, 200, { assets: assets || [] });
     }
+    const narrationMatch = url.pathname.match(/^\/api\/scripts\/([^/]+)\/narration$/);
+    if (narrationMatch && request.method === "POST") {
+      if (!databaseEnabled) return sendJson(response, 503, { error: "Narration requires DATABASE_URL." });
+      const scriptId = decodeURIComponent(narrationMatch[1]);
+      const locale = url.searchParams.get("locale");
+      const kind = url.searchParams.get("kind");
+      const speakerKey = url.searchParams.get("speakerKey");
+      const sceneKey = url.searchParams.get("sceneKey");
+      const rawBody = await readBody(request);
+      const payload = rawBody ? JSON.parse(rawBody) : {};
+      const requestedVoice = payload.voiceName || url.searchParams.get("voiceName");
+      const sourceSceneKey = payload.sourceSceneKey || url.searchParams.get("sourceSceneKey") || sceneKey;
+      const selectedVoice = azureVoiceFor(locale, kind, requestedVoice);
+      // Voice variants use their own cache key, but only approved passages are
+      // eligible for synthesis. This keeps a public playback request from
+      // becoming an arbitrary text-to-speech endpoint.
+      const cacheSceneKey = kind === "host" && requestedVoice
+        ? `${sourceSceneKey}:voice:${selectedVoice}`
+        : sceneKey;
+      const passageKey = `${kind}:${speakerKey}:${sourceSceneKey}`;
+      const passage = voicePassages[scriptId]?.[locale]?.[passageKey];
+      if (!passage) return sendJson(response, 404, { error: "Narration passage not found" });
+      const published = await listDatabaseScripts();
+      if (!published?.some((script) => script.id === scriptId)) return sendJson(response, 404, { error: "Script not published" });
+      const pendingKey = `${scriptId}:${locale}:${kind}:${speakerKey}:${cacheSceneKey}`;
+      let pending = pendingNarration.get(pendingKey);
+      if (!pending) {
+        pending = (async () => {
+          const existingAssets = await listDatabaseScriptAudio(scriptId, locale);
+          const existing = existingAssets?.find((asset) => asset.kind === kind && asset.speakerKey === speakerKey && asset.sceneKey === cacheSceneKey && asset.audioUrl);
+          if (existing) return existing;
+          const roleVoice = existingAssets?.find((asset) => asset.kind === "role" && asset.speakerKey === speakerKey && asset.voiceName)?.voiceName;
+          const roleIndex = Object.keys(voicePassages[scriptId][locale]).filter((key) => key.startsWith("role:") && key.endsWith(":passage:line")).findIndex((key) => key.startsWith(`role:${speakerKey}:`));
+          const voices = azureVoiceProfiles[locale]["role"];
+          // The client supplies the already-published character voice when it
+          // has one. azureVoiceFor still restricts it to the approved pool.
+          const voiceName = kind === "host" ? selectedVoice : (requestedVoice || roleVoice || voices[Math.max(0, roleIndex) % voices.length]);
+          const generated = await synthesizeAzureSpeech({ text: passage, locale, kind, voiceName });
+          await saveDatabaseScriptAudio(scriptId, { externalKey: "narration-service", displayName: "Narration service", locale }, {
+            locale, kind, speakerKey, sceneKey: cacheSceneKey, text: passage, ...generated, status: "ready"
+          });
+          return (await listDatabaseScriptAudio(scriptId, locale))?.find((asset) => asset.kind === kind && asset.speakerKey === speakerKey && asset.sceneKey === cacheSceneKey);
+        })();
+        pendingNarration.set(pendingKey, pending);
+      }
+      try {
+        const asset = await pending;
+        return sendJson(response, 200, { asset });
+      } finally {
+        if (pendingNarration.get(pendingKey) === pending) pendingNarration.delete(pendingKey);
+      }
+    }
     const audioAssetMatch = url.pathname.match(/^\/api\/audio-assets\/([^/]+)$/);
     if (audioAssetMatch && request.method === "GET") {
       if (!databaseEnabled) return sendJson(response, 404, { error: "Audio asset not found" });
       const asset = await getDatabaseAudioAsset(decodeURIComponent(audioAssetMatch[1]));
       if (!asset) return sendJson(response, 404, { error: "Audio asset not found" });
-      response.writeHead(200, { "content-type": asset.mime_type || "audio/mpeg", "cache-control": "public, max-age=31536000, immutable" });
-      return response.end(asset.audio_data);
+      return sendAudio(request, response, asset.audio_data, asset.mime_type || "audio/mpeg");
     }
     if (url.pathname === "/api/sync" && request.method === "GET") {
       const scripts = await listScripts();
@@ -590,8 +664,10 @@ const server = http.createServer(async (request, response) => {
     if (!filePath.startsWith(publicDir)) return sendJson(response, 403, { error: "forbidden" });
     const stat = await fs.stat(filePath);
     if (!stat.isFile()) throw new Error("not a file");
-    response.writeHead(200, { "content-type": mime[path.extname(filePath)] || "application/octet-stream" });
-    response.end(await fs.readFile(filePath));
+    const data = await fs.readFile(filePath);
+    if (path.extname(filePath) === ".mp3") return sendAudio(request, response, data);
+    response.writeHead(200, { "content-type": mime[path.extname(filePath)] || "application/octet-stream", "content-length": data.length });
+    response.end(request.method === "HEAD" ? undefined : data);
   } catch (error) {
     const roomStatus = {
       ROOM_NOT_FOUND: 404,
