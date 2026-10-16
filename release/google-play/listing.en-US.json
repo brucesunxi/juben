@@ -69,6 +69,6 @@
     "bundleSha256": "BE9DDC28606356686D2D8450E88166B9C5B3930A95770008A1430FE5E3FC167A",
     "releaseNotes": "Fix correct-accusation credit in solo cases; include prominent data-deletion policy links.",
     "sourceCommit": "8759241",
-    "remoteStatus": "Push blocked by unavailable prior proxy and direct HTTPS timeout; web fix not deployed."
+    "remoteStatus": "GitHub push blocked by unavailable prior proxy and direct HTTPS timeout. Web fix deployed successfully to existing Vercel project: dpl_8afZkky8MHJr4H34497sMMNcuyYq, production READY. Public post-deployment readback timed out locally."
   }
 }

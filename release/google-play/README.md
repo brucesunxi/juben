@@ -6,7 +6,7 @@ Updated 2026-10-16. **Internal testing is published; production is not submitted
 
 - GitHub: https://github.com/brucesunxi/juben (main).
 - Existing Vercel project: juben. Production: https://juben-lyart.vercel.app.
-- Latest web deployment: dpl_4V3Pb1a8VZry7TWbrkDDQMjuRHFq, production READY. Public privacy page returned 200 and API health returned four scripts.
+- Latest web deployment: dpl_8afZkky8MHJr4H34497sMMNcuyYq, production READY, aliased to https://juben-lyart.vercel.app. It includes the solo correct-count fix. Public post-deployment readback timed out over the local connection; do not claim a fresh online smoke test. The earlier privacy/API checks succeeded before reboot.
 - Play developer: JRYS, organization account 5271031489760273452.
 - App: Nocturne: Mystery Stories, com.nocturne.scriptmystery, Play app ID 4973038944800749557.
 - Console: https://play.google.com/console/u/0/developers/5271031489760273452/app/4973038944800749557/app-dashboard.
@@ -38,7 +38,7 @@ Uploaded version-1 AAB is preserved at ignored `.build/releases/v1/app-release.a
 - A correct solo vote now records the chosen suspect before completion is saved and uploaded. Previously the result was shown correctly but the correct-call count stayed zero. Four regression cases cover correct solo credit, retry after a wrong choice, deduplication, room result timing and spectators; all nine tests including deletion passed via `mobile:sync`.
 - Upgraded the same Android emulator from v1 to v2 without clearing its guest profile. Completed Old Port offline through three clues, three questions and a correct accusation; the result displayed **Correct calls: 1**, preserving the earlier v1 test case record. Evidence: ignored `.build/device-evidence/v2-solved-count.png`. Historical counts are not retroactively changed by this fix.
 - Four actual Android screenshots are in `assets/screenshots/`: 1080×1920 JPEG, captured from v2. Raw PNG originals are retained in ignored `.build/device-evidence/`; JPEG export only changes the file format. No generated UI or device frame is added.
-- Pushing the fix failed after reboot: the prior HTTP proxy at 127.0.0.1:20189 was unavailable, and direct GitHub HTTPS timed out. The running network tool's port 12346 returned HTTP 404 to CONNECT and is not a working HTTP proxy. Do not change system/VPN security settings to bypass this. Restore the user's existing connection, then push main and deploy the existing Vercel project. No new v2 web deployment or Play upload is claimed.
+- Pushing the fix failed after reboot: the prior HTTP proxy at 127.0.0.1:20189 was unavailable, and direct GitHub HTTPS timed out. The running network tool's port 12346 returned HTTP 404 to CONNECT and is not a working HTTP proxy. Do not change system/VPN security settings to bypass this. Restore the user's existing connection, then push main. Vercel was independently reachable through its CLI and successfully deployed the fix to the existing project (deployment above, 191 files); version 2 has not been uploaded to Play.
 
 ## Signing and local tooling
 
