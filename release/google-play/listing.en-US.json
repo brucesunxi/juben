@@ -69,6 +69,6 @@
     "bundleSha256": "BE9DDC28606356686D2D8450E88166B9C5B3930A95770008A1430FE5E3FC167A",
     "releaseNotes": "Fix correct-accusation credit in solo cases; include prominent data-deletion policy links.",
     "sourceCommit": "8759241",
-    "remoteStatus": "GitHub push blocked by unavailable prior proxy and direct HTTPS timeout. Web fix deployed successfully to existing Vercel project: dpl_8afZkky8MHJr4H34497sMMNcuyYq, production READY. Public post-deployment readback timed out locally."
+    "remoteStatus": "GitHub main successfully pushed through 8dcd6e6 using direct HTTPS. Web fix deployed to existing Vercel project: dpl_8afZkky8MHJr4H34497sMMNcuyYq, production READY; local public-web readback still times out. Chrome browser extension installed by user, but official diagnostics report missing desktop native-host manifest/registration; desktop Browser plugin reinstall requested. Play v2 upload remains pending."
   }
 }
