@@ -7,7 +7,7 @@
       "googlePlayCategoryToReview": "Personal info / User IDs",
       "flow": "Locally generated externalKey sent to the backend for rooms and progression",
       "purpose": "App functionality",
-      "optional": "Solo play is available without multiplayer; confirm progression upload behavior",
+      "optional": "No opt-out exposed: guest identity is transmitted by startup room/leaderboard requests and completion uploads. Offline failures do not prevent solo play.",
       "retention": "Disclosed in updated privacy policy; server data has no fixed automatic expiry and is removed on guest deletion or operational cleanup; provider log/backup settings are provider-specific"
     },
     {
@@ -18,29 +18,29 @@
       "retention": "Disclosed in updated privacy policy; server data has no fixed automatic expiry and is removed on guest deletion or operational cleanup; provider log/backup settings are provider-specific"
     },
     {
-      "type": "Room text messages and uploaded scripts",
-      "googlePlayCategoryToReview": "Messages / Other in-app messages; App activity / Other user-generated content",
-      "flow": "User submissions stored in PostgreSQL; chat visible to room members; imported scripts require review before publication",
+      "type": "Room text messages",
+      "googlePlayCategoryToReview": "Messages / Other in-app messages",
+      "flow": "Room chat stored in PostgreSQL and visible to room members. Script uploads belong to web Studio, whose entrypoints are hidden in the native player app.",
       "purpose": "App functionality and moderation",
       "retention": "Disclosed in updated privacy policy; server data has no fixed automatic expiry and is removed on guest deletion or operational cleanup; provider log/backup settings are provider-specific"
     },
     {
       "type": "Game events and completed cases",
-      "googlePlayCategoryToReview": "App activity / App interactions",
-      "flow": "Multiplayer game events and completion records sent to the backend",
+      "googlePlayCategoryToReview": "App activity / Other actions",
+      "flow": "Multiplayer events and solo/multiplayer completion records sent to the backend. The public leaderboard automatically exposes display names and aggregate game statistics, but its payload does not expose guest IDs.",
       "purpose": "App functionality",
       "retention": "Disclosed in updated privacy policy; server data has no fixed automatic expiry and is removed on guest deletion or operational cleanup; provider log/backup settings are provider-specific"
     },
     {
       "type": "Live microphone audio",
       "googlePlayCategoryToReview": "Audio / Voice or sound recordings",
-      "flow": "Optional WebRTC peer voice; inspect sharing and ephemeral-processing answers against Google's definitions",
+      "flow": "Optional P2P WebRTC peer voice; no TURN, SFU or server recording found. Review Google's end-to-end-encryption collection exception and user-initiated recipient-sharing exception; this is a code review, not an independent encryption audit.",
       "purpose": "Optional room voice chat",
       "serverRecording": "No recording implementation found; peer devices receive live audio"
     },
     {
       "type": "IP/network and country metadata",
-      "googlePlayCategoryToReview": "Review approximate-location and device/network disclosure definitions",
+      "googlePlayCategoryToReview": "Location / Approximate location (country inferred from connection metadata)",
       "flow": "HTTPS service providers receive connection metadata; deployment country header is used for initial language; public Google STUN is used for WebRTC",
       "purpose": "Networking and language selection",
       "retention": "Disclosed in updated privacy policy; server data has no fixed automatic expiry and is removed on guest deletion or operational cleanup; provider log/backup settings are provider-specific"
@@ -68,6 +68,18 @@
   "requiredBeforeSubmission": [
     "Complete the actual Google Play Data safety questionnaire using current player app flows",
     "Verify app behavior and deletion on a real or functioning Android environment",
-    "Complete IARC and operational moderation review"
-  ]
+    "Complete operational moderation review; IARC questionnaire and ratings are already saved"
+  ],
+  "questionnaireDraft": {
+    "status": "Saved draft at step 4; not a final submitted declaration",
+    "selectedTypes": ["Approximate location", "Name", "User IDs", "Other in-app messages", "Other actions"],
+    "processingCompleted": ["Approximate location"],
+    "processingPending": ["Name", "User IDs", "Other in-app messages", "Other actions"],
+    "approximateLocationAnswers": "Collected, not shared under service-provider exception, required, not declared ephemeral, app functionality and personalization.",
+    "transportEncryption": true,
+    "accountCreation": false,
+    "externalAccountLogin": false,
+    "deletionUrl": "https://juben-lyart.vercel.app/privacy.html?lang=en#delete-data-en",
+    "definitionsSource": "https://support.google.com/googleplay/android-developer/answer/10787469?hl=en"
+  }
 }
