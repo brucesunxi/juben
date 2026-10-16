@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "node server.mjs",
     "start": "node server.mjs",
-    "check": "node --check server.mjs && node --check public/app.js && node scripts/build-voice-passages.mjs --check && node scripts/build-scene-narration.mjs --check && node scripts/build-evidence-narration.mjs --check && node --test scripts/test-profile-deletion.mjs",
+    "check": "node --check server.mjs && node --check public/app.js && node scripts/build-voice-passages.mjs --check && node scripts/build-scene-narration.mjs --check && node scripts/build-evidence-narration.mjs --check && node --test scripts/test-profile-deletion.mjs scripts/test-case-completion.mjs",
     "audio:build-clues": "node scripts/build-evidence-narration.mjs",
     "audio:produce-clues": "node scripts/produce-evidence-narration.mjs",
     "audio:build-summaries": "node scripts/build-scene-narration.mjs",

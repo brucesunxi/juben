@@ -3225,6 +3225,7 @@ function castVote(id) {
     setTimeout(() => card.classList.remove("wrong-vote"), 350);
     return;
   }
+  gameState.votedSuspect = id;
   void emitRoomEvent("result_shown", { suspectId: id });
   renderResult();
 }
