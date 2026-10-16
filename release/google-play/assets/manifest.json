@@ -1,0 +1,24 @@
+{
+  "status": "draft-not-uploaded",
+  "sources": [
+    "public/icons/icon.png",
+    "public/assets/covers/moon-trial.jpg"
+  ],
+  "rightsConfirmation": "Pending publisher confirmation",
+  "assets": [
+    {
+      "file": "icon-512.png",
+      "width": 512,
+      "height": 512,
+      "bytes": 19239,
+      "sha256": "099674CA9EC318CAA219F9646BDD2670DDAD7FBFB067E88E57BFC026AE303E13"
+    },
+    {
+      "file": "feature-graphic.en-US.png",
+      "width": 1024,
+      "height": 500,
+      "bytes": 535633,
+      "sha256": "3E087B9E327DB9BA7618B1F9D00EF882711724DEB3726F2A4961D12539685B18"
+    }
+  ]
+}

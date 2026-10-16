@@ -1,0 +1,73 @@
+{
+  "status": "engineering-inventory-not-a-submitted-declaration",
+  "reviewedOn": "2026-10-16",
+  "data": [
+    {
+      "type": "Guest identifier",
+      "googlePlayCategoryToReview": "Personal info / User IDs",
+      "flow": "Locally generated externalKey sent to the backend for rooms and progression",
+      "purpose": "App functionality",
+      "optional": "Solo play is available without multiplayer; confirm progression upload behavior",
+      "retention": "Disclosed in updated privacy policy; server data has no fixed automatic expiry and is removed on guest deletion or operational cleanup; provider log/backup settings are provider-specific"
+    },
+    {
+      "type": "Display name",
+      "googlePlayCategoryToReview": "Personal info / Name",
+      "flow": "Guest-selected nickname sent to the backend and displayed in rooms or leaderboard",
+      "purpose": "App functionality",
+      "retention": "Disclosed in updated privacy policy; server data has no fixed automatic expiry and is removed on guest deletion or operational cleanup; provider log/backup settings are provider-specific"
+    },
+    {
+      "type": "Room text messages and uploaded scripts",
+      "googlePlayCategoryToReview": "Messages / Other in-app messages; App activity / Other user-generated content",
+      "flow": "User submissions stored in PostgreSQL; chat visible to room members; imported scripts require review before publication",
+      "purpose": "App functionality and moderation",
+      "retention": "Disclosed in updated privacy policy; server data has no fixed automatic expiry and is removed on guest deletion or operational cleanup; provider log/backup settings are provider-specific"
+    },
+    {
+      "type": "Game events and completed cases",
+      "googlePlayCategoryToReview": "App activity / App interactions",
+      "flow": "Multiplayer game events and completion records sent to the backend",
+      "purpose": "App functionality",
+      "retention": "Disclosed in updated privacy policy; server data has no fixed automatic expiry and is removed on guest deletion or operational cleanup; provider log/backup settings are provider-specific"
+    },
+    {
+      "type": "Live microphone audio",
+      "googlePlayCategoryToReview": "Audio / Voice or sound recordings",
+      "flow": "Optional WebRTC peer voice; inspect sharing and ephemeral-processing answers against Google's definitions",
+      "purpose": "Optional room voice chat",
+      "serverRecording": "No recording implementation found; peer devices receive live audio"
+    },
+    {
+      "type": "IP/network and country metadata",
+      "googlePlayCategoryToReview": "Review approximate-location and device/network disclosure definitions",
+      "flow": "HTTPS service providers receive connection metadata; deployment country header is used for initial language; public Google STUN is used for WebRTC",
+      "purpose": "Networking and language selection",
+      "retention": "Disclosed in updated privacy policy; server data has no fixed automatic expiry and is removed on guest deletion or operational cleanup; provider log/backup settings are provider-specific"
+    }
+  ],
+  "providers": [
+    "Vercel",
+    "Neon PostgreSQL",
+    "Google public STUN for WebRTC",
+    "Azure Speech for content production"
+  ],
+  "observations": {
+    "adsSdkFound": false,
+    "analyticsSdkFound": false,
+    "cameraPermissionDeclared": false,
+    "locationPermissionDeclared": false,
+    "microphonePermissionDeclared": true,
+    "inAppGuestDeletionImplemented": true,
+    "offlineDeletionServerRetryNeedsReview": false,
+    "backendTransport": "HTTPS",
+    "localStorage": "Guest identity, settings, archive, favorites, notifications, progress and room reference",
+    "deletionFailureBehavior": "Failed, rejected or 10-second timed-out requests retain the guest identity and local records; clearing happens only after server success.",
+    "deletionAndroidDeviceValidationPending": true
+  },
+  "requiredBeforeSubmission": [
+    "Complete the actual Google Play Data safety questionnaire using current player app flows",
+    "Verify app behavior and deletion on a real or functioning Android environment",
+    "Complete IARC and operational moderation review"
+  ]
+}

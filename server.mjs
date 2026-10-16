@@ -502,6 +502,7 @@ const server = http.createServer(async (request, response) => {
       return sendJson(response, 201, result);
     }
     if (url.pathname === "/api/profile" && request.method === "DELETE") {
+      if (!databaseEnabled) return sendJson(response, 503, { error: "Guest deletion requires DATABASE_URL to be configured." });
       const payload = JSON.parse(await readBody(request));
       const result = await deleteDatabaseUser(payload.user || payload.profile || {});
       return sendJson(response, 200, result || { deleted: false });

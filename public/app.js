@@ -1,3 +1,6 @@
+const nativePlayerApp = window.Capacitor?.isNativePlatform?.() === true;
+document.documentElement.classList.toggle("native-player-app", nativePlayerApp);
+
 function readLocalePreference() {
   try {
     const saved = localStorage.getItem("nocturne-locale");
@@ -124,6 +127,8 @@ const translations = {
 translations.zh.roomRestored = "已恢复你的房间";
 translations.en.roomRestored = "Your room has been restored";
 translations.zh.roomVoteTitle = "房间指认结果";
+translations.zh.profileDeleteFailed = "删除未完成。请联网后重试，访客身份和本地记录已保留。";
+translations.en.profileDeleteFailed = "Deletion did not complete. Reconnect and retry; your guest identity and local records have been kept.";
 translations.en.roomVoteTitle = "Room accusation results";
 translations.zh.roomVoteConsensus = "票数汇总";
 translations.en.roomVoteConsensus = "Vote tally";
@@ -1026,11 +1031,17 @@ function saveProfile() {
 
 async function deleteProfile() {
   if (!window.confirm(t("profileDeleteConfirm"))) return;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
   try {
-    const response = await apiFetch("/api/profile", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ user: currentUserProfile() }) });
+    const response = await apiFetch("/api/profile", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ user: currentUserProfile() }), signal: controller.signal });
     if (!response.ok) throw new Error("profile delete failed");
   } catch {
-    // Local data is still removed when the API is unavailable.
+    // Keep the identity needed to retry deleting server data after an outage.
+    showToast(t("profileDeleteFailed"));
+    return;
+  } finally {
+    clearTimeout(timeout);
   }
   try {
     localStorage.removeItem("nocturne-user-key");
@@ -1153,11 +1164,45 @@ async function loadRoomMessages(roomId) {
   }
 }
 
+let communityConsent = false;
+let communityConsentRequest = null;
+
+async function ensureCommunityConsent() {
+  if (communityConsent) return true;
+  try { if (localStorage.getItem("nocturne-community-terms") === "2026-10-16") return true; } catch { /* session consent still works */ }
+  if (communityConsentRequest) return communityConsentRequest;
+  const zh = state.locale === "zh";
+  const dialog = document.createElement("dialog");
+  dialog.className = "community-consent";
+  dialog.innerHTML = `<form><h2>${zh ? "加入 Nocturne 社区" : "Join the Nocturne community"}</h2><p>${zh ? "房间支持文字和可选语音。禁止骚扰、仇恨、色情、儿童剥削及侵犯隐私的内容。可在消息旁举报或屏蔽用户；遇到语音滥用请离开语音并联系支持。" : "Rooms offer text and optional voice. Harassment, hate, sexual content, child exploitation and privacy violations are prohibited. Report or block users beside a message; leave voice and contact support if voice abuse occurs."}</p><p><a href="terms.html" target="_blank" rel="noopener">${zh ? "用户协议" : "Terms of service"}</a> · <a href="privacy.html" target="_blank" rel="noopener">${zh ? "隐私政策" : "Privacy policy"}</a></p><label><input type="checkbox" required /> ${zh ? "我已满 18 岁，阅读并同意用户协议，了解隐私政策。" : "I am 18 or older, have read and agree to the Terms, and have read the Privacy policy."}</label><div><button type="button" class="ghost-button" data-cancel>${zh ? "取消" : "Cancel"}</button><button type="submit" class="primary-button">${zh ? "同意并继续" : "Agree and continue"}</button></div></form>`;
+  document.body.append(dialog);
+  communityConsentRequest = new Promise((resolve) => {
+    let finished = false;
+    const finish = (accepted) => {
+      if (finished) return;
+      finished = true;
+      if (accepted) {
+        communityConsent = true;
+        try { localStorage.setItem("nocturne-community-terms", "2026-10-16"); } catch { /* current-session consent is retained */ }
+      }
+      dialog.close();
+      dialog.remove();
+      resolve(accepted);
+    };
+    dialog.querySelector("form").addEventListener("submit", (event) => { event.preventDefault(); finish(true); });
+    dialog.querySelector("[data-cancel]").addEventListener("click", () => finish(false));
+    dialog.addEventListener("cancel", (event) => { event.preventDefault(); finish(false); });
+  });
+  dialog.showModal();
+  try { return await communityConsentRequest; } finally { communityConsentRequest = null; }
+}
+
 async function sendRoomMessage() {
   const input = $("#roomChatInput");
   if (!input || !state.activeRoom || !state.roomMember) return;
   const body = input.value.trim();
   if (!body) return;
+  if (!await ensureCommunityConsent()) return;
   const button = $("#roomChatSend");
   if (button) button.disabled = true;
   try {
@@ -1332,6 +1377,7 @@ async function loadRoomVoiceSignals(roomId) {
 
 async function joinRoomVoice() {
   if (!state.activeRoom || !state.roomMember || state.voiceJoined) return;
+  if (!await ensureCommunityConsent()) return;
   if (!navigator.mediaDevices?.getUserMedia || !window.RTCPeerConnection) { showToast(t("roomVoiceUnsupported")); return; }
   try {
     state.voiceStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
@@ -1548,6 +1594,7 @@ async function roomAction(roomId, action, ready = true) {
 }
 
 async function joinRoom(roomId, memberRole = "player") {
+  if (!await ensureCommunityConsent()) return;
   try {
     const response = await apiFetch(`/api/rooms/${encodeURIComponent(roomId)}/join`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ user: currentUserProfile(), memberRole }) });
     const data = await response.json();
@@ -1570,6 +1617,7 @@ async function joinRoom(roomId, memberRole = "player") {
 }
 
 async function createRoom(scriptId = "moon-trial") {
+  if (!await ensureCommunityConsent()) return;
   closeModal();
   try {
     const selectedScript = state.scripts.find((script) => script.id === scriptId) || fallbackScripts.find((script) => script.id === scriptId);
@@ -1591,6 +1639,7 @@ async function createRoom(scriptId = "moon-trial") {
 }
 
 async function quickMatch(scriptId = "moon-trial") {
+  if (!await ensureCommunityConsent()) return;
   closeModal();
   try {
     const selectedScript = state.scripts.find((script) => script.id === scriptId) || fallbackScripts.find((script) => script.id === scriptId);
@@ -1772,6 +1821,7 @@ function openDetail(id) {
 function closeModal() { $("#modalBackdrop").classList.remove("open"); $("#modalBackdrop").setAttribute("aria-hidden", "true"); }
 
 function setView(view) {
+  if (nativePlayerApp && view === "studio") view = "discover";
   if (view !== "game" && currentVoiceAudio) stopVoicePlayback();
   $$(".nav-item").forEach((item) => item.classList.toggle("active", item.dataset.view === view));
   $$(".view").forEach((item) => item.classList.toggle("active-view", item.id === `${view}View`));
@@ -1992,6 +2042,7 @@ async function updateAdminProduction(scriptId, status) {
 }
 
 async function importFile(file) {
+  if (!await ensureCommunityConsent()) return;
   const content = await file.text();
   let script;
   if (file.name.toLowerCase().endsWith(".json")) script = JSON.parse(content);

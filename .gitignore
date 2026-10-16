@@ -11,6 +11,7 @@ node_modules/
 *.keystore
 *.p12
 *.mobileprovision
+.signing/
 
 # Native IDE state
 .idea/

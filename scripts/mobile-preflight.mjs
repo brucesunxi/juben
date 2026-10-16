@@ -1,9 +1,10 @@
 import { access, constants } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
 import process from "node:process";
+import { fileURLToPath } from "node:url";
 
 const root = new URL("..", import.meta.url);
-const rootPath = root.pathname.replace(/\/$/, "");
+const rootPath = fileURLToPath(root);
 
 function commandVersion(command, args = ["--version"]) {
   try {
@@ -24,7 +25,7 @@ async function exists(relativePath) {
 
 const checks = [
   ["Node.js", commandVersion(process.execPath)],
-  ["Capacitor CLI", commandVersion("npx", ["cap", "--version"])],
+  ["Capacitor CLI", commandVersion(process.execPath, [fileURLToPath(new URL("node_modules/@capacitor/cli/bin/capacitor", root)), "--version"])],
   ["Java", commandVersion("java")],
   ["Xcode command line tools", commandVersion("xcodebuild", ["-version"])],
 ];
@@ -56,7 +57,9 @@ const signingKeys = ["ANDROID_KEYSTORE_PATH", "ANDROID_KEYSTORE_PASSWORD", "ANDR
 const androidSigningReady = signingKeys.every((key) => String(process.env[key] || "").trim());
 console.log("\nBuild commands");
 console.log("--------------");
-console.log(javaReady ? "Android: ./android/gradlew :app:bundleRelease" : "Android: install a JDK and set JAVA_HOME before building the signed AAB");
+const androidWrapper = process.platform === "win32" ? ".\\android\\gradlew.bat" : "./android/gradlew";
+console.log(javaReady ? `Android: ${androidWrapper} -p android :app:bundleRelease` : "Android: install a JDK and set JAVA_HOME before building the signed AAB");
+console.log(`Project: ${rootPath}`);
 console.log(xcodeReady ? "iOS: open ios/App/App.xcodeproj in Xcode and Archive" : "iOS: install Xcode command line tools before archiving");
 console.log(`${androidSigningReady ? "READY" : "MISSING"}   Android release signing: ${androidSigningReady ? "environment variables configured" : "set ANDROID_KEYSTORE_PATH, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS and ANDROID_KEY_PASSWORD"}`);
 console.log("The final store build still requires real signing credentials, store metadata, screenshots, privacy URL and review notes.");
