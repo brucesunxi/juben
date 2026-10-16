@@ -6,7 +6,7 @@ Updated 2026-10-16. **Internal testing is published; production is not submitted
 
 - GitHub: https://github.com/brucesunxi/juben (main).
 - Existing Vercel project: juben. Production: https://juben-lyart.vercel.app.
-- Latest web deployment: dpl_Ddfykq2xCjASTTxSRZzBnW1mHHqp, READY. Public privacy page returned 200 and API health returned four scripts.
+- Latest web deployment: dpl_4V3Pb1a8VZry7TWbrkDDQMjuRHFq, production READY. Public privacy page returned 200 and API health returned four scripts.
 - Play developer: JRYS, organization account 5271031489760273452.
 - App: Nocturne: Mystery Stories, com.nocturne.scriptmystery, Play app ID 4973038944800749557.
 - Console: https://play.google.com/console/u/0/developers/5271031489760273452/app/4973038944800749557/app-dashboard.
@@ -28,7 +28,7 @@ Verified public publisher details: 北京简融易数科技有限公司; support
 - App Signing and automatic protection were already enabled in the Play creation flow.
 - Published-state screenshot: ignored `.build/play-console-internal-published.jpg`.
 
-Current uploaded AAB: `android/app/build/outputs/bundle/release/app-release.aab`, SHA-256 `75B0DD9A3E742131D697474AEE9474E743F8513EFB3C626EF182BC89366BD070`, 24,925,273 bytes. All 154 public source files match the bundle; 103 narration MP3s are present (40 phase, 48 clue, 15 role). Google bundletool validation and jarsigner verification passed. The Google Console accepted this bundle. `.build/android-release-audit.json` holds local evidence. Future uploads must use a new version code; reuse the content library when promoting this existing bundle.
+Current uploaded AAB: `android/app/build/outputs/bundle/release/app-release.aab`, SHA-256 `75B0DD9A3E742131D697474AEE9474E743F8513EFB3C626EF182BC89366BD070`, 24,925,273 bytes. All 154 public source files matched the bundle at build time; 103 narration MP3s are present (40 phase, 48 clue, 15 role). Google bundletool validation and jarsigner verification passed. The Google Console accepted this bundle. `.build/android-release-audit.json` holds local evidence. After uploading, privacy.html gained prominent data-deletion anchor links; this web-only navigation change is deployed and synchronized into native source copies, but the uploaded v1 bundle remains the earlier snapshot. Future uploads must use a new version code; reuse the content library when promoting this existing bundle.
 
 ## Signing and local tooling
 
@@ -53,8 +53,9 @@ Guest deletion now retains the original identity and local records on rejected, 
 
 ## Remaining production work
 
-- Complete the actual IARC, target audience, Data safety, advertising ID, government, financial and health declarations. Privacy, no-ads, no-advertising-ID, non-government and no-login player-access declarations have been saved. Console changes still require production review when applicable.
-- IARC entry explicitly says filling the questionnaire accepts its Terms of Use. The publisher explicitly approved these terms and filling the questionnaire on 2026-10-16. The questionnaire is started but not yet submitted. Terms: https://web.iarcservices.com/terms.
+- Privacy, no-ads, no-advertising-ID, non-government, no financial/health features and no-login player-access declarations are saved. Target audience is saved as 18+, including the optional restriction for Google-identified minors. Console changes still require production review when applicable.
+- IARC questionnaire and generated ratings are saved following the publisher's explicit approval of the terms on 2026-10-16. Results include Australia restricted 15+ (strong themes), North America E10+, Europe PEGI 7, Germany USK 12, Brazil 10+, Taiwan restricted, Saudi Arabia 18+ and generic 7+. Korea requires further GRAC review and is outside the proposed initial countries. These classifications do not replace the chosen 18+ target audience. Evidence: ignored `.build/play-console-iarc-saved.jpg`. Terms: https://web.iarcservices.com/terms.
+- Data safety is a saved draft at step 4, not a final declaration. Selected types: approximate location, name, user ID, other in-app messages and other actions. Approximate location processing is completed; the other four processing dialogs remain. The draft declares encrypted transit, no account creation/external account login, and deletion at https://juben-lyart.vercel.app/privacy.html?lang=en#delete-data-en. Evidence: ignored `.build/play-data-safety-draft.jpg`.
 - Complete category/contact and the actual English store listing using `listing.en-US.json`, `assets/icon-512.png` and `assets/feature-graphic.en-US.png`. Draft countries AU/NZ/CA/GB/US; draft target audience adults. IARC rating is separate.
 - Obtain genuine Android screenshots and validate installation, offline solo play, English copy/audio, network failure, chat/report/block, mic allow/deny and deletion. Publisher currently has no Android phone. The software emulator did not boot; no device test or screenshot has passed.
 - `data-safety-inventory.json` is an engineering inventory, not a submitted legal declaration.
@@ -67,9 +68,15 @@ Official Chrome and ChatGPT extension are installed and connected. User enabled 
 
 Chrome connection IDs changed after extension reload. Resolve the connected Chrome and its actual user tabs instead of assuming a stale browser ID. Browser actions/readouts often take 20–25 seconds each; large action batches can reset the runtime. File transfer can exceed the tool's nominal timeout. Do not retry an upload before inspecting the Console result.
 
-Known tabs at this checkpoint: internal track 1815059317; IARC approval page 1815059325. Marks are turn-scoped; preserve unfinished pages again when needed. The account-management page and Codex own UI were denied earlier and are unrelated to release work.
+Resume Data safety at https://play.google.com/console/u/0/developers/5271031489760273452/app/4973038944800749557/app-content/data-privacy-security. The saved draft has no open dialog. Tab IDs can change after restarting Chrome. Marks are turn-scoped; preserve unfinished pages again when needed. The account-management page and Codex own UI were denied earlier and are unrelated to release work. Do not export CSV again: the official download operation hung for over 30 minutes without producing a file.
 
-Local debug server session 35189 runs http://localhost:4317 with DATABASE_URL disabled; stop this supervised session when smoke testing is finished. The earlier emulator was explicitly stopped and is not running.
+Local debug server session 35189 (http://localhost:4317, DATABASE_URL disabled) was stopped before the planned Windows restart. The earlier emulator was explicitly stopped and is not running.
+
+## Windows restart checkpoint
+
+The publisher approved enabling Windows Hypervisor Platform and restarting if needed, while avoiding disruption to other work. Official DISM enabled `HypervisorPlatform` with `/All /NoRestart`, exit 3010. The local `.build/enable-whp-dism.log` confirms installation and required reboot; no security protections or third-party hypervisor drivers were disabled. Before restart, other Codex conversations were idle, no Java/Gradle/emulator/DISM installer was running, and the project's test server was stopped. All Play changes were saved before requesting a graceful restart. This checkpoint records preparation, not proof the restart completed.
+
+After reboot, check the feature state and emulator acceleration, then start existing AVD `NocturnePlayApi36` from `.build/avd` using `.build/android-sdk/emulator/emulator.exe`. Do not recreate the signing key, repository, Vercel project or Play application. Verify genuine Android installation and gameplay and capture store screenshots. Continue the saved Data safety draft, store listing, category/contact and country configuration before production submission. Preserve the uploaded version-1 AAB; any newly uploaded build needs a higher version code.
 
 ## Story-content audit
 
