@@ -69,7 +69,7 @@
     "bundleSha256": "BE9DDC28606356686D2D8450E88166B9C5B3930A95770008A1430FE5E3FC167A",
     "releaseNotes": "Fix correct-accusation credit in solo cases; include prominent data-deletion policy links.",
     "sourceCommit": "8759241",
-    "remoteStatus": "Existing GitHub main was pushed through 7cc6738 before this checkpoint. Existing Vercel production deployment remains dpl_8afZkky8MHJr4H34497sMMNcuyYq. Browser health check passed. Google Play confirms production 1.0.1 and 11 changes are in review; public availability is not confirmed. Single-guest online room/chat/rejoin/role/ready/start/investigation checks passed. QA guest deletion awaits separate action-time approval; native microphone/peer voice and cross-user report/block remain unverified.",
+    "remoteStatus": "Existing GitHub main was pushed through 566ed8d before this checkpoint. Existing Vercel production deployment remains dpl_8afZkky8MHJr4H34497sMMNcuyYq. Browser health check passed. Google Play confirms production 1.0.1 and 11 changes are in review; public availability is not confirmed. Single-guest online room/chat/rejoin/role/ready/start/investigation and approved QA guest deletion checks passed. Native microphone/peer voice and cross-user report/block remain unverified.",
     "releaseName": "1.0.1 — Initial public release",
     "playValidation": "No blocking errors; one missing deobfuscation-map warning (minification disabled); installed size 24.6 MB",
     "reviewUrl": "https://play.google.com/console/u/0/developers/5271031489760273452/app/4973038944800749557/publishing",
@@ -105,6 +105,7 @@
       "No cross-device peer voice or native microphone validation",
       "No cross-user report/block validation"
     ],
-    "guestDeletion": "Pending separate action-time approval; not executed"
+    "guestDeletion": "Passed browser end-to-end flow after separate action-time approval and publisher manual confirmation: default nickname, zero notifications and empty archive/favorites read back. Frontend clears only after a successful server response. No independent database-row or provider-backup inspection; Android deletion remains unverified.",
+    "guestDeletionEvidence": ".build/qa-deletion-verified-20261017.jpg"
   }
 }

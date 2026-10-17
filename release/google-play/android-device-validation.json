@@ -59,6 +59,7 @@
       "No cross-device peer voice or native microphone validation",
       "No cross-user report/block validation"
     ],
-    "guestDeletion": "Pending separate action-time approval; not executed"
+    "guestDeletion": "Passed browser end-to-end flow after separate action-time approval and publisher manual confirmation: default nickname, zero notifications and empty archive/favorites read back. Frontend clears only after a successful server response. No independent database-row or provider-backup inspection; Android deletion remains unverified.",
+    "guestDeletionEvidence": ".build/qa-deletion-verified-20261017.jpg"
   }
 }

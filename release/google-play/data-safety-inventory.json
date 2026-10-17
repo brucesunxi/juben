@@ -63,7 +63,9 @@
     "backendTransport": "HTTPS",
     "localStorage": "Guest identity, settings, archive, favorites, notifications, progress and room reference",
     "deletionFailureBehavior": "Failed, rejected or 10-second timed-out requests retain the guest identity and local records; clearing happens only after server success.",
-    "deletionAndroidDeviceValidationPending": true
+    "deletionAndroidDeviceValidationPending": true,
+    "deletionBrowserValidation": "Passed 2026-10-17 for the isolated localhost QA guest using the production HTTPS API. Publisher approved deletion and manually accepted the browser dialog. Readback showed default nickname, zero notifications and empty archive/favorites. Frontend clears only after server success; database rows and provider backups were not independently inspected.",
+    "deletionBrowserEvidence": ".build/qa-deletion-verified-20261017.jpg"
   },
   "requiredBeforeSubmission": [
     "Verify app behavior and deletion on a real or functioning Android environment",
