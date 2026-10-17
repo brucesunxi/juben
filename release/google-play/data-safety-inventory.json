@@ -1,5 +1,5 @@
 {
-  "status": "engineering-inventory-questionnaire-completed-saved-pending-review",
+  "status": "engineering-inventory-questionnaire-submitted-in-review",
   "reviewedOn": "2026-10-17",
   "data": [
     {
@@ -70,7 +70,7 @@
     "Complete operational moderation review; IARC questionnaire and ratings are already saved"
   ],
   "questionnaireDraft": {
-    "status": "Completed and saved for review on 2026-10-17; not submitted",
+    "status": "Completed and submitted for review on 2026-10-17",
     "selectedTypes": [
       "Approximate location",
       "Name",

@@ -1,6 +1,6 @@
 # Google Play release checkpoint
 
-Updated 2026-10-17. **Version 2 (1.0.1) and all store declarations are saved for production review; production is not submitted.**
+Updated 2026-10-17. **Production version 2 (1.0.1) and 11 associated changes have been submitted to Google Play and are in review. Public store availability is not yet confirmed.**
 
 ## Current production checkpoint
 
@@ -10,10 +10,12 @@ Updated 2026-10-17. **Version 2 (1.0.1) and all store declarations are saved for
 - Adventure category is saved. Public support email `sunxi@jianrongyishu.com` and website `https://juben-lyart.vercel.app` are saved; Console confirmed the contact change was published.
 - Production countries are saved as AU, NZ, CA, GB and US (Console includes seven US territories under US).
 - The unchanged signed AAB below is uploaded and associated with the production candidate `1.0.1 — Initial public release`. Saved English notes describe four cases, solo/rooms, bilingual narration, optional voice, correct-call credit and guest deletion. Preview shows no blocking errors and one missing deobfuscation-map warning; minification is disabled.
-- Publishing overview shows **Submit 11 changes for review**, including the production release and five countries. Automatic quick checks have completed; Console explicitly says the changes can now be sent for review. The submit control has not been clicked while the remaining online QA is paused at its app-terms approval. Managed publishing is off, so approved production changes are intended to publish automatically.
+- After successful automatic quick checks, **11 changes were submitted and confirmed**. Publishing overview now explicitly shows **Changes in review** and the production row `1.0.1 — Initial public release`, with the five countries and all store/content declarations. Managed publishing is off, so approved production changes are intended to publish automatically. Google displayed a review estimate of usually seven days, potentially longer; no approval or public release is claimed.
 - Evidence is ignored locally: `.build/play-data-safety-saved-20261017.jpg`, `.build/play-store-settings-saved-20261017.jpg`, `.build/play-production-countries-20261017.jpg`, `.build/play-publishing-overview-20261017.jpg`.
 - Browser readback of the existing public health endpoint succeeded: `ok: true`, database enabled, four scripts. Direct Node HTTPS requests still time out; this is a local transport limitation, not evidence the hosted API is down.
-- Before submitting, finish the pending online QA as feasible and record its limitations. Native-window access is unavailable in the current computer-use connection, so no new Android microphone/peer-voice/deletion verification has occurred. An independent localhost test page uses the original HTTPS runtime and the current public source; it does not change the uploaded AAB. Its specifically named test guest is `Nocturne QA 20261017 Host`; the community-consent dialog is open and the publisher has been asked for action-time approval to accept the app terms. No terms were accepted, room created or test message sent yet. Preserve the existing production browser guest.
+- The publisher approved accepting the Nocturne community terms for `Nocturne QA 20261017 Host`. Its independent localhost test page uses the unchanged public source and original production HTTPS runtime. Verified room creation, chat submission and server-backed history restoration after rejoining by code, role selection, readiness, host start and entry into the online investigation. This was one guest, not a two-device synchronization or voice test. The test room was closed and its public listing disappeared. A separate action-time approval for deleting only this QA guest is pending; no deletion has been executed. Preserve the existing production browser guest. Evidence: `.build/qa-room-chat-ready-20261017.jpg`, `.build/qa-online-investigation-20261017.jpg`.
+- Native-window access is unavailable in the current computer-use connection, so no new Android microphone/peer-voice/deletion verification has occurred. Actual cross-user report/block filtering and audible quality remain unverified. The earlier Android offline/upgrade/correct-count tests still apply. The localhost test server is an ignored helper only; it does not modify the app or AAB.
+- Current authoritative submission record: `.build/play-production-submitted-20261017.txt` (visible Console DOM and URL). Repeated Console screenshot captures timed out; do not invent a submission screenshot. Live status: https://play.google.com/console/u/0/developers/5271031489760273452/app/4973038944800749557/publishing.
 
 Historical checkpoints below are retained for provenance; this section supersedes their pending-upload, draft-data-safety and missing-browser statements.
 
@@ -45,7 +47,7 @@ Verified public publisher details: 北京简融易数科技有限公司; support
 
 Uploaded version-1 AAB is preserved at ignored `.build/releases/v1/app-release.aab`, SHA-256 `75B0DD9A3E742131D697474AEE9474E743F8513EFB3C626EF182BC89366BD070`, 24,925,273 bytes. Google Console accepted this bundle and it remains the published internal-test release. Device testing subsequently found a solo correct-count defect, so use the version-2 candidate below for the next release rather than promoting v1 to production.
 
-## Version-2 candidate — uploaded and saved, not submitted
+## Version-2 candidate — submitted, in review
 
 - Android version code 2, version name 1.0.1. Code fix is in local commit `8759241`.
 - Candidate: `android/app/build/outputs/bundle/release/app-release.aab`, SHA-256 `BE9DDC28606356686D2D8450E88166B9C5B3930A95770008A1430FE5E3FC167A`, 24,925,304 bytes.

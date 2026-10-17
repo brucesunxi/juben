@@ -1,5 +1,5 @@
 {
-  "status": "production-candidate-saved-not-submitted",
+  "status": "production-submitted-in-review",
   "playConsoleAppId": "4973038944800749557",
   "playConsoleUrl": "https://play.google.com/console/u/0/developers/5271031489760273452/app/4973038944800749557/app-dashboard",
   "publisherApprovals": {
@@ -65,15 +65,18 @@
   "candidateRelease": {
     "versionCode": 2,
     "versionName": "1.0.1",
-    "state": "Uploaded, associated with production candidate and saved; not submitted for review",
+    "state": "Submitted for production review; Console confirms Changes in review",
     "bundleSha256": "BE9DDC28606356686D2D8450E88166B9C5B3930A95770008A1430FE5E3FC167A",
     "releaseNotes": "Fix correct-accusation credit in solo cases; include prominent data-deletion policy links.",
     "sourceCommit": "8759241",
-    "remoteStatus": "Existing GitHub main was pushed through 882dbef before this checkpoint. Existing Vercel production deployment remains dpl_8afZkky8MHJr4H34497sMMNcuyYq. Chrome is connected and Play is logged in. Version 2, English listing, five countries and all declarations are saved; publishing overview offers submission of 11 changes. Automatic quick checks passed and Console says the changes can now be submitted. Online QA is paused at the app-terms confirmation requested for the specifically named test guest. Production has not been submitted.",
+    "remoteStatus": "Existing GitHub main was pushed through 7cc6738 before this checkpoint. Existing Vercel production deployment remains dpl_8afZkky8MHJr4H34497sMMNcuyYq. Browser health check passed. Google Play confirms production 1.0.1 and 11 changes are in review; public availability is not confirmed. Single-guest online room/chat/rejoin/role/ready/start/investigation checks passed. QA guest deletion awaits separate action-time approval; native microphone/peer voice and cross-user report/block remain unverified.",
     "releaseName": "1.0.1 — Initial public release",
-    "playValidation": "No blocking errors; one missing deobfuscation-map warning (minification disabled); installed size 24.6 MB"
+    "playValidation": "No blocking errors; one missing deobfuscation-map warning (minification disabled); installed size 24.6 MB",
+    "reviewUrl": "https://play.google.com/console/u/0/developers/5271031489760273452/app/4973038944800749557/publishing",
+    "submittedOn": "2026-10-17",
+    "managedPublishing": false
   },
-  "storeListingStatus": "Complete English listing and artwork AI declarations saved for review on 2026-10-17",
+  "storeListingStatus": "Submitted for review with production version 2 on 2026-10-17",
   "categoryStatus": "Saved",
   "productionCountries": [
     "AU",
@@ -82,6 +85,26 @@
     "GB",
     "US"
   ],
-  "productionCountriesStatus": "Saved for review",
-  "dataSafetyStatus": "Completed and saved for review"
+  "productionCountriesStatus": "Submitted for review",
+  "dataSafetyStatus": "Submitted for review",
+  "onlineValidation": {
+    "date": "2026-10-17",
+    "platform": "Chrome, isolated localhost page with unchanged frontend and production HTTPS API",
+    "guest": "Nocturne QA 20261017 Host",
+    "passed": [
+      "Room creation",
+      "Chat send and history restored after code rejoin",
+      "Role selection",
+      "Ready-state persistence",
+      "Host start",
+      "Entry into online investigation",
+      "Test room closure"
+    ],
+    "limitations": [
+      "Single guest only",
+      "No cross-device peer voice or native microphone validation",
+      "No cross-user report/block validation"
+    ],
+    "guestDeletion": "Pending separate action-time approval; not executed"
+  }
 }
