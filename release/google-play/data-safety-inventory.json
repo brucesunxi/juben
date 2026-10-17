@@ -1,6 +1,6 @@
 {
-  "status": "engineering-inventory-not-a-submitted-declaration",
-  "reviewedOn": "2026-10-16",
+  "status": "engineering-inventory-questionnaire-completed-saved-pending-review",
+  "reviewedOn": "2026-10-17",
   "data": [
     {
       "type": "Guest identifier",
@@ -66,20 +66,35 @@
     "deletionAndroidDeviceValidationPending": true
   },
   "requiredBeforeSubmission": [
-    "Complete the actual Google Play Data safety questionnaire using current player app flows",
     "Verify app behavior and deletion on a real or functioning Android environment",
     "Complete operational moderation review; IARC questionnaire and ratings are already saved"
   ],
   "questionnaireDraft": {
-    "status": "Saved draft at step 4; not a final submitted declaration",
-    "selectedTypes": ["Approximate location", "Name", "User IDs", "Other in-app messages", "Other actions"],
-    "processingCompleted": ["Approximate location"],
-    "processingPending": ["Name", "User IDs", "Other in-app messages", "Other actions"],
+    "status": "Completed and saved for review on 2026-10-17; not submitted",
+    "selectedTypes": [
+      "Approximate location",
+      "Name",
+      "User IDs",
+      "Other in-app messages",
+      "Other actions"
+    ],
+    "processingCompleted": [
+      "Approximate location",
+      "Name",
+      "User IDs",
+      "Other in-app messages",
+      "Other actions"
+    ],
+    "processingPending": [],
     "approximateLocationAnswers": "Collected, not shared under service-provider exception, required, not declared ephemeral, app functionality and personalization.",
     "transportEncryption": true,
     "accountCreation": false,
     "externalAccountLogin": false,
     "deletionUrl": "https://juben-lyart.vercel.app/privacy.html?lang=en#delete-data-en",
-    "definitionsSource": "https://support.google.com/googleplay/android-developer/answer/10787469?hl=en"
+    "definitionsSource": "https://support.google.com/googleplay/android-developer/answer/10787469?hl=en",
+    "nameAnswers": "Collected and shared, required, retained, app functionality for collection and sharing.",
+    "userIdAnswers": "Collected, not shared under applicable exceptions, required, retained, app functionality.",
+    "messageAnswers": "Collected, not shared under user-initiated recipient-transfer exception, optional, retained, app functionality and fraud prevention/safety/compliance for report handling.",
+    "otherActionsAnswers": "Collected and shared, required, retained, app functionality for collection and sharing."
   }
 }
