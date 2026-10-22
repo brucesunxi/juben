@@ -1,5 +1,5 @@
 {
-  "status": "production-submitted-in-review",
+  "status": "production-live",
   "playConsoleAppId": "4973038944800749557",
   "playConsoleUrl": "https://play.google.com/console/u/0/developers/5271031489760273452/app/4973038944800749557/app-dashboard",
   "publisherApprovals": {
@@ -65,18 +65,24 @@
   "candidateRelease": {
     "versionCode": 2,
     "versionName": "1.0.1",
-    "state": "Submitted for production review; Console confirms Changes in review",
+    "state": "Live in production; active track and 100% rollout verified on 2026-10-22",
     "bundleSha256": "BE9DDC28606356686D2D8450E88166B9C5B3930A95770008A1430FE5E3FC167A",
     "releaseNotes": "Fix correct-accusation credit in solo cases; include prominent data-deletion policy links.",
     "sourceCommit": "8759241",
-    "remoteStatus": "Existing GitHub main was pushed through 566ed8d before this checkpoint. Existing Vercel production deployment remains dpl_8afZkky8MHJr4H34497sMMNcuyYq. Browser health check passed. Google Play confirms production 1.0.1 and 11 changes are in review; public availability is not confirmed. Single-guest online room/chat/rejoin/role/ready/start/investigation and approved QA guest deletion checks passed. Native microphone/peer voice and cross-user report/block remain unverified.",
+    "remoteStatus": "Existing GitHub main was pushed through 4588498 before this checkpoint. Latest verified Vercel production deployment is dpl_574tVPVcbqAkC3HwTv4Ds6Yn4XYP (2026-10-17); browser health check passed then. On 2026-10-22 Google Play shows production 1.0.1 active with 100% rollout, no unpublished changes and a visible public US store listing. Single-guest online room/chat/rejoin/role/ready/start/investigation and approved QA guest deletion checks passed earlier. Native microphone/peer voice and cross-user report/block remain unverified.",
     "releaseName": "1.0.1 — Initial public release",
     "playValidation": "No blocking errors; one missing deobfuscation-map warning (minification disabled); installed size 24.6 MB",
     "reviewUrl": "https://play.google.com/console/u/0/developers/5271031489760273452/app/4973038944800749557/publishing",
     "submittedOn": "2026-10-17",
-    "managedPublishing": false
+    "managedPublishing": false,
+    "publishedOn": "2026-10-22",
+    "rolloutPercent": 100,
+    "verifiedOn": "2026-10-22",
+    "productionUrl": "https://play.google.com/console/u/0/developers/5271031489760273452/app/4973038944800749557/tracks/production?releaseType=defaultReleases",
+    "evidence": ".build/play-production-live-20261022.txt"
   },
-  "storeListingStatus": "Submitted for review with production version 2 on 2026-10-17",
+  "storeListingStatus": "Public US listing visible on 2026-10-22; no device installation or eligibility test performed",
+  "publicStoreUrl": "https://play.google.com/store/apps/details?id=com.nocturne.scriptmystery&hl=en&gl=US",
   "categoryStatus": "Saved",
   "productionCountries": [
     "AU",
@@ -85,8 +91,8 @@
     "GB",
     "US"
   ],
-  "productionCountriesStatus": "Submitted for review",
-  "dataSafetyStatus": "Submitted for review",
+  "productionCountriesStatus": "Live; five target countries rechecked in Console on 2026-10-22",
+  "dataSafetyStatus": "Published; public listing displays data safety summary on 2026-10-22",
   "onlineValidation": {
     "date": "2026-10-17",
     "platform": "Chrome, isolated localhost page with unchanged frontend and production HTTPS API",

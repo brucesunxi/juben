@@ -1,8 +1,16 @@
 # Google Play release checkpoint
 
-Updated 2026-10-17. **Production version 2 (1.0.1) and 11 associated changes have been submitted to Google Play and are in review. Public store availability is not yet confirmed.**
+Updated 2026-10-22. **Production version 2 (1.0.1) is live with 100% rollout in AU, NZ, CA, GB and US. The public US Google Play listing is visible.**
 
 ## Current production checkpoint
+
+- Play Console shows `1.0.1 — Initial public release` as the latest production release, with the track active and rollout at 100%. Publishing overview reports the last publication date as 2026-10-22 and no unpublished changes. No duplicate release, promotion or resubmission was needed during this verification.
+- The production countries tab confirms Canada, New Zealand, Australia, United States (including seven territories) and United Kingdom. China is outside the configured launch countries.
+- Public store readback succeeded: https://play.google.com/store/apps/details?id=com.nocturne.scriptmystery&hl=en&gl=US. The page displays Nocturne: Mystery Stories, JRYS, the four screenshots, description, data safety information and release notes. No new device installation or download eligibility test is claimed.
+- The separate internal-test release `1.0 — Initial internal test` remains visible; production is the newer `1.0.1`. Its presence does not mean the production release is missing.
+- Evidence is ignored locally: `.build/play-production-live-20261022.txt`, `.build/play-production-live-20261022.jpg`, `.build/play-production-countries-20261022.txt` and `.build/play-store-live-20261022.jpg`. The Android test limitations recorded below remain unchanged.
+
+## Submission checkpoint — 2026-10-17 (historical)
 
 - The official Chrome connection and Google Play login are restored. The publisher re-enabled file-URL access for the connected extension, and uploads succeeded.
 - Data safety is complete and saved to pending review. It discloses collection of approximate location, name, user IDs, other in-app messages and other actions; sharing of name and other actions; HTTPS transit and the existing deletion-policy link. Messages are optional, retained, and used for functionality and safety/report handling. Other selected data is required and retained.
@@ -23,7 +31,7 @@ Historical checkpoints below are retained for provenance; this section supersede
 
 - GitHub: https://github.com/brucesunxi/juben (main).
 - Existing Vercel project: juben. Production: https://juben-lyart.vercel.app.
-- Latest web deployment: dpl_8afZkky8MHJr4H34497sMMNcuyYq, production READY, aliased to https://juben-lyart.vercel.app. It includes the solo correct-count fix. Public post-deployment readback timed out over the local connection; do not claim a fresh online smoke test. The earlier privacy/API checks succeeded before reboot.
+- Latest verified web deployment on 2026-10-17: dpl_574tVPVcbqAkC3HwTv4Ds6Yn4XYP, production READY, aliased to https://juben-lyart.vercel.app. It includes the solo correct-count fix. Browser health readback confirmed `ok: true`, database enabled and four scripts. No web deployment was performed during the 2026-10-22 Play verification.
 - Play developer: JRYS, organization account 5271031489760273452.
 - App: Nocturne: Mystery Stories, com.nocturne.scriptmystery, Play app ID 4973038944800749557.
 - Console: https://play.google.com/console/u/0/developers/5271031489760273452/app/4973038944800749557/app-dashboard.
